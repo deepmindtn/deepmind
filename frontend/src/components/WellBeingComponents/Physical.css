@@ -1,0 +1,93 @@
+.menu-content {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #f0f4f8;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  color: #333;
+}
+
+.timer-card {
+  background: #fff;
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.timer-display {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.timer-display.pulse {
+  display: inline-block;
+  animation: pulse 1s infinite;
+}
+
+.btn-group {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.option-card {
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  background: #4a90e2;
+  color: black; /* button text is black */
+  transition: transform 0.2s, background 0.2s;
+}
+
+.option-card:hover {
+  transform: scale(1.05);
+  background: #357abd;
+}
+
+.exercise-animation {
+  margin-top: 2rem;
+}
+
+.exercise-animation h4 {
+  margin-bottom: 0.5rem;
+  font-size: 1.3rem;
+}
+
+/* Make GIFs bigger */
+.exercise-animation img.exercise-gif {
+  width: 350px; /* increased size */
+  border-radius: 15px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.exercise-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.exercise-list li {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}

@@ -1,0 +1,314 @@
+/* Basic, clean styling that matches your app’s existing CSS approach */
+
+.b5-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+}
+.b5-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.b5-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.b5-progress-label {
+  font-size: 12px;
+  color: #64748b;
+}
+.b5-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.b5-select {
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+}
+
+.b5-progress {
+  height: 6px;
+  background: #e5e7eb;
+}
+.b5-progress-bar {
+  height: 6px;
+  background: #6366f1;
+  transition: width 0.25s ease;
+}
+
+.b5-container {
+  max-width: 960px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.b5-intro {
+  text-align: center;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 28px;
+}
+.b5-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.b5-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+}
+.b5-card-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.b5-card-sub {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.b5-likert {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.b5-likert-option {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.b5-likert-option input {
+  display: none;
+}
+.b5-likert-option.is-selected {
+  outline: 2px solid #6366f1;
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+.b5-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.b5-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 14px;
+  background: white;
+  cursor: pointer;
+}
+.b5-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.b5-btn.primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
+}
+.b5-btn.outline {
+  background: white;
+}
+.b5-btn.ghost {
+  background: transparent;
+}
+
+.b5-results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.b5-results-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.b5-chart {
+  height: 280px;
+  width: 100%;
+}
+
+.b5-footer {
+  border-top: 1px solid #e5e7eb;
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Make sure export background is white */
+.b5-pdf-bg {
+  background: #ffffff !important;
+}
+.b5-report {
+  line-height: 1.6;
+}
+.b5-report-list {
+  padding-left: 18px;
+  margin: 8px 0 16px;
+}
+.b5-report-par {
+  margin: 8px 0 0;
+  color: #0969f0;
+}
+.b5-input {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  width: 220px;
+}
+.b5-ai-report {
+  margin-top: 12px;
+}
+.b5-ai-report {
+  margin-top: 16px;
+}
+/* ===== Scheduling ===== */
+.sched-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0;
+}
+.sched-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sched-title h2 {
+  margin: 0;
+}
+.sched-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sched-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.sched-weekday {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 4px;
+}
+.sched-cell {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  min-height: 110px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.sched-cell.is-out {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+.sched-day {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+.sched-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sched-event {
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* color tags */
+.tag-assessment {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+.tag-workshop {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #155e75;
+}
+.tag-coaching {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+.tag-team {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+.tag-survey {
+  background: #fef9c3;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.tag-reminder {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+}
+.tag-retro {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #6d28d9;
+}
+.tag-report {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.sched-legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.sched-pill {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+}

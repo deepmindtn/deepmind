@@ -1,0 +1,194 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+import uuid
+
+# --------------------------
+# Company model
+# --------------------------
+class Company(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+# --------------------------
+# Custom User Manager
+# --------------------------
+class UserManager(BaseUserManager):
+    use_in_migrations = True
+
+    def _create_user(self, email, password, **extra_fields):
+        if not email:
+            raise ValueError("Email must be set")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        return self._create_user(email, password, **extra_fields)
+
+
+# --------------------------
+# Custom User
+# --------------------------
+class User(AbstractUser):
+    class Roles(models.TextChoices):
+        HR = "HR", "HR"
+        EMPLOYEE = "EMPLOYEE", "Employee"
+
+    class Departments(models.TextChoices):
+        ENGINEERING = "engineering", "Engineering"
+        MARKETING = "marketing", "Marketing"
+        SALES = "sales", "Sales"
+        HR = "hr", "Human Resources"
+        FINANCE = "finance", "Finance"
+        OPERATIONS = "operations", "Operations"
+        DESIGN = "design", "Design"
+        PRODUCT = "product", "Product"
+        OTHER = "other", "Other"
+
+    username = None  # remove username
+    email = models.EmailField(unique=True)
+
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    role = models.CharField(max_length=16, choices=Roles.choices, default=Roles.HR)
+
+    # Department now defaults to HR if not provided
+    department = models.CharField(
+        max_length=32,
+        choices=Departments.choices,
+        default=Departments.HR,
+        blank=True
+    )
+
+    phone = models.CharField(max_length=20, blank=True)
+    location = models.CharField(max_length=100, blank=True)
+    bio = models.TextField(blank=True)
+    join_date = models.DateField(auto_now_add=True)
+
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, null=True, blank=True, related_name="users"
+    )
+
+    GENDERS = [
+        ("male", "Male"),
+        ("female", "Female"),
+        ("other", "Other"),
+        ("prefer_not_to_say", "Prefer not to say"),
+    ]
+    MARITAL_STATUSES = [
+        ("single", "Single"),
+        ("married", "Married"),
+        ("divorced", "Divorced"),
+        ("widowed", "Widowed"),
+        ("other", "Other"),
+    ]
+
+    gender = models.CharField(max_length=20, choices=GENDERS, default="other", blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    nationality = models.CharField(max_length=50, blank=True, default="Other")
+    marital_status = models.CharField(max_length=10, choices=MARITAL_STATUSES, default="other", blank=True)
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    objects = UserManager()
+
+    def __str__(self):
+        return f"{self.email} ({self.role})"
+
+
+# --------------------------
+# Invite model
+# --------------------------
+class Invite(models.Model):
+    """
+    HR creates an invite for an employee. Employee completes signup via token.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField()
+    # Default department = HR if not specified
+    department = models.CharField(
+        max_length=32,
+        choices=User.Departments.choices,
+        default=User.Departments.HR,
+        blank=True
+    )
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_invites")
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="invites"
+    )
+
+    is_accepted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # If no company specified, inherit inviter's company
+        if not self.company and self.created_by:
+            self.company = self.created_by.company
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Invite({self.email}) accepted={self.is_accepted}"
+# --------------------------
+# Recruitee model (for recruitment assessments)
+# --------------------------
+class Recruitee(models.Model):
+    """
+    Represents a job candidate or applicant under recruitment.
+    Can be invited by HR and receive assessments.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    position = models.CharField(max_length=255, blank=True)  # e.g., "Data Scientist"
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, null=True, blank=True, related_name="recruitees"
+    )
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("invited", "Invited"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("hired", "Hired"),
+        ("rejected", "Rejected"),
+    ]
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending"
+    )
+
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="created_recruitees"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Auto inherit company from HR
+        if not self.company and self.created_by:
+            self.company = self.created_by.company
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.email}) - {self.status}"

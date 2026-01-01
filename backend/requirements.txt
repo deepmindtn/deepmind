@@ -1,0 +1,39 @@
+# Core backend
+Django>=4.2
+djangorestframework
+
+# LangChain + OpenAI
+langchain==0.0.230
+langchain-openai
+openai
+
+# Vector store and embeddings
+faiss-cpu
+tiktoken
+
+# PDF processing and loading
+PyMuPDF  # (aka fitz, for fast PDF reading)
+pdfminer.six
+pypdf
+unstructured  # Used by some LangChain loaders
+
+# Environment variables
+python-dotenv
+
+# CORS (optional, for frontend/backend integration)
+django-cors-headers
+
+# For file uploads
+Pillow
+
+# To generate PDFs on the backend (optional)
+reportlab  # or use xhtml2pdf or weasyprint if you want styled PDFs
+
+# Async (if needed)
+httpx
+
+# Compatibility / helpful extras
+numpy
+djangorestframework-simplejwt
+langchain_community==0.0.15
+PyPDF2

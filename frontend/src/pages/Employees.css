@@ -1,0 +1,18 @@
+.employees-container {
+    padding-left: 1.5rem;
+    padding-right: 1rem;
+    padding-top: 1.5rem;
+  
+  
+    background-color:#f9fafb;
+    min-height: 90vh;
+    margin-left: 0rem;
+  }
+
+  
+.employees-title {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: #1f2937;
+    margin: 0;
+  }

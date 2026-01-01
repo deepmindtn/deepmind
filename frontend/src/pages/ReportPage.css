@@ -1,0 +1,72 @@
+.report-page {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.report-page h1 {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.report-page p {
+  margin: 4px 0;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.report-section {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.report-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #1f2937;
+}
+
+.report-section pre {
+  font-size: 0.9rem;
+  background: #111827;
+  color: #f3f4f6;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #4b5563;
+}
+
+.spin {
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+.quadrant-badge {
+  margin-top: 10px;
+  padding: 6px 12px;
+  display: inline-block;
+  border-radius: 6px;
+  font-weight: 600;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+

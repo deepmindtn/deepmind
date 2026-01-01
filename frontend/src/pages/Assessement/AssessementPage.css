@@ -1,0 +1,233 @@
+.assessment-page {
+max-width: 700px;
+margin: 2rem auto;
+padding: 2rem;
+background: #ffffff;
+border-radius: 1rem;
+box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.assessment-page h2 {
+font-size: 1.75rem;
+color: #065f46;
+margin-bottom: 1.5rem;
+text-align: center;
+}
+
+.assessment-type-selector,
+.response-options,
+.audience-selector,
+.schedule-sender,
+.manual-survey-options,
+.file-upload,
+.question-builder {
+margin-bottom: 2rem;
+}
+
+.assessment-type-selector h3,
+.response-options h3,
+.audience-selector h3,
+.schedule-sender h3,
+.manual-survey-options h3,
+.file-upload h3,
+.question-builder h3 {
+font-size: 1.1rem;
+color: #047857;
+margin-bottom: 0.75rem;
+}
+
+.assessment-type-selector label,
+.response-options label,
+.audience-selector label,
+.manual-survey-options label {
+display: block;
+margin-bottom: 0.5rem;
+color: #374151;
+cursor: pointer;
+font-size: 0.95rem;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+margin-right: 0.5rem;
+}
+
+select {
+width: 100%;
+padding: 0.6rem 1rem;
+border: 1px solid #d1d5db;
+border-radius: 0.5rem;
+background: white;
+font-size: 0.95rem;
+color: #111827;
+margin-top: 0.5rem;
+}
+
+select[multiple] {
+height: auto;
+min-height: 100px;
+}
+
+input[type="datetime-local"] {
+width: 100%;
+padding: 0.6rem 1rem;
+border: 1px solid #d1d5db;
+border-radius: 0.5rem;
+font-size: 0.95rem;
+color: #111827;
+}
+
+.send-assessment-btn {
+width: 100%;
+background-color: #10b981;
+color: white;
+border: none;
+padding: 0.75rem;
+border-radius: 0.5rem;
+font-size: 1rem;
+font-weight: 600;
+cursor: pointer;
+transition: background-color 0.3s ease;
+}
+
+.send-assessment-btn:hover {
+background-color: #059669;
+}
+
+/* File Upload Styles */
+.upload-note {
+font-size: 0.85rem;
+color: #6b7280;
+margin-top: 0.25rem;
+margin-bottom: 0.5rem;
+}
+
+.file-name {
+margin-top: 0.25rem;
+font-size: 0.9rem;
+color: #10b981;
+font-weight: 500;
+}
+
+/* Question Builder Styles */
+.builder-note {
+font-size: 0.85rem;
+color: #6b7280;
+margin-bottom: 1rem;
+}
+
+.question-item {
+border: 1px solid #e5e7eb;
+border-radius: 0.5rem;
+padding: 1rem;
+margin-bottom: 1rem;
+background-color: #f9fafb;
+}
+
+.question-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 0.5rem;
+}
+
+.question-number {
+font-weight: 600;
+color: #374151;
+}
+
+.remove-question-btn {
+background-color: #ef4444;
+color: white;
+border: none;
+padding: 0.25rem 0.5rem;
+border-radius: 0.25rem;
+font-size: 0.8rem;
+cursor: pointer;
+transition: background-color 0.3s ease;
+}
+
+.remove-question-btn:hover {
+background-color: #dc2626;
+}
+
+.question-text-input {
+width: 100%;
+padding: 0.6rem 1rem;
+border: 1px solid #d1d5db;
+border-radius: 0.5rem;
+font-size: 0.95rem;
+color: #111827;
+margin-bottom: 0.5rem;
+}
+
+.question-type-select {
+width: 100%;
+padding: 0.6rem 1rem;
+border: 1px solid #d1d5db;
+border-radius: 0.5rem;
+background: white;
+font-size: 0.95rem;
+color: #111827;
+}
+
+.add-question-btn {
+background-color: #3b82f6;
+color: white;
+border: none;
+padding: 0.75rem 1rem;
+border-radius: 0.5rem;
+font-size: 0.95rem;
+font-weight: 600;
+cursor: pointer;
+transition: background-color 0.3s ease;
+width: 100%;
+}
+
+.add-question-btn:hover {
+background-color: #2563eb;
+}
+
+/* File input styling */
+input[type="file"] {
+width: 100%;
+padding: 0.6rem 1rem;
+border: 1px solid #d1d5db;
+border-radius: 0.5rem;
+background: white;
+font-size: 0.95rem;
+color: #111827;
+margin-top: 0.5rem;
+} 
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    color: #047857; /* emerald-700 */
+    border: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+  }
+  
+  .back-btn:hover {
+    color: #065f46; /* darker emerald */
+    background-color: #d1fae5; /* light emerald background */
+  }
+  
+  .back-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #a7f3d0;
+  }
+  
+  .back-icon {
+    margin-right: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+  }
+  

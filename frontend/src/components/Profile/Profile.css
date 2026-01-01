@@ -1,0 +1,388 @@
+.profile-container {
+  padding: 2rem;
+  background-color: #f9fafb;
+  min-height: 100vh;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.profile-title {
+  font-size: 1.875rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 0;
+}
+
+.edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  background-color: #16a34a;
+  transform: translateY(-1px);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.save-btn:hover {
+  background-color: #16a34a;
+}
+
+.cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background-color: #dc2626;
+}
+
+.edit-icon,
+.action-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.profile-content {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  overflow: hidden;
+}
+
+/* Avatar Section */
+.avatar-section {
+  padding: 2rem;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.avatar-container {
+  position: relative;
+}
+
+.avatar-large {
+  width: 6rem;
+  height: 6rem;
+  background-color: #dcfce7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-icon-large {
+  width: 3rem;
+  height: 3rem;
+  color: #22c55e;
+}
+
+.avatar-edit-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 2rem;
+  height: 2rem;
+  background-color: #22c55e;
+  border: 2px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.avatar-edit-btn:hover {
+  background-color: #16a34a;
+}
+
+.camera-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: white;
+}
+
+.avatar-info {
+  flex: 1;
+}
+
+.profile-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.profile-role-text {
+  font-size: 1.125rem;
+  color: #22c55e;
+  font-weight: 500;
+  margin: 0 0 0.25rem 0;
+}
+
+.profile-department {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.edit-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.name-input {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.role-input {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #22c55e;
+}
+
+.department-input {
+  font-size: 0.875rem;
+}
+
+/* Info Sections */
+.info-section {
+  padding: 2rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.info-section:last-child {
+  border-bottom: none;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.info-icon-container {
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: #f3f4f6;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.info-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7280;
+}
+
+.info-content {
+  flex: 1;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  font-size: 1rem;
+  color: #1f2937;
+  margin: 0;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #22c55e;
+  ring: 2px;
+  ring-color: rgba(34, 197, 94, 0.2);
+}
+
+/* Bio Section */
+.bio-container {
+  max-width: 100%;
+}
+
+.bio-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0;
+}
+
+.bio-textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.bio-textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+  ring: 2px;
+  ring-color: rgba(34, 197, 94, 0.2);
+}
+
+/* Activity Stats */
+.activity-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+}
+
+.activity-stat {
+  text-align: center;
+  padding: 1.5rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #22c55e;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 1rem;
+  }
+  
+  .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .avatar-section {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .activity-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .edit-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .save-btn,
+  .cancel-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .activity-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .avatar-large {
+    width: 5rem;
+    height: 5rem;
+  }
+  
+  .avatar-icon-large {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}

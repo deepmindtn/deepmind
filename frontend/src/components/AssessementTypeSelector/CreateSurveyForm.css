@@ -1,0 +1,112 @@
+.form-container {
+    background: #ffffff;
+    border: 1px solid #d1fae5; /* emerald-100 */
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+    margin-bottom: 2rem;
+  }
+  
+  .form-container h3 {
+    font-size: 1.5rem;
+    color: #047857; /* emerald-700 */
+    margin-bottom: 1.25rem;
+  }
+  
+  /* Survey Choice Buttons */
+  .survey-choice {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .survey-choice button {
+    flex: 1;
+    background: #f0fdf4;
+    color: #047857;
+    border: 1px solid #a7f3d0; /* emerald-200 */
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s ease;
+  }
+  
+  .survey-choice button:hover {
+    background-color: #d1fae5;
+  }
+  
+  .survey-choice button.active {
+    background-color: #10b981;
+    color: white;
+    border-color: #10b981;
+  }
+  
+  /* Upload Input */
+  input[type="file"] {
+    border: 1px dashed #a7f3d0;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    color: #374151;
+  }
+  
+  /* Manual Questions */
+  .manual-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .manual-questions input {
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  .manual-questions input:focus {
+    border-color: #10b981;
+  }
+  
+  /* Add Question Button */
+  .add-btn {
+    align-self: flex-start;
+    background: #10b981;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    font-size: 0.95rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 0.5rem;
+  }
+  
+  .add-btn:hover {
+    background-color: #059669;
+  }
+  
+  /* Submit Button */
+  .send-assessment-btn {
+    background-color: #047857;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: background 0.3s ease;
+  }
+  
+  .send-assessment-btn:hover {
+    background-color: #065f46;
+  }
+  

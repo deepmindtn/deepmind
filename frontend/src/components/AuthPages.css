@@ -1,0 +1,247 @@
+/* Shared Auth Pages Styles (for both LoginPage and SignUpPage) */
+
+/* Auth Container */
+.auth-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdfa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+}
+
+.auth-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Auth Card */
+.auth-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  z-index: 1;
+  position: relative;
+}
+
+/* Header */
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-logo {
+  background: #10b981; /* emerald-500 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.auth-heart-icon {
+  color: white;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.auth-title {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: #064e3b; /* emerald-900 */
+  margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+  color: #6b7280; /* gray-500 */
+  font-size: 0.95rem;
+}
+
+/* Form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Form Group */
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  color: #047857; /* emerald-700 */
+  margin-bottom: 0.5rem;
+}
+
+.input-container {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: #6b7280;
+  width: 1rem;
+  height: 1rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: #10b981; /* emerald-500 */
+}
+
+/* Password Toggle */
+.password-input {
+  padding-right: 2.5rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.eye-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Submit Button */
+.auth-submit-btn {
+  background-color: #10b981;
+  color: white;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.auth-submit-btn:hover {
+  background-color: #059669; /* darker emerald */
+}
+
+/* Footer */
+.auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.auth-switch-text {
+  font-size: 0.9rem;
+  color: #374151; /* gray-700 */
+}
+
+.auth-switch-link {
+  background: none;
+  border: none;
+  color: #10b981;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding-left: 0.25rem;
+}
+
+/* Back Button */
+.back-home-btn {
+  display: block;
+  margin: 1rem auto 0;
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+
+.name-row .form-group + .form-group {
+  margin-top: 1rem; /* Adjust the gap as needed */
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s;
+  background: white;
+  color: #374151; /* gray-700 */
+  appearance: none; /* Remove default arrow for custom styling if needed */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  margin-left: 0; /* Align with input fields */
+}
+
+.form-select:focus {
+  border-color: #10b981; /* emerald-500 */
+}
+
+/* Optional: Custom arrow icon for select */
+.form-group select.form-select {
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' fill='none' stroke='%236b7280' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem 1.25rem;
+}
+
+.floating-label {
+  position: absolute;
+  left: 2.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  font-size: 1rem;
+  pointer-events: none;
+  transition: 0.2s ease all;
+  background: white;
+  padding: 0 0.25rem;
+}
+
+.form-input:focus + .floating-label,
+.floating-label.filled {
+  top: 0.2rem;
+  left: 2.3rem;
+  font-size: 0.8rem;
+  color: #10b981;
+  background: white;
+}

@@ -1,0 +1,69 @@
+.upload-section {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background-color: #f0fdf4;
+    border: 1px solid #a7f3d0;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+  
+  .upload-section label {
+    display: block;
+    font-weight: 600;
+    color: #047857;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+  
+  .format-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .badge {
+    background-color: #d1fae5;
+    color: #065f46;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  
+  .upload-section input[type="file"] {
+    width: 100%;
+    padding: 0.65rem;
+    font-size: 0.95rem;
+    background-color: white;
+    border: 1px dashed #10b981;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+  
+  .upload-section input[type="file"]:hover {
+    border-color: #059669;
+  }
+  
+  .file-preview {
+    margin-top: 1rem;
+    color: #065f46;
+    font-size: 0.9rem;
+    font-weight: 500;
+    opacity: 0;
+    animation: fadeIn 0.4s ease forwards;
+  }
+  
+  .file-error {
+    color: #dc2626;
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    font-weight: 500;
+  }
+  
+  @keyframes fadeIn {
+    to {
+      opacity: 1;
+    }
+  }
+  

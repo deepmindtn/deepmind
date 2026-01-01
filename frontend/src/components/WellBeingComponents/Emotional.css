@@ -1,0 +1,60 @@
+/* Overall container */
+.emotional-page {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f9f9f9, #e0f7fa);
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  color: #333;
+  text-align: center;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Subtitle text */
+.subtitle {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+/* Textarea styling */
+.note-area {
+  width: 100%;
+  min-height: 150px;
+  padding: 1rem;
+  border-radius: 15px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  resize: vertical;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.note-area:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+  outline: none;
+}
+
+/* Label for notes preview */
+.notes-label {
+  margin-top: 1.5rem;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Notes preview box */
+.note-preview {
+  margin-top: 0.5rem;
+  min-height: 80px;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 15px;
+  border: 1px solid #ccc;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+  white-space: pre-wrap; /* preserve line breaks */
+  text-align: left;
+  font-size: 1rem;
+  color: #444;
+}

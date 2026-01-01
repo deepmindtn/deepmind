@@ -1,0 +1,11 @@
+.layout-container {
+  display: flex; /* Sidebar + Content in row */
+}
+
+.main-content {
+  flex: 1; /* take all remaining space */
+  padding: 1rem;
+  min-height: 100vh;
+  background-color: #f9fafb; /* or your desired background */
+  box-sizing: border-box;
+}

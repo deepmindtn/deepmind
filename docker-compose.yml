@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: deepmind-backend
+    ports:
+      - "8080:8080"
+    networks:
+      - deepmind-network
+
+  frontend:
+    build: ./frontend
+    container_name: deepmind-frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - deepmind-network
+
+  nginx:
+    image: nginx:latest
+    container_name: deepmind-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - deepmind-network
+
+networks:
+  deepmind-network:
+    driver: bridge
