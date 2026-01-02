@@ -1,13 +1,34 @@
 version: "3.9"
 
 services:
+  db:
+    image: postgres:15
+    container_name: deepmind-db
+    restart: always
+    environment:
+      POSTGRES_DB: deepmind
+      POSTGRES_USER: deepmind_user
+      POSTGRES_PASSWORD: deepmind_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - deepmind-network
+
   backend:
     build: ./backend
     container_name: deepmind-backend
     ports:
       - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      - db
     networks:
       - deepmind-network
+    command: bash -c "python manage.py makemigrations accounts assessments && python manage.py migrate && python manage.py runserver 0.0.0.0:8080"
+
 
   frontend:
     build: ./frontend
@@ -29,6 +50,9 @@ services:
       - backend
     networks:
       - deepmind-network
+
+volumes:
+  pgdata:
 
 networks:
   deepmind-network:
