@@ -154,6 +154,11 @@ export default function Employees() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignRow, setAssignRow] = useState(null);
   const [assignForm, setAssignForm] = useState({ template_code: "BIG_FIVE" });
+  
+  // csv
+  const [importOpen, setImportOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [invite, setInvite] = useState({
@@ -221,6 +226,50 @@ export default function Employees() {
     }
   }
 
+  // csv handler
+  async function handleImportCSV() {
+    if (!csvFile) {
+      alert("Please select a CSV file first.");
+      return;
+    }
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append("file", csvFile);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/employees/import/`, {
+        method: "POST",
+        headers: {
+            ...authHeader,
+            // Do NOT set Content-Type here; browser sets it automatically with boundary for FormData
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to import CSV");
+      }
+
+      alert(data.message);
+      if (data.errors && data.errors.length > 0) {
+        console.warn("Import warnings:", data.errors);
+        alert(`Finished with some skipped rows:\n${data.errors.slice(0, 5).join("\n")}`);
+      }
+      
+      setImportOpen(false);
+      setCsvFile(null);
+      // Refresh the list
+      window.location.reload(); 
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setImporting(false);
+    }
+  }
+  
   async function generateHRReport() {
     try {
       const res = await fetch(`${API_BASE}/api/hr/report/`, {
@@ -315,7 +364,6 @@ export default function Employees() {
   }, [rows]);
 
   return (
-
     <div className="employees-container">
     <h1 className="employees-title mb-4">Employee Management Page</h1>
 
@@ -442,6 +490,7 @@ export default function Employees() {
             justifyContent: "center",
             gap: 4,
           }}
+          onClick={() => setImportOpen(true)}
         >
           <Upload size={16} /> Import CSV
         </button>
@@ -1242,6 +1291,59 @@ export default function Employees() {
           </div>
         )}
       </Modal>
+
+      {/* Import CSV Modal */}
+      <Modal
+        open={importOpen}
+        title="Import Employees from CSV"
+        onClose={() => setImportOpen(false)}
+        actions={
+          <>
+            <button className="btn btn-light" onClick={() => setImportOpen(false)}>
+              Cancel
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleImportCSV}
+              disabled={importing}
+            >
+              {importing ? "Importing..." : "Submit Import"}
+            </button>
+          </>
+        }
+      >
+        <div className="p-3">
+          <div className="alert alert-info mb-3">
+            <h6 className="alert-heading fw-bold">Instructions</h6>
+            <p className="mb-0 small">
+              Upload a CSV file with the following headers (case-sensitive):
+            </p>
+            <ul className="mb-0 small mt-2">
+              <li><code>Email Address</code></li>
+              <li><code>First Name</code></li>
+              <li><code>Last Name</code></li>
+              <li><code>Department</code></li>
+            </ul>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-bold">Select CSV File</label>
+            <div className="input-group">
+              <input 
+                type="file" 
+                className="form-control" 
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files[0])}
+              />
+            </div>
+            <div className="form-text">
+              The backend will process this file line-by-line and add new employees.
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* HR Report Modal */}
       <Modal
         open={hrReportOpen}
         title="AI-Powered HR Report"

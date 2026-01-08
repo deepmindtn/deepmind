@@ -112,3 +112,79 @@ class UsersListView(generics.ListAPIView):
 
     def get_queryset(self):
         return User.objects.filter(company=self.request.user.company).order_by("-date_joined")
+
+import csv
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import status, permissions
+from .serializers import InviteCreateSerializer 
+
+class ImportEmployeesView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Read CSV
+        try:
+            decoded_file = file_obj.read().decode('utf-8-sig').splitlines()
+            reader = csv.DictReader(decoded_file)
+            reader.fieldnames = [h.strip() for h in reader.fieldnames] # Clean headers
+        except Exception as e:
+            return Response({"error": f"CSV Read Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        dept_map = {
+            "Sales": "sales",
+            "HR": "hr",
+            "Finance": "finance",
+            "Operations": "operations",
+            "Design": "design",
+            "Product": "product",
+            "Other": "other"
+        }
+
+        added_count = 0
+        errors = []
+
+        for row in reader:
+            email = row.get('Email Address', '').strip()
+            first_name = row.get('First Name', '').strip()
+            last_name = row.get('Last Name', '').strip()
+            raw_dept = row.get('Department', '').strip()
+
+            if not email:
+                continue
+
+            department_key = dept_map.get(raw_dept)
+            
+            if not department_key:
+                department_key = raw_dept.lower() 
+
+            invite_data = {
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "department": department_key, # Use the mapped key
+            }
+
+            serializer = InviteCreateSerializer(data=invite_data, context={'request': request})
+
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                    added_count += 1
+                except Exception as e:
+                    errors.append(f"DB Error {email}: {str(e)}")
+            else:
+                # Log the specific error for debugging
+                err_msg = str(serializer.errors)
+                errors.append(f"Skipped {email}: {err_msg}")
+
+        return Response({
+            "message": f"Successfully created {added_count} invites.",
+            "errors": errors
+        }, status=status.HTTP_201_CREATED)
