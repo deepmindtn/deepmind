@@ -35,6 +35,12 @@ services:
     container_name: deepmind-frontend
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     networks:
       - deepmind-network
 
