@@ -27,7 +27,14 @@ services:
       - db
     networks:
       - deepmind-network
-    command: bash -c "python manage.py makemigrations accounts assessments && python manage.py migrate && python manage.py runserver 0.0.0.0:8080"
+    volumes:
+      - ./backend:/app
+    command: >
+      bash -c "
+      python manage.py makemigrations accounts assessments &&
+      python manage.py migrate &&
+      python manage.py runserver 0.0.0.0:8080
+      "
 
 
   frontend:

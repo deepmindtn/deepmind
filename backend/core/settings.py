@@ -5,7 +5,7 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "change-me"
-DEBUG = True
+DEBUG = os.getenv("DEBUG") == "True"
 ALLOWED_HOSTS = ["dev.deepmind.tn", "localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
