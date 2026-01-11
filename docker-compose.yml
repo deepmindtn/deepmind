@@ -64,6 +64,20 @@ services:
     networks:
       - deepmind-network
 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: deepmind-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@deepmind.tn
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - deepmind-network
+
 volumes:
   pgdata:
 
