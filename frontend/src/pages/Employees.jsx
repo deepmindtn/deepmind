@@ -14,6 +14,7 @@ import {
   FileText,
   CheckCircle,
   AlertTriangle,
+  Mail, // 👈 Added Mail icon
 } from "lucide-react";
 import "./Employees.css";
 
@@ -147,7 +148,7 @@ export default function Employees() {
 
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
-
+  const [isInviting, setIsInviting] = useState(false);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -316,7 +317,8 @@ export default function Employees() {
   }
 
   // Invite
-  async function createInvite() {
+async function createInvite() {
+    setIsInviting(true);
     try {
       const res = await fetch(`${API_BASE}/api/invites/`, {
         method: "POST",
@@ -328,6 +330,8 @@ export default function Employees() {
       setInviteResult(data);
     } catch (e) {
       alert(e.message);
+    } finally {
+      setIsInviting(false);
     }
   }
 
@@ -621,11 +625,9 @@ export default function Employees() {
       <Modal
         open={importOpen}
         title="Import Employees from CSV"
-        // Conditional close behavior: reload if we have results, normal close if not
         onClose={() => importResult ? closeImportAndRefresh() : setImportOpen(false)}
         actions={
           !importResult ? (
-            // ACTIONS FOR UPLOAD FORM
             <>
               <button className="btn btn-light" onClick={() => setImportOpen(false)}>
                 Cancel
@@ -639,7 +641,6 @@ export default function Employees() {
               </button>
             </>
           ) : (
-            // ACTIONS FOR RESULT VIEW
             <button className="btn btn-primary" onClick={closeImportAndRefresh}>
               Close & Refresh
             </button>
@@ -647,7 +648,6 @@ export default function Employees() {
         }
       >
         {!importResult ? (
-          // ---------------- VIEW 1: UPLOAD FORM ----------------
           <div className="p-3">
             <div className="alert alert-info mb-3">
               <h6 className="alert-heading fw-bold">Instructions</h6>
@@ -673,13 +673,12 @@ export default function Employees() {
                 />
               </div>
               <div className="form-text">
-              The application will import all records from the CSV file into the database first. Once the data is saved successfully,
-               an email invitation will be sent to each listed recipient.
+                The application will import all records from the CSV file into the database first. Once the data is saved successfully,
+                an email invitation will be sent to each listed recipient.
               </div>
             </div>
           </div>
         ) : (
-          // ---------------- VIEW 2: RESULTS ----------------
           <div className="p-3">
             <div className="d-flex align-items-center mb-3">
               <CheckCircle size={32} className="text-success me-2" />
@@ -731,7 +730,6 @@ export default function Employees() {
             <div style={{ display: "grid", gap: 12 }}>
               {detailAssignments.map((a) => (
                 <div key={a.id} style={{ ...card }}>
-                  {/* ... (Assessment details logic same as before) ... */}
                   <div
                     style={{ display: "flex", justifyContent: "space-between" }}
                   >
@@ -740,7 +738,6 @@ export default function Employees() {
                       {a.status}
                     </Badge>
                   </div>
-                  {/* ... Truncated for brevity, logic remains identical ... */}
                 </div>
               ))}
             </div>
@@ -760,7 +757,6 @@ export default function Employees() {
           </button>
         }
       >
-        {/* ... (Existing logic) ... */}
         {assignRow && (
           <div className="alert alert-info mb-3">
             <div className="d-flex align-items-center">
@@ -809,31 +805,38 @@ export default function Employees() {
       {/* Add Employee Modal */}
       <Modal
         open={addOpen}
-        title={
-          <div className="d-flex align-items-center gap-2">
-            <div 
-              className="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10"
-              style={{ width: '40px', height: '40px' }}
-            >
-              <Plus size={20} className="text-primary" />
-            </div>
-            <div>
-              <h5 className="mb-0">Add New Employee</h5>
-              <small className="text-muted">Create access credentials and send invite</small>
-            </div>
-          </div>
-        }
+        title="Add New Employee" 
         onClose={() => { setAddOpen(false); setInviteResult(null); }}
         actions={
           <>
-            <button className="btn btn-light" onClick={() => setAddOpen(false)}>
+            <button 
+              className="btn btn-light" 
+              onClick={() => setAddOpen(false)}
+              disabled={isInviting}
+            >
               <X size={16} className="me-2" />
               Cancel
             </button>
+
             {!inviteResult && (
-              <button className="btn btn-primary" onClick={createInvite}>
-                <Send size={16} className="me-2" />
-                Create & Send Invite
+              <button 
+                className="btn btn-primary" 
+                onClick={createInvite}
+                disabled={isInviting} 
+                style={{ minWidth: "180px" }}
+              >
+                {isInviting ? (
+                  <>
+                    {}
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} className="me-2" />
+                    Create & Send Invite
+                  </>
+                )}
               </button>
             )}
           </>
@@ -927,32 +930,46 @@ export default function Employees() {
           </>
         ) : (
           <div className="text-center py-4">
-            <div 
-              className="rounded-circle d-flex align-items-center justify-content-center bg-success bg-opacity-10 mx-auto mb-3"
-              style={{ width: '60px', height: '60px' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="text-success" viewBox="0 0 16 16">
-                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-              </svg>
-            </div>
             
-            <h5 className="mb-2">Invite Created Successfully!</h5>
-            <p className="text-muted mb-4">Share this link with {invite.first_name} {invite.last_name} to complete registration</p>
+            {/* 👇 CONDITIONAL SUCCESS/ERROR MESSAGE */}
+            {inviteResult.email_sent ? (
+              <div className="alert alert-success d-flex align-items-center justify-content-center gap-2 mb-3">
+                 <Mail size={24} />
+                 <div className="text-start">
+                   <strong>Email Sent Successfully!</strong><br/>
+                   <small>An invitation has been emailed to {inviteResult.email}</small>
+                 </div>
+              </div>
+            ) : (
+              <div className="alert alert-danger d-flex align-items-center justify-content-center gap-2 mb-3">
+                 <AlertTriangle size={24} />
+                 <div className="text-start">
+                   <strong>Email Failed!</strong><br/>
+                   <small>{inviteResult.email_error || "Could not send email. Please copy the link manually."}</small>
+                 </div>
+              </div>
+            )}
+            
+            <h5 className="mb-2">Invite Created</h5>
+            <p className="text-muted mb-4">You can copy the backup link below:</p>
             
             <div className="card bg-light border-0 mb-3">
               <div className="card-body">
-                <label className="form-label small text-muted mb-2">Invitation Link</label>
+                <label className="form-label small text-muted mb-2">Invitation Link (Backup)</label>
                 <div className="input-group">
                   <input 
                     type="text" 
                     className="form-control font-monospace small" 
-                    value={`${window.location.origin}/accept-invite?token=${inviteResult.id}`}
+                    // Use the link returned from backend (supports automatic domain detection)
+                    value={inviteResult.invite_link || `${window.location.origin}/accept-invite?token=${inviteResult.id}`}
                     readOnly
                   />
                   <button 
                     className="btn btn-outline-primary"
                     onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/accept-invite?token=${inviteResult.id}`);
+                      // Prefer backend link, fallback to construction
+                      const link = inviteResult.invite_link || `${window.location.origin}/accept-invite?token=${inviteResult.id}`;
+                      navigator.clipboard.writeText(link);
                       alert('Link copied to clipboard!');
                     }}
                   >
@@ -966,8 +983,7 @@ export default function Employees() {
 
             <div className="alert alert-warning">
               <small>
-                <strong>⚠️ Important:</strong> This link should be sent securely to the employee. 
-                They will use it to set up their password and access the system.
+                <strong>⚠️ Important:</strong> This link allows the employee to set up their password and access the system.
               </small>
             </div>
           </div>

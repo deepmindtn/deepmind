@@ -27,32 +27,65 @@ User = get_user_model()
 # HR Signup
 # --------------------------
 class SignupView(generics.CreateAPIView):
-    """
-    Public endpoint: HR self-signup.
-    """
     queryset = User.objects.all()
     serializer_class = SignupSerializer
     permission_classes = [permissions.AllowAny]
 
 
 # --------------------------
-# Invite Employee (Single)
+# Invite Employee (Single - WITH EMAIL)
 # --------------------------
 class InviteCreateView(generics.CreateAPIView):
     """
-    HR-only: create an invite for an Employee.
+    HR-only: create an invite AND send email immediately.
     """
     serializer_class = InviteCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        # 1. Validate and Save to DB
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invite = serializer.save()
+
+        # 2. Generate Link
+        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
+        invite_link = f"{origin}/accept-invite?token={invite.id}"
+        
+        email_sent = False
+        email_error_msg = None
+
+        # 3. Send Email
+        try:
+            print(f"Sending single invite to {invite.email}...")
+            send_mail(
+                subject="You're invited to join DeepMind HR!",
+                message=f"Hi {invite.first_name},\n\nYou have been invited to join the platform. Click the link below to set up your account:\n\n{invite_link}\n\nBest regards,\nHR Team",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[invite.email],
+                fail_silently=False,
+            )
+            email_sent = True
+        except Exception as e:
+            print(f"Email failed: {e}")
+            email_error_msg = str(e)
+
+        # 4. Return Response with Email Status
+        headers = self.get_success_headers(serializer.data)
+        response_data = serializer.data
+        response_data['email_sent'] = email_sent
+        response_data['invite_link'] = invite_link # Send back link in case email fails
+        
+        if not email_sent:
+            response_data['email_error'] = email_error_msg
+
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 # --------------------------
 # Accept Invite
 # --------------------------
 class AcceptInviteView(generics.CreateAPIView):
-    """
-    Public: employee completes account with token + password.
-    """
     serializer_class = AcceptInviteSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -109,7 +142,7 @@ class UsersListView(generics.ListAPIView):
 
 
 # --------------------------
-# CSV Import View
+# CSV Import View (Already has email logic)
 # --------------------------
 class ImportEmployeesView(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -120,7 +153,6 @@ class ImportEmployeesView(APIView):
         if not file_obj:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Read CSV
         try:
             decoded_file = file_obj.read().decode('utf-8-sig').splitlines()
             reader = csv.DictReader(decoded_file)
@@ -128,22 +160,14 @@ class ImportEmployeesView(APIView):
         except Exception as e:
             return Response({"error": f"CSV Read Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Map Departments
         dept_map = {
-            "Sales": "sales",
-            "HR": "hr",
-            "Finance": "finance",
-            "Operations": "operations",
-            "Design": "design",
-            "Product": "product",
-            "Other": "other"
+            "Sales": "sales", "HR": "hr", "Finance": "finance",
+            "Operations": "operations", "Design": "design",
+            "Product": "product", "Other": "other"
         }
 
-        # 3. Automatic URL Detection
-        origin = request.META.get('HTTP_ORIGIN')
-        if not origin:
-            origin = "http://localhost:5173"
-            
+        # Automatic URL Detection
+        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         base_url = f"{origin}/accept-invite"
 
         added_count = 0
@@ -155,18 +179,14 @@ class ImportEmployeesView(APIView):
             last_name = row.get('Last Name', '').strip()
             raw_dept = row.get('Department', '').strip()
 
-            if not email:
-                continue
+            if not email: continue
 
             department_key = dept_map.get(raw_dept)
-            if not department_key:
-                department_key = raw_dept.lower() 
+            if not department_key: department_key = raw_dept.lower() 
 
             invite_data = {
-                "email": email,
-                "first_name": first_name,
-                "last_name": last_name,
-                "department": department_key,
+                "email": email, "first_name": first_name,
+                "last_name": last_name, "department": department_key,
             }
 
             serializer = InviteCreateSerializer(data=invite_data, context={'request': request})
@@ -180,16 +200,16 @@ class ImportEmployeesView(APIView):
                     invite_link = f"{base_url}?token={token}"
                     
                     try:
-                        print(f"Sending invite to {email} with link: {invite_link}")
+                        print(f"Sending invite to {email}")
                         send_mail(
                             subject="You're invited to join DeepMind HR!",
-                            message=f"Hi {first_name},\n\nYou have been invited to join the platform. Click the link below to set up your account:\n\n{invite_link}\n\nBest regards,\nHR Team",
+                            message=f"Hi {first_name},\n\nYou have been invited to join. Link: {invite_link}",
                             from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[email],
                             fail_silently=False,
                         )
                     except Exception as email_error:
-                        print(f"Email failed for {email}: {email_error}")
+                        print(f"Email failed: {email_error}")
                         errors.append(f"Created {email} but failed to send email. Check SMTP settings.")
 
                 except Exception as e:
