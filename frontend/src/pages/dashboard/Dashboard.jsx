@@ -6,24 +6,14 @@ import {
   BarChart2,
   ListOrdered,
   Layers,
+  Activity,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import Chart from "react-apexcharts";
+import "./Dashboardpage.css";
 
-// Configuration for charts and styling
+// Configuration for charts
 const CHART_COLORS = [
-  "#059669", // Emerald (Primary)
+  "#10b981", // Primary Green
   "#14b8a6", // Teal
   "#3b82f6", // Blue
   "#8b5cf6", // Violet
@@ -31,84 +21,123 @@ const CHART_COLORS = [
   "#ef4444", // Red
 ];
 
-// --- Custom Components for Enhanced UI ---
+// Common chart options
+const commonChartOptions = {
+  chart: {
+    toolbar: {
+      show: false,
+    },
+    animations: {
+      enabled: true,
+      easing: 'easeinout',
+      speed: 800,
+    },
+  },
+  dataLabels: {
+    enabled: false,
+  },
+  stroke: {
+    curve: 'smooth',
+    width: 3,
+  },
+  grid: {
+    borderColor: '#e5e7eb',
+    strokeDashArray: 4,
+    xaxis: {
+      lines: {
+        show: false,
+      },
+    },
+  },
+  tooltip: {
+    theme: 'light',
+    style: {
+      fontSize: '12px',
+    },
+    y: {
+      formatter: function(val) {
+        return val;
+      },
+    },
+  },
+  colors: CHART_COLORS,
+};
 
+// Stat Card Component
 const StatCard = ({ label, value, icon, colorClass, detail }) => (
-  <div className={`stat-card p-4 shadow-lg ${colorClass}`}>
-    <div className="d-flex align-items-center justify-content-between">
-      <div className="text-white opacity-75">{icon}</div>
-      <div className="text-end">
-        <div className="fs-2 fw-bolder text-white">{value}</div>
-        <div className="text-uppercase text-white opacity-85 small fw-medium">{label}</div>
+  <div className={`stat-card ${colorClass}`}>
+    <div className="stat-card-glow"></div>
+    <div className="stat-card-content">
+      <div className="stat-icon-wrapper">{icon}</div>
+      <div className="stat-info">
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
       </div>
     </div>
-    {detail && (
-        <div className="mt-2 pt-2 border-top border-light border-opacity-30 text-white opacity-75 small">
-            {detail}
-        </div>
-    )}
+    {detail && <div className="stat-detail">{detail}</div>}
   </div>
 );
 
+// Activity Card Component
 const ActivityCard = ({ activities }) => (
-  <div className="card shadow-lg chart-card h-100 d-flex flex-column">
-    <div className="card-body">
-      <h2 className="card-title fs-5 fw-semibold text-dark mb-4 d-flex align-items-center">
-        <ListOrdered size={20} className="me-2 text-primary-green" />
-        Recent Activity
-      </h2>
-      <ul className="list-unstyled space-y-3 flex-grow-1 overflow-auto" style={{maxHeight: '400px'}}>
-        {activities.length > 0 ? (
-          activities.map((activity, index) => (
-            <li key={index} className="d-flex align-items-start p-3 activity-list-item">
-              <div className="dot me-3 mt-1"></div>
-              <div>
-                <p className="mb-0 fw-medium text-dark lh-sm">
-                  {activity.main}
-                </p>
-                <p className="text-muted small mt-0 mb-0">
-                  {activity.sub}
-                </p>
-                <p className="fw-semibold text-primary-green-dark small mt-1 mb-0">
-                  {activity.time}
-                </p>
-              </div>
-            </li>
-          ))
-        ) : (
-          <p className="text-center text-muted fst-italic pt-4">No recent activity found.</p>
-        )}
-      </ul>
+  <div className="activity-card">
+    <div className="card-header">
+      <ListOrdered size={20} className="header-icon" />
+      <h2 className="card-title">Recent Activity</h2>
+    </div>
+    <div className="activity-list">
+      {activities.length > 0 ? (
+        activities.map((activity, index) => (
+          <div key={index} className="activity-item">
+            <div className="activity-indicator">
+              <div className="activity-dot"></div>
+              <div className="activity-line"></div>
+            </div>
+            <div className="activity-content">
+              <p className="activity-main">{activity.main}</p>
+              <p className="activity-sub">{activity.sub}</p>
+              <p className="activity-time">{activity.time}</p>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="no-activity">No recent activity found.</p>
+      )}
     </div>
   </div>
 );
 
+// Tab Button Component
 const TabButton = ({ name, active, setActiveTab }) => (
-    <button
-        onClick={() => setActiveTab(name)}
-        className={`tab-button ${active ? 'tab-button-active' : 'tab-button-inactive'}`}
-    >
-        {name}
-    </button>
+  <button
+    onClick={() => setActiveTab(name)}
+    className={`tab-button ${active ? "tab-active" : ""}`}
+  >
+    {name}
+  </button>
 );
 
+// Chart Card Component
 const ChartCard = ({ title, description, children }) => (
-  <div className="card chart-card p-4">
-    <h3 className="fs-5 fw-bold text-dark">{title}</h3>
-    <p className="text-muted small mb-4">{description}</p>
-    <ResponsiveContainer width="100%" height={300}>
+  <div className="chart-card">
+    <div className="chart-header">
+      <h3 className="chart-title">{title}</h3>
+      <p className="chart-description">{description}</p>
+    </div>
+    <div className="chart-container">
       {children}
-    </ResponsiveContainer>
+    </div>
   </div>
 );
 
-// ---------- helpers (kept original) ----------
+// Helper functions
 const API_BASE = "http://localhost:8080";
 
 function useAuthHeader() {
   const access = localStorage.getItem("access");
   return access ? { Authorization: `Bearer ${access}` } : {};
 }
+
 function timeAgo(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -128,10 +157,12 @@ function timeAgo(iso) {
   }
   return "just now";
 }
+
 function safeNum(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x : 0;
 }
+
 function takeBigFive(metrics) {
   if (!metrics) return null;
   const trait = metrics.trait || metrics.traitScores;
@@ -144,6 +175,7 @@ function takeBigFive(metrics) {
     C: safeNum(trait.C),
   };
 }
+
 function takeKarasek(metrics) {
   if (!metrics) return null;
   const dim = metrics.dim || metrics.dimScores;
@@ -154,6 +186,7 @@ function takeKarasek(metrics) {
     quadrant: metrics.quadrant || null,
   };
 }
+
 function takeMaslach(metrics) {
   if (!metrics) return null;
   if (metrics.burnout) {
@@ -170,6 +203,7 @@ function takeMaslach(metrics) {
     PA: safeNum(metrics.PA),
   };
 }
+
 function takeDISC(metrics) {
   if (!metrics) return null;
   const trait = metrics.trait || metrics.discScores;
@@ -181,6 +215,7 @@ function takeDISC(metrics) {
     C: safeNum(trait.C),
   };
 }
+
 function takeJSS(metrics) {
   if (!metrics) return null;
   const dim = metrics.dimScores || metrics;
@@ -188,6 +223,7 @@ function takeJSS(metrics) {
     Object.entries(dim).map(([k, v]) => [k, safeNum(v)])
   );
 }
+
 function takeBRS(metrics) {
   if (!metrics) return null;
   return {
@@ -196,14 +232,14 @@ function takeBRS(metrics) {
   };
 }
 
-// ---------- main component ----------
+// Main Dashboard Component
 const Dashboard = () => {
   const authHeader = useAuthHeader();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [users, setUsers] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [activeTab, setActiveTab] = useState("Overview"); // State for tabs
+  const [activeTab, setActiveTab] = useState("Overview");
 
   useEffect(() => {
     let parked = false;
@@ -374,380 +410,493 @@ const Dashboard = () => {
     };
   }, [users, assignments]);
 
-  // chart data
-  const bigFiveData = [
-    { name: "Neuroticism", value: bigFiveAvg.N || 0 },
-    { name: "Extraversion", value: bigFiveAvg.E || 0 },
-    { name: "Openness", value: bigFiveAvg.O || 0 },
-    { name: "Agreeableness", value: bigFiveAvg.A || 0 },
-    { name: "Conscientiousness", value: bigFiveAvg.C || 0 },
-  ];
-  const maslachData = [
-    { name: "Exhaustion", value: maslachAvg.EE || 0 },
-    { name: "Depersonalization", value: maslachAvg.DP || 0 },
-    { name: "Accomplishment", value: maslachAvg.PA || 0 },
-  ];
-  const karasekData = [
-    { name: "Demands", value: karasekAvg.D || 0 },
-    { name: "Control", value: karasekAvg.C || 0 },
-    { name: "Support", value: karasekAvg.S || 0 },
-  ];
-  const discData = [
-    { name: "Dominance", value: discAvg.D || 0 },
-    { name: "Influence", value: discAvg.I || 0 },
-    { name: "Steadiness", value: discAvg.S || 0 },
-    { name: "Conscientiousness", value: discAvg.C || 0 },
-  ];
-  const jssData = Object.entries(jssAvg).map(([k, v]) => ({
-    name: k,
-    value: v,
-  }));
-  const quadrantData = [
-    { name: "High Strain", key: "highStrain", color: "#ef4444" },
-    { name: "Active", key: "active", color: "#059669" },
-    { name: "Low Strain", key: "lowStrain", color: "#14b8a6" },
-    { name: "Passive", key: "passive", color: "#3b82f6" },
-  ]
-    .map((item) => ({
-      ...item,
-      value: quadrantCounts[item.key] || 0,
-    }))
-    .filter((x) => x.value > 0);
+  // Chart data for ApexCharts
+  const bigFiveChartOptions = {
+    ...commonChartOptions,
+    chart: {
+      ...commonChartOptions.chart,
+      type: 'bar',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 8,
+        distributed: false,
+        columnWidth: '60%',
+      },
+    },
+    xaxis: {
+      categories: ['Neuroticism', 'Extraversion', 'Openness', 'Agreeableness', 'Conscientiousness'],
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    yaxis: {
+      max: 100,
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'light',
+        type: 'vertical',
+        shadeIntensity: 0.5,
+        gradientToColors: [CHART_COLORS[1]],
+        inverseColors: false,
+        opacityFrom: 0.85,
+        opacityTo: 0.55,
+      },
+    },
+  };
 
-  // Components for Tab Content
+  const bigFiveChartSeries = [{
+    name: 'Score',
+    data: [bigFiveAvg.N || 0, bigFiveAvg.E || 0, bigFiveAvg.O || 0, bigFiveAvg.A || 0, bigFiveAvg.C || 0],
+  }];
+
+  const maslachChartOptions = {
+    ...commonChartOptions,
+    chart: {
+      ...commonChartOptions.chart,
+      type: 'bar',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 8,
+        columnWidth: '60%',
+      },
+    },
+    xaxis: {
+      categories: ['Exhaustion', 'Depersonalization', 'Accomplishment'],
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    yaxis: {
+      max: 100,
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    colors: [CHART_COLORS[4]],
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'light',
+        type: 'vertical',
+        shadeIntensity: 0.5,
+        opacityFrom: 0.85,
+        opacityTo: 0.55,
+      },
+    },
+  };
+
+  const maslachChartSeries = [{
+    name: 'Score',
+    data: [maslachAvg.EE || 0, maslachAvg.DP || 0, maslachAvg.PA || 0],
+  }];
+
+  const karasekChartOptions = {
+    ...commonChartOptions,
+    chart: {
+      ...commonChartOptions.chart,
+      type: 'bar',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 8,
+        columnWidth: '60%',
+      },
+    },
+    xaxis: {
+      categories: ['Demands', 'Control', 'Support'],
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    yaxis: {
+      max: 100,
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    colors: [CHART_COLORS[1]],
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'light',
+        type: 'vertical',
+        shadeIntensity: 0.5,
+        opacityFrom: 0.85,
+        opacityTo: 0.55,
+      },
+    },
+  };
+
+  const karasekChartSeries = [{
+    name: 'Score',
+    data: [karasekAvg.D || 0, karasekAvg.C || 0, karasekAvg.S || 0],
+  }];
+
+  const quadrantChartOptions = {
+    ...commonChartOptions,
+    chart: {
+      ...commonChartOptions.chart,
+      type: 'donut',
+    },
+    labels: ['High Strain', 'Active', 'Low Strain', 'Passive'].filter((label, index) => {
+      const keys = ['highStrain', 'active', 'lowStrain', 'passive'];
+      return quadrantCounts[keys[index]] > 0;
+    }),
+    colors: ['#ef4444', '#10b981', '#14b8a6', '#3b82f6'].filter((color, index) => {
+      const keys = ['highStrain', 'active', 'lowStrain', 'passive'];
+      return quadrantCounts[keys[index]] > 0;
+    }),
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '65%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Total',
+              fontSize: '14px',
+              color: '#6b7280',
+            },
+          },
+        },
+      },
+    },
+    legend: {
+      position: 'bottom',
+      fontSize: '12px',
+    },
+  };
+
+  const quadrantChartSeries = ['highStrain', 'active', 'lowStrain', 'passive']
+    .map(key => quadrantCounts[key] || 0)
+    .filter(val => val > 0);
+
+  const discChartOptions = {
+    ...commonChartOptions,
+    chart: {
+      ...commonChartOptions.chart,
+      type: 'bar',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 8,
+        columnWidth: '60%',
+      },
+    },
+    xaxis: {
+      categories: ['Dominance', 'Influence', 'Steadiness', 'Conscientiousness'],
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    colors: [CHART_COLORS[3]],
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'light',
+        type: 'vertical',
+        shadeIntensity: 0.5,
+        opacityFrom: 0.85,
+        opacityTo: 0.55,
+      },
+    },
+  };
+
+  const discChartSeries = [{
+    name: 'Score',
+    data: [discAvg.D || 0, discAvg.I || 0, discAvg.S || 0, discAvg.C || 0],
+  }];
+
+  const jssChartOptions = {
+    ...commonChartOptions,
+    chart: {
+      ...commonChartOptions.chart,
+      type: 'bar',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 8,
+        horizontal: true,
+      },
+    },
+    xaxis: {
+      categories: Object.keys(jssAvg),
+      max: 24,
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: '#6b7280',
+          fontSize: '12px',
+        },
+      },
+    },
+    colors: [CHART_COLORS[2]],
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'light',
+        type: 'horizontal',
+        shadeIntensity: 0.5,
+        opacityFrom: 0.85,
+        opacityTo: 0.55,
+      },
+    },
+  };
+
+  const jssChartSeries = [{
+    name: 'Score',
+    data: Object.values(jssAvg),
+  }];
+
+  // Overview Content
   const OverviewContent = () => (
-    <div className="row g-4">
-      {/* Primary Stats Row */}
-      <div className="col-12">
-        <div className="row g-4">
-          <div className="col-sm-6 col-lg-3">
-            <StatCard
-              label="Total Employees"
-              value={String(totalEmployees)}
-              icon={<Users size={32} />}
-              colorClass="stat-card-primary"
-              detail="Total number of registered users"
-            />
-          </div>
-          <div className="col-sm-6 col-lg-3">
-            <StatCard
-              label="Total Assignments"
-              value={String(totalAssignments)}
-              icon={<FileText size={32} />}
-              colorClass="stat-card-secondary"
-              detail="All time assessments created"
-            />
-          </div>
-          <div className="col-sm-6 col-lg-3">
-            <StatCard
-              label="Active Assessments"
-              value={String(activeAssessments)}
-              icon={<BarChart2 size={32} />}
-              colorClass="stat-card-info"
-              detail="Assessments currently in progress"
-            />
-          </div>
-          <div className="col-sm-6 col-lg-3">
-            <StatCard
-              label="Completed Assessments"
-              value={String(completedAssessments)}
-              icon={<TrendingUp size={32} />}
-              colorClass="stat-card-primary"
-              detail="Total assessments finalized"
-            />
-          </div>
-        </div>
+    <div className="dashboard-grid">
+      {/* Primary Stats */}
+      <div className="stats-row">
+        <StatCard
+          label="Total Employees"
+          value={String(totalEmployees)}
+          icon={<Users size={28} />}
+          colorClass="stat-primary"
+          detail="Registered users in system"
+        />
+        <StatCard
+          label="Total Assignments"
+          value={String(totalAssignments)}
+          icon={<FileText size={28} />}
+          colorClass="stat-secondary"
+          detail="All time assessments"
+        />
+        <StatCard
+          label="Active Assessments"
+          value={String(activeAssessments)}
+          icon={<BarChart2 size={28} />}
+          colorClass="stat-info"
+          detail="Currently in progress"
+        />
+        <StatCard
+          label="Completed"
+          value={String(completedAssessments)}
+          icon={<TrendingUp size={28} />}
+          colorClass="stat-success"
+          detail="Total finalized"
+        />
       </div>
 
-      {/* Completion Rates + BRS and Activity */}
-      <div className="col-12 col-lg-7">
-        <div className="row g-4">
-            <div className="col-4">
-                <StatCard
-                label="Big Five %"
-                value={`${completedByTemplate.BIG_FIVE}%`}
-                icon={<Layers size={32} />}
-                colorClass="stat-card-dark"
-                detail="Completion Rate"
-                />
-            </div>
-            <div className="col-4">
-                <StatCard
-                label="Maslach %"
-                value={`${completedByTemplate.MASLACH}%`}
-                icon={<Layers size={32} />}
-                colorClass="stat-card-dark"
-                detail="Completion Rate"
-                />
-            </div>
-            <div className="col-4">
-                <StatCard
-                label="Karasek %"
-                value={`${completedByTemplate.KARASEK}%`}
-                icon={<Layers size={32} />}
-                colorClass="stat-card-dark"
-                detail="Completion Rate"
-                />
-            </div>
-            <div className="col-4">
-                <StatCard
-                label="DISC %"
-                value={`${completedByTemplate.DISC}%`}
-                icon={<Layers size={32} />}
-                colorClass="stat-card-dark"
-                detail="Completion Rate"
-                />
-            </div>
-            <div className="col-4">
-                <StatCard
-                label="JSS %"
-                value={`${completedByTemplate.JSS}%`}
-                icon={<Layers size={32} />}
-                colorClass="stat-card-dark"
-                detail="Completion Rate"
-                />
-            </div>
-            <div className="col-4">
-                <StatCard
-                label="BRS Average"
-                value={brsAvg}
-                icon={<TrendingUp size={32} />}
-                colorClass="stat-card-danger"
-                detail="Burnout Resilience Score"
-                />
-            </div>
+      {/* Completion Rates & Activity */}
+      <div className="content-grid">
+        <div className="completion-grid">
+          <StatCard
+            label="Big Five"
+            value={`${completedByTemplate.BIG_FIVE}%`}
+            icon={<Layers size={24} />}
+            colorClass="stat-dark"
+            detail="Completion Rate"
+          />
+          <StatCard
+            label="Maslach"
+            value={`${completedByTemplate.MASLACH}%`}
+            icon={<Layers size={24} />}
+            colorClass="stat-dark"
+            detail="Completion Rate"
+          />
+          <StatCard
+            label="Karasek"
+            value={`${completedByTemplate.KARASEK}%`}
+            icon={<Layers size={24} />}
+            colorClass="stat-dark"
+            detail="Completion Rate"
+          />
+          <StatCard
+            label="DISC"
+            value={`${completedByTemplate.DISC}%`}
+            icon={<Layers size={24} />}
+            colorClass="stat-dark"
+            detail="Completion Rate"
+          />
+          <StatCard
+            label="JSS"
+            value={`${completedByTemplate.JSS}%`}
+            icon={<Layers size={24} />}
+            colorClass="stat-dark"
+            detail="Completion Rate"
+          />
+          <StatCard
+            label="BRS Average"
+            value={brsAvg}
+            icon={<Activity size={24} />}
+            colorClass="stat-danger"
+            detail="Resilience Score"
+          />
         </div>
-      </div>
 
-      {/* Recent Activity Card */}
-      <div className="col-12 col-lg-5">
         <ActivityCard activities={recentActivity} />
       </div>
     </div>
   );
 
+  // Detailed Metrics Content
   const DetailedMetricsContent = () => (
-    <div className="row g-4">
-      {/* Big Five */}
-      <div className="col-12 col-md-6">
-        <ChartCard title="Big Five (OCEAN) Averages" description="Average trait scores (0-100)">
-          <BarChart data={bigFiveData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-            <XAxis dataKey="name" stroke="#6c757d" />
-            <YAxis domain={[0, 100]} stroke="#6c757d" />
-            <Tooltip />
-            <Bar dataKey="value" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-      </div>
+    <div className="metrics-grid">
+      <ChartCard
+        title="Big Five (OCEAN) Averages"
+        description="Average trait scores (0-100)"
+      >
+        <Chart
+          options={bigFiveChartOptions}
+          series={bigFiveChartSeries}
+          type="bar"
+          height={300}
+        />
+      </ChartCard>
 
-      {/* Maslach */}
-      <div className="col-12 col-md-6">
-        <ChartCard title="Maslach Burnout Averages" description="Average scores for key burnout dimensions (0-100)">
-          <BarChart data={maslachData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-            <XAxis dataKey="name" stroke="#6c757d" />
-            <YAxis domain={[0, 100]} stroke="#6c757d" />
-            <Tooltip />
-            <Bar dataKey="value" fill={CHART_COLORS[4]} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-      </div>
+      <ChartCard
+        title="Maslach Burnout Averages"
+        description="Key burnout dimensions (0-100)"
+      >
+        <Chart
+          options={maslachChartOptions}
+          series={maslachChartSeries}
+          type="bar"
+          height={300}
+        />
+      </ChartCard>
 
-      {/* Karasek D/C/S */}
-      <div className="col-12 col-md-6">
-        <ChartCard title="Karasek Demands, Control, Support" description="Average scores for job strain factors (0-100)">
-          <BarChart data={karasekData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-            <XAxis dataKey="name" stroke="#6c757d" />
-            <YAxis domain={[0, 100]} stroke="#6c757d" />
-            <Tooltip />
-            <Bar dataKey="value" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-      </div>
+      <ChartCard
+        title="Karasek Job Strain Factors"
+        description="Demands, Control, Support (0-100)"
+      >
+        <Chart
+          options={karasekChartOptions}
+          series={karasekChartSeries}
+          type="bar"
+          height={300}
+        />
+      </ChartCard>
 
-      {/* Karasek Quadrants */}
-      <div className="col-12 col-md-6">
-        <ChartCard title="Karasek Quadrant Distribution" description="Distribution of completed assessments by job strain category">
-          {quadrantData.length ? (
-            <PieChart>
-              <Pie
-                data={quadrantData}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={100}
-                label
-                fill="#8884d8"
-              >
-                {quadrantData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend layout="vertical" align="right" verticalAlign="middle" />
-            </PieChart>
-          ) : (
-            <div className="text-center text-muted py-5">No quadrant data available from completed Karasek assessments.</div>
-          )}
-        </ChartCard>
-      </div>
+      <ChartCard
+        title="Karasek Quadrant Distribution"
+        description="Job strain categories"
+      >
+        {quadrantChartSeries.length > 0 ? (
+          <Chart
+            options={quadrantChartOptions}
+            series={quadrantChartSeries}
+            type="donut"
+            height={300}
+          />
+        ) : (
+          <div className="no-data">No quadrant data available</div>
+        )}
+      </ChartCard>
 
-      {/* DISC Averages */}
-      <div className="col-12 col-md-6">
-        <ChartCard title="DISC Averages" description="Average scores for Dominance, Influence, Steadiness, Conscientiousness">
-          <BarChart data={discData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-            <XAxis dataKey="name" stroke="#6c757d" />
-            <YAxis stroke="#6c757d" />
-            <Tooltip />
-            <Bar dataKey="value" fill={CHART_COLORS[3]} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-      </div>
+      <ChartCard
+        title="DISC Personality Averages"
+        description="Dominance, Influence, Steadiness, Conscientiousness"
+      >
+        <Chart
+          options={discChartOptions}
+          series={discChartSeries}
+          type="bar"
+          height={300}
+        />
+      </ChartCard>
 
-      {/* JSS Averages */}
-      <div className="col-12 col-md-6">
-        <ChartCard title="Job Satisfaction Survey (JSS) Averages" description="Average scores across various JSS dimensions">
-          <BarChart data={jssData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-            <XAxis dataKey="name" stroke="#6c757d" />
-            <YAxis domain={[0, 24]} stroke="#6c757d" />
-            <Tooltip />
-            <Bar dataKey="value" fill={CHART_COLORS[2]} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-      </div>
+      <ChartCard
+        title="Job Satisfaction Survey (JSS)"
+        description="Average scores across JSS dimensions"
+      >
+        <Chart
+          options={jssChartOptions}
+          series={jssChartSeries}
+          type="bar"
+          height={300}
+        />
+      </ChartCard>
     </div>
   );
 
-  // ---------- UI structure (new design with custom CSS) ----------
   return (
-    <div className="app-bg p-4 p-sm-5 min-vh-100">
-      <style>{`
-        /* Custom Variables */
-        :root {
-            --primary-green: #059669;
-            --primary-green-light: #10b981;
-            --primary-green-dark: #047857;
-            --teal-secondary: #14b8a6;
-            --gray-dark: #4b5563;
-        }
-
-        /* Custom Colors for Recharts and text */
-        .text-primary-green { color: var(--primary-green) !important; }
-        .text-primary-green-dark { color: var(--primary-green-dark) !important; }
-        .dot {
-            width: 8px;
-            height: 8px;
-            background-color: var(--primary-green-light);
-            border-radius: 50%;
-            flex-shrink: 0;
-            margin-top: 5px;
-        }
-
-        /* Stat Card Styling */
-        .stat-card {
-            transition: all 0.3s ease;
-            border-radius: 1rem;
-            min-height: 120px;
-            border: none;
-        }
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25) !important;
-        }
-        .stat-card-primary { background-color: var(--primary-green) !important; }
-        .stat-card-secondary { background-color: var(--teal-secondary) !important; }
-        .stat-card-info { background-color: #3b82f6 !important; }
-        .stat-card-danger { background-color: #ef4444 !important; }
-        .stat-card-dark { background-color: var(--gray-dark) !important; }
-
-        /* Chart/Activity Card Styling */
-        .chart-card {
-            border-radius: 1rem;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e9ecef;
-            background-color: white;
-        }
-
-        /* Tab Button Styling */
-        .tab-button {
-            padding: 0.5rem 1.5rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 2rem;
-            border: 1px solid #ced4da;
-            transition: all 0.2s ease;
-        }
-        .tab-button-active {
-            background-color: var(--primary-green);
-            color: white;
-            border-color: var(--primary-green-dark);
-            box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
-        }
-        .tab-button-inactive {
-            background-color: white;
-            color: #495057;
-        }
-        .tab-button-inactive:hover {
-            background-color: #f1f1f1;
-        }
-
-        /* Activity List */
-        .activity-list-item {
-            background-color: #f8f9fa;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s;
-        }
-        .activity-list-item:hover {
-            background-color: #e9ecef;
-        }
-
-        /* Recharts Tooltip Styling */
-        .recharts-tooltip-wrapper {
-          border-radius: 0.5rem !important;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-          background-color: rgba(255, 255, 255, 0.95) !important;
-          border: 1px solid #e5e7eb !important;
-        }
-      `}</style>
-
-      <header className="mb-5">
-        <h1 className="fs-1 fw-bold text-primary-green tracking-tight">
-          Analytical Dashboard
-        </h1>
-        <p className="text-muted mt-1">
-          A high-level summary of all employee and assessment data.
+    <div className="dashboard-wrapper">
+      <header className="dashboard-header">
+        <h1 className="dashboard-title">Analytical Dashboard</h1>
+        <p className="dashboard-subtitle">
+          Comprehensive overview of employee wellbeing and assessment data
         </p>
       </header>
 
-      {/* Error message */}
       {err && (
-        <div className="alert alert-danger p-3 mb-4">
-          <span>Error: {err}</span>
+        <div className="error-alert">
+          <span>⚠ Error: {err}</span>
         </div>
       )}
 
-      {/* Loading State */}
       {loading && (
-        <div className="text-center py-5 text-secondary">
-          <div className="spinner-border text-primary-green me-2" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          Loading data...
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading dashboard data...</p>
         </div>
       )}
 
       {!loading && (
         <>
-          {/* Tab Navigation */}
-          <div className="d-flex gap-3 mb-5 flex-wrap">
-            <TabButton name="Overview" active={activeTab === "Overview"} setActiveTab={setActiveTab} />
-            <TabButton name="Deep Dive Metrics" active={activeTab === "Deep Dive Metrics"} setActiveTab={setActiveTab} />
+          <div className="tab-navigation">
+            <TabButton
+              name="Overview"
+              active={activeTab === "Overview"}
+              setActiveTab={setActiveTab}
+            />
+            <TabButton
+              name="Deep Dive Metrics"
+              active={activeTab === "Deep Dive Metrics"}
+              setActiveTab={setActiveTab}
+            />
           </div>
 
-          {/* Tab Content */}
           <div className="dashboard-content">
             {activeTab === "Overview" && <OverviewContent />}
             {activeTab === "Deep Dive Metrics" && <DetailedMetricsContent />}

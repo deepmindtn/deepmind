@@ -27,7 +27,14 @@ services:
       - db
     networks:
       - deepmind-network
-    command: bash -c "python manage.py makemigrations accounts assessments && python manage.py migrate && python manage.py runserver 0.0.0.0:8080"
+    volumes:
+      - ./backend:/app
+    command: >
+      bash -c "
+      python manage.py makemigrations accounts assessments &&
+      python manage.py migrate &&
+      python manage.py runserver 0.0.0.0:8080
+      "
 
 
   frontend:
@@ -54,6 +61,20 @@ services:
     depends_on:
       - frontend
       - backend
+    networks:
+      - deepmind-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: deepmind-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@deepmind.tn
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
     networks:
       - deepmind-network
 
