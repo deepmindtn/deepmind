@@ -1,0 +1,89 @@
+.audience-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  
+  /* Header */
+  .audience-header h3 {
+    font-size: 1.1rem;
+    color: #047857;
+    margin-bottom: 0.25rem;
+  }
+  
+  .audience-header p {
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+  
+  /* Type Cards */
+  .audience-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .audience-type-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #374151;
+  }
+  
+  .audience-type-card:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+  
+  .audience-type-card.active {
+    border-color: #10b981;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 2px #a7f3d0;
+  }
+  
+  .type-icon {
+    color: #10b981;
+  }
+  
+  .type-icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  
+  /* Chips */
+  .audience-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  
+  .chip {
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .chip:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+  
+  .chip.active {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+  }
+  

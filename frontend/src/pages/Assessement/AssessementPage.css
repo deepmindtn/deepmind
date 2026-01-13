@@ -1,11 +1,8 @@
-.assessment-page {
-max-width: 700px;
-margin: 2rem auto;
-padding: 2rem;
-background: #ffffff;
-border-radius: 1rem;
-box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.assessment-form-wrapper {
+  
+  padding: 10px 2rem;
+  border-radius: 1rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .assessment-page h2 {

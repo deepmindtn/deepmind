@@ -7,232 +7,283 @@ import {
   ListOrdered,
   Layers,
   Activity,
+  Zap,
+  Info,
+  ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import Chart from "react-apexcharts";
-import "./Dashboardpage.css";
 
-// Configuration for charts
-const CHART_COLORS = [
-  "#10b981", // Primary Green
-  "#14b8a6", // Teal
-  "#3b82f6", // Blue
-  "#8b5cf6", // Violet
-  "#f59e0b", // Amber
-  "#ef4444", // Red
-];
-
-// Common chart options
-const commonChartOptions = {
-  chart: {
-    toolbar: {
-      show: false,
-    },
-    animations: {
-      enabled: true,
-      easing: 'easeinout',
-      speed: 800,
-    },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-  stroke: {
-    curve: 'smooth',
-    width: 3,
-  },
-  grid: {
-    borderColor: '#e5e7eb',
-    strokeDashArray: 4,
-    xaxis: {
-      lines: {
-        show: false,
-      },
-    },
-  },
-  tooltip: {
-    theme: 'light',
-    style: {
-      fontSize: '12px',
-    },
-    y: {
-      formatter: function(val) {
-        return val;
-      },
-    },
-  },
-  colors: CHART_COLORS,
+// -----------------------
+// Theme Constants
+// -----------------------
+const COLORS = {
+  primary: "#10b981",
+  primaryLight: "#ecfdf5",
+  primaryDark: "#059669",
+  secondary: "#14b8a6",
+  blue: "#3b82f6",
+  blueLight: "#eff6ff",
+  purple: "#8b5cf6",
+  purpleLight: "#f5f3ff",
+  orange: "#f59e0b",
+  red: "#ef4444",
+  bgMain: "#f8fafc",
+  cardBg: "#ffffff",
+  textPrimary: "#1f2937",
+  textSecondary: "#6b7280",
+  textMuted: "#9ca3af",
+  borderColor: "#e5e7eb",
+  shadowHuge:
+    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
 };
 
-// Stat Card Component
-const StatCard = ({ label, value, icon, colorClass, detail }) => (
-  <div className={`stat-card ${colorClass}`}>
-    <div className="stat-card-glow"></div>
-    <div className="stat-card-content">
-      <div className="stat-icon-wrapper">{icon}</div>
-      <div className="stat-info">
-        <div className="stat-value">{value}</div>
-        <div className="stat-label">{label}</div>
-      </div>
-    </div>
-    {detail && <div className="stat-detail">{detail}</div>}
-  </div>
-);
+const CHART_COLORS = [
+  COLORS.primary,
+  COLORS.secondary,
+  COLORS.blue,
+  COLORS.purple,
+  COLORS.orange,
+  COLORS.red,
+];
 
-// Activity Card Component
-const ActivityCard = ({ activities }) => (
-  <div className="activity-card">
-    <div className="card-header">
-      <ListOrdered size={20} className="header-icon" />
-      <h2 className="card-title">Recent Activity</h2>
-    </div>
-    <div className="activity-list">
-      {activities.length > 0 ? (
-        activities.map((activity, index) => (
-          <div key={index} className="activity-item">
-            <div className="activity-indicator">
-              <div className="activity-dot"></div>
-              <div className="activity-line"></div>
-            </div>
-            <div className="activity-content">
-              <p className="activity-main">{activity.main}</p>
-              <p className="activity-sub">{activity.sub}</p>
-              <p className="activity-time">{activity.time}</p>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p className="no-activity">No recent activity found.</p>
-      )}
-    </div>
-  </div>
-);
+const styles = {
+  container: {
+    padding: "5px 20px",
+    backgroundColor: COLORS.bgMain,
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
+  mainWrapperCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "24px",
+    border: `1px solid ${COLORS.borderColor}`,
+    boxShadow: COLORS.shadowHuge,
+    margin: "0 auto",
+    padding: "48px",
+    maxWidth: "1400px",
+  },
+  header: { marginBottom: "40px" },
+  tabNav: {
+    display: "flex",
+    gap: "8px",
+    backgroundColor: "#f1f5f9",
+    padding: "6px",
+    borderRadius: "14px",
+    width: "fit-content",
+    marginBottom: "32px",
+  },
+  tabBtn: (active) => ({
+    padding: "10px 24px",
+    borderRadius: "10px",
+    border: "none",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    backgroundColor: active ? COLORS.cardBg : "transparent",
+    color: active ? COLORS.textPrimary : COLORS.textSecondary,
+    boxShadow: active ? "0 4px 6px -1px rgba(0, 0, 0, 0.1)" : "none",
+  }),
+  statCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "20px",
+    border: `1px solid ${COLORS.borderColor}`,
+    padding: "24px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    transition: "all 0.3s ease",
+  },
+  iconBox: (bgColor) => ({
+    width: "48px",
+    height: "48px",
+    borderRadius: "12px",
+    backgroundColor: bgColor,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  }),
+  chartCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "20px",
+    border: `1px solid ${COLORS.borderColor}`,
+    padding: "28px",
+    height: "100%",
+  },
+};
 
-// Tab Button Component
-const TabButton = ({ name, active, setActiveTab }) => (
-  <button
-    onClick={() => setActiveTab(name)}
-    className={`tab-button ${active ? "tab-active" : ""}`}
-  >
-    {name}
-  </button>
-);
-
-// Chart Card Component
-const ChartCard = ({ title, description, children }) => (
-  <div className="chart-card">
-    <div className="chart-header">
-      <h3 className="chart-title">{title}</h3>
-      <p className="chart-description">{description}</p>
-    </div>
-    <div className="chart-container">
-      {children}
-    </div>
-  </div>
-);
-
-// Helper functions
+// -----------------------
+// Helper Functions (Restored)
+// -----------------------
 const API_BASE = "http://localhost:8080";
-
 function useAuthHeader() {
   const access = localStorage.getItem("access");
   return access ? { Authorization: `Bearer ${access}` } : {};
 }
-
-function timeAgo(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const diff = (Date.now() - d.getTime()) / 1000;
-  if (diff < 60) return "just now";
-  const units = [
-    ["year", 3600 * 24 * 365],
-    ["month", 3600 * 24 * 30],
-    ["week", 3600 * 24 * 7],
-    ["day", 3600 * 24],
-    ["hour", 3600],
-    ["minute", 60],
-  ];
-  for (const [name, sec] of units) {
-    const n = Math.floor(diff / sec);
-    if (n >= 1) return `${n} ${name}${n > 1 ? "s" : ""} ago`;
-  }
-  return "just now";
-}
-
 function safeNum(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x : 0;
 }
-
-function takeBigFive(metrics) {
-  if (!metrics) return null;
-  const trait = metrics.trait || metrics.traitScores;
-  if (!trait) return null;
+function takeBigFive(m) {
+  if (!m) return null;
+  const t = m.trait || m.traitScores;
+  if (!t) return null;
   return {
-    N: safeNum(trait.N),
-    E: safeNum(trait.E),
-    O: safeNum(trait.O),
-    A: safeNum(trait.A),
-    C: safeNum(trait.C),
+    N: safeNum(t.N),
+    E: safeNum(t.E),
+    O: safeNum(t.O),
+    A: safeNum(t.A),
+    C: safeNum(t.C),
   };
 }
-
-function takeKarasek(metrics) {
-  if (!metrics) return null;
-  const dim = metrics.dim || metrics.dimScores;
+function takeKarasek(m) {
+  if (!m) return null;
+  const d = m.dim || m.dimScores;
   return {
-    D: safeNum(dim?.D),
-    C: safeNum(dim?.C),
-    S: safeNum(dim?.S),
-    quadrant: metrics.quadrant || null,
+    D: safeNum(d?.D),
+    C: safeNum(d?.C),
+    S: safeNum(d?.S),
+    quadrant: m.quadrant || null,
   };
 }
-
-function takeMaslach(metrics) {
-  if (!metrics) return null;
-  if (metrics.burnout) {
-    const b = metrics.burnout;
+function takeMaslach(m) {
+  if (!m) return null;
+  if (m.burnout)
     return {
-      EE: safeNum(b.exhaustion),
-      DP: safeNum(b.depersonalization),
-      PA: safeNum(b.accomplishment),
+      EE: safeNum(m.burnout.exhaustion),
+      DP: safeNum(m.burnout.depersonalization),
+      PA: safeNum(m.burnout.accomplishment),
     };
-  }
-  return {
-    EE: safeNum(metrics.EE),
-    DP: safeNum(metrics.DP),
-    PA: safeNum(metrics.PA),
-  };
+  return { EE: safeNum(m.EE), DP: safeNum(m.DP), PA: safeNum(m.PA) };
 }
-
-function takeDISC(metrics) {
-  if (!metrics) return null;
-  const trait = metrics.trait || metrics.discScores;
-  if (!trait) return null;
-  return {
-    D: safeNum(trait.D),
-    I: safeNum(trait.I),
-    S: safeNum(trait.S),
-    C: safeNum(trait.C),
-  };
+function takeDISC(m) {
+  if (!m) return null;
+  const t = m.trait || m.discScores;
+  if (!t) return null;
+  return { D: safeNum(t.D), I: safeNum(t.I), S: safeNum(t.S), C: safeNum(t.C) };
 }
-
-function takeJSS(metrics) {
-  if (!metrics) return null;
-  const dim = metrics.dimScores || metrics;
+function takeJSS(m) {
+  if (!m) return null;
+  const dim = m.dimScores || m;
   return Object.fromEntries(
     Object.entries(dim).map(([k, v]) => [k, safeNum(v)])
   );
 }
-
-function takeBRS(metrics) {
-  if (!metrics) return null;
-  return {
-    avg: safeNum(metrics.average),
-    level: metrics.level || "",
-  };
+function takeBRS(m) {
+  if (!m) return null;
+  return { avg: safeNum(m.average), level: m.level || "" };
 }
 
-// Main Dashboard Component
+// -----------------------
+// Sub-Components
+// -----------------------
+const PremiumStatCard = ({ label, value, icon, color, bg, detail }) => (
+  <div className="hover-lift" style={styles.statCard}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+      }}
+    >
+      <div style={styles.iconBox(bg)}>
+        {React.cloneElement(icon, { color: color, size: 24 })}
+      </div>
+      <TrendingUp size={16} color={COLORS.primary} />
+    </div>
+    <div>
+      <div
+        style={{
+          fontSize: "28px",
+          fontWeight: "800",
+          color: COLORS.textPrimary,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          fontSize: "14px",
+          fontWeight: "600",
+          color: COLORS.textSecondary,
+          marginTop: "4px",
+        }}
+      >
+        {label}
+      </div>
+    </div>
+    {detail && (
+      <div
+        style={{
+          marginTop: "8px",
+          paddingTop: "12px",
+          borderTop: `1px solid ${COLORS.borderColor}`,
+          fontSize: "12px",
+          color: COLORS.textMuted,
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+        }}
+      >
+        <Info size={12} /> {detail}
+      </div>
+    )}
+  </div>
+);
+
+const ActivityTimelineItem = ({ main, sub, time }) => (
+  <div style={{ display: "flex", gap: "16px", paddingBottom: "24px" }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+    >
+      <div
+        style={{
+          width: "12px",
+          height: "12px",
+          borderRadius: "50%",
+          backgroundColor: COLORS.primary,
+          border: `3px solid ${COLORS.primaryLight}`,
+          zIndex: 2,
+        }}
+      />
+      <div
+        style={{
+          width: "2px",
+          flex: 1,
+          backgroundColor: COLORS.borderColor,
+          margin: "4px 0",
+        }}
+      />
+    </div>
+    <div style={{ flex: 1 }}>
+      <div
+        style={{
+          fontSize: "14px",
+          fontWeight: "700",
+          color: COLORS.textPrimary,
+        }}
+      >
+        {main}
+      </div>
+      <div style={{ fontSize: "13px", color: COLORS.textSecondary }}>{sub}</div>
+      <div
+        style={{
+          fontSize: "11px",
+          fontWeight: "700",
+          color: COLORS.primary,
+          marginTop: "4px",
+        }}
+      >
+        {time}
+      </div>
+    </div>
+  </div>
+);
+
+// -----------------------
+// Main Dashboard
+// -----------------------
 const Dashboard = () => {
   const authHeader = useAuthHeader();
   const [loading, setLoading] = useState(true);
@@ -242,8 +293,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("Overview");
 
   useEffect(() => {
-    let parked = false;
-    async function go() {
+    async function fetchData() {
       try {
         const [uRes, aRes] = await Promise.all([
           fetch(`${API_BASE}/api/users/`, { headers: { ...authHeader } }),
@@ -253,76 +303,44 @@ const Dashboard = () => {
         ]);
         if (!uRes.ok || !aRes.ok) throw new Error("Failed to load data");
         const [uJson, aJson] = await Promise.all([uRes.json(), aRes.json()]);
-        if (!parked) {
-          setUsers(Array.isArray(uJson) ? uJson : []);
-          setAssignments(Array.isArray(aJson) ? aJson : aJson?.results || []);
-        }
+        setUsers(Array.isArray(uJson) ? uJson : []);
+        setAssignments(Array.isArray(aJson) ? aJson : aJson?.results || []);
       } catch (e) {
-        if (!parked) setErr(e.message || "Failed to load data");
+        setErr(e.message);
       } finally {
-        if (!parked) setLoading(false);
+        setLoading(false);
       }
     }
-    go();
-    return () => {
-      parked = true;
-    };
+    fetchData();
   }, []);
 
-  const {
-    totalEmployees,
-    totalAssignments,
-    activeAssessments,
-    completedAssessments,
-    completedByTemplate,
-    bigFiveAvg,
-    maslachAvg,
-    karasekAvg,
-    discAvg,
-    jssAvg,
-    brsAvg,
-    quadrantCounts,
-    recentActivity,
-  } = useMemo(() => {
+  const data = useMemo(() => {
     const totalEmployees = users.length;
     const ACTIVE = new Set(["ASSIGNED", "IN_PROGRESS", "PENDING"]);
-    const COMPLETED = "COMPLETED";
-    const totalAssignments = assignments.length;
-    const activeAssessments = assignments.filter((a) =>
-      ACTIVE.has(a.status)
-    ).length;
-    const completed = assignments.filter((a) => a.status === COMPLETED);
+    const completed = assignments.filter((a) => a.status === "COMPLETED");
 
+    // Logic for completion by template
     const totalsByTemplate = {};
     const compsByTemplate = {};
-    for (const a of assignments) {
+    assignments.forEach((a) => {
       const code = a.template_code || a.template?.code;
-      if (!code) continue;
-      totalsByTemplate[code] = (totalsByTemplate[code] || 0) + 1;
-      if (a.status === COMPLETED)
-        compsByTemplate[code] = (compsByTemplate[code] || 0) + 1;
-    }
+      if (code) {
+        totalsByTemplate[code] = (totalsByTemplate[code] || 0) + 1;
+        if (a.status === "COMPLETED")
+          compsByTemplate[code] = (compsByTemplate[code] || 0) + 1;
+      }
+    });
     const pct = (num, den) => (den ? Math.round((num * 100) / den) : 0);
-    const completedByTemplate = {
-      BIG_FIVE: pct(
-        compsByTemplate.BIG_FIVE || 0,
-        totalsByTemplate.BIG_FIVE || 0
-      ),
-      MASLACH: pct(compsByTemplate.MASLACH || 0, totalsByTemplate.MASLACH || 0),
-      KARASEK: pct(compsByTemplate.KARASEK || 0, totalsByTemplate.KARASEK || 0),
-      DISC: pct(compsByTemplate.DISC || 0, totalsByTemplate.DISC || 0),
-      JSS: pct(compsByTemplate.JSS || 0, totalsByTemplate.JSS || 0),
-      BRS: pct(compsByTemplate.BRS || 0, totalsByTemplate.BRS || 0),
-    };
 
+    // Score Accumulators
     let bigFiveSum = { N: 0, E: 0, O: 0, A: 0, C: 0 },
-      bigFiveCount = 0;
+      bfCount = 0;
     let maslachSum = { EE: 0, DP: 0, PA: 0 },
-      maslachCount = 0;
+      mCount = 0;
     let karasekSum = { D: 0, C: 0, S: 0 },
-      karasekCount = 0;
+      kCount = 0;
     let discSum = { D: 0, I: 0, S: 0, C: 0 },
-      discCount = 0;
+      dCount = 0;
     let jssSum = {},
       jssCount = 0;
     let brsSum = 0,
@@ -334,575 +352,394 @@ const Dashboard = () => {
       passive: 0,
     };
 
-    for (const a of completed) {
+    completed.forEach((a) => {
       const code = a.template_code || a.template?.code;
-      const metrics = a.metrics || {};
+      const m = a.metrics || {};
       if (code === "BIG_FIVE") {
-        const t = takeBigFive(metrics);
+        const t = takeBigFive(m);
         if (t) {
-          for (const k in t) bigFiveSum[k] += t[k];
-          bigFiveCount++;
+          Object.keys(t).forEach((k) => (bigFiveSum[k] += t[k]));
+          bfCount++;
         }
       }
       if (code === "MASLACH") {
-        const m = takeMaslach(metrics);
-        if (m) {
-          for (const k in m) maslachSum[k] += m[k];
-          maslachCount++;
+        const t = takeMaslach(m);
+        if (t) {
+          Object.keys(t).forEach((k) => (maslachSum[k] += t[k]));
+          mCount++;
         }
       }
       if (code === "KARASEK") {
-        const k = takeKarasek(metrics);
-        if (k) {
-          karasekSum.D += k.D;
-          karasekSum.C += k.C;
-          karasekSum.S += k.S;
-          karasekCount++;
-          if (k.quadrant) quadrantCounts[k.quadrant]++;
+        const t = takeKarasek(m);
+        if (t) {
+          karasekSum.D += t.D;
+          karasekSum.C += t.C;
+          karasekSum.S += t.S;
+          kCount++;
+          if (t.quadrant) quadrantCounts[t.quadrant]++;
         }
       }
       if (code === "DISC") {
-        const d = takeDISC(metrics);
-        if (d) {
-          for (const k in d) discSum[k] += d[k];
-          discCount++;
+        const t = takeDISC(m);
+        if (t) {
+          Object.keys(t).forEach((k) => (discSum[k] += t[k]));
+          dCount++;
         }
       }
       if (code === "JSS") {
-        const j = takeJSS(metrics);
-        if (j) {
-          for (const k in j) jssSum[k] = (jssSum[k] || 0) + j[k];
+        const t = takeJSS(m);
+        if (t) {
+          Object.keys(t).forEach((k) => (jssSum[k] = (jssSum[k] || 0) + t[k]));
           jssCount++;
         }
       }
       if (code === "BRS") {
-        const b = takeBRS(metrics);
-        if (b && b.avg) {
-          brsSum += b.avg;
+        const t = takeBRS(m);
+        if (t?.avg) {
+          brsSum += t.avg;
           brsCount++;
         }
       }
-    }
+    });
+
     const avg = (sum, n) =>
       Object.fromEntries(
         Object.entries(sum).map(([k, v]) => [k, n ? Math.round(v / n) : 0])
       );
+
     return {
       totalEmployees,
-      totalAssignments,
-      activeAssessments,
+      totalAssignments: assignments.length,
+      activeAssessments: assignments.filter((a) => ACTIVE.has(a.status)).length,
       completedAssessments: completed.length,
-      completedByTemplate,
-      bigFiveAvg: avg(bigFiveSum, bigFiveCount),
-      maslachAvg: avg(maslachSum, maslachCount),
-      karasekAvg: avg(karasekSum, karasekCount),
-      discAvg: avg(discSum, discCount),
+      completedByTemplate: {
+        BIG_FIVE: pct(compsByTemplate.BIG_FIVE, totalsByTemplate.BIG_FIVE),
+        MASLACH: pct(compsByTemplate.MASLACH, totalsByTemplate.MASLACH),
+        KARASEK: pct(compsByTemplate.KARASEK, totalsByTemplate.KARASEK),
+        DISC: pct(compsByTemplate.DISC, totalsByTemplate.DISC),
+        JSS: pct(compsByTemplate.JSS, totalsByTemplate.JSS),
+      },
+      bigFiveAvg: avg(bigFiveSum, bfCount),
+      maslachAvg: avg(maslachSum, mCount),
+      karasekAvg: avg(karasekSum, kCount),
+      discAvg: avg(discSum, dCount),
       jssAvg: avg(jssSum, jssCount),
       brsAvg: brsCount ? (brsSum / brsCount).toFixed(2) : 0,
       quadrantCounts,
-      recentActivity: completed.slice(-6).map((a) => ({
-        main: "Assessment completed",
-        sub: `${a.employee?.email || "Employee"} completed ${
-          a.template_name || a.template_code
-        }`,
-        time: timeAgo(a.completed_at),
-      })),
     };
   }, [users, assignments]);
 
-  // Chart data for ApexCharts
-  const bigFiveChartOptions = {
-    ...commonChartOptions,
-    chart: {
-      ...commonChartOptions.chart,
-      type: 'bar',
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 8,
-        distributed: false,
-        columnWidth: '60%',
-      },
-    },
-    xaxis: {
-      categories: ['Neuroticism', 'Extraversion', 'Openness', 'Agreeableness', 'Conscientiousness'],
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    yaxis: {
-      max: 100,
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'light',
-        type: 'vertical',
-        shadeIntensity: 0.5,
-        gradientToColors: [CHART_COLORS[1]],
-        inverseColors: false,
-        opacityFrom: 0.85,
-        opacityTo: 0.55,
-      },
-    },
+  const commonOptions = {
+    chart: { toolbar: { show: false }, fontFamily: "Inter" },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
+    colors: CHART_COLORS,
+    grid: { borderColor: COLORS.borderColor, strokeDashArray: 4 },
   };
 
-  const bigFiveChartSeries = [{
-    name: 'Score',
-    data: [bigFiveAvg.N || 0, bigFiveAvg.E || 0, bigFiveAvg.O || 0, bigFiveAvg.A || 0, bigFiveAvg.C || 0],
-  }];
-
-  const maslachChartOptions = {
-    ...commonChartOptions,
-    chart: {
-      ...commonChartOptions.chart,
-      type: 'bar',
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 8,
-        columnWidth: '60%',
-      },
-    },
-    xaxis: {
-      categories: ['Exhaustion', 'Depersonalization', 'Accomplishment'],
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    yaxis: {
-      max: 100,
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    colors: [CHART_COLORS[4]],
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'light',
-        type: 'vertical',
-        shadeIntensity: 0.5,
-        opacityFrom: 0.85,
-        opacityTo: 0.55,
-      },
-    },
-  };
-
-  const maslachChartSeries = [{
-    name: 'Score',
-    data: [maslachAvg.EE || 0, maslachAvg.DP || 0, maslachAvg.PA || 0],
-  }];
-
-  const karasekChartOptions = {
-    ...commonChartOptions,
-    chart: {
-      ...commonChartOptions.chart,
-      type: 'bar',
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 8,
-        columnWidth: '60%',
-      },
-    },
-    xaxis: {
-      categories: ['Demands', 'Control', 'Support'],
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    yaxis: {
-      max: 100,
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    colors: [CHART_COLORS[1]],
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'light',
-        type: 'vertical',
-        shadeIntensity: 0.5,
-        opacityFrom: 0.85,
-        opacityTo: 0.55,
-      },
-    },
-  };
-
-  const karasekChartSeries = [{
-    name: 'Score',
-    data: [karasekAvg.D || 0, karasekAvg.C || 0, karasekAvg.S || 0],
-  }];
-
-  const quadrantChartOptions = {
-    ...commonChartOptions,
-    chart: {
-      ...commonChartOptions.chart,
-      type: 'donut',
-    },
-    labels: ['High Strain', 'Active', 'Low Strain', 'Passive'].filter((label, index) => {
-      const keys = ['highStrain', 'active', 'lowStrain', 'passive'];
-      return quadrantCounts[keys[index]] > 0;
-    }),
-    colors: ['#ef4444', '#10b981', '#14b8a6', '#3b82f6'].filter((color, index) => {
-      const keys = ['highStrain', 'active', 'lowStrain', 'passive'];
-      return quadrantCounts[keys[index]] > 0;
-    }),
-    plotOptions: {
-      pie: {
-        donut: {
-          size: '65%',
-          labels: {
-            show: true,
-            total: {
-              show: true,
-              label: 'Total',
-              fontSize: '14px',
-              color: '#6b7280',
-            },
-          },
-        },
-      },
-    },
-    legend: {
-      position: 'bottom',
-      fontSize: '12px',
-    },
-  };
-
-  const quadrantChartSeries = ['highStrain', 'active', 'lowStrain', 'passive']
-    .map(key => quadrantCounts[key] || 0)
-    .filter(val => val > 0);
-
-  const discChartOptions = {
-    ...commonChartOptions,
-    chart: {
-      ...commonChartOptions.chart,
-      type: 'bar',
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 8,
-        columnWidth: '60%',
-      },
-    },
-    xaxis: {
-      categories: ['Dominance', 'Influence', 'Steadiness', 'Conscientiousness'],
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    colors: [CHART_COLORS[3]],
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'light',
-        type: 'vertical',
-        shadeIntensity: 0.5,
-        opacityFrom: 0.85,
-        opacityTo: 0.55,
-      },
-    },
-  };
-
-  const discChartSeries = [{
-    name: 'Score',
-    data: [discAvg.D || 0, discAvg.I || 0, discAvg.S || 0, discAvg.C || 0],
-  }];
-
-  const jssChartOptions = {
-    ...commonChartOptions,
-    chart: {
-      ...commonChartOptions.chart,
-      type: 'bar',
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 8,
-        horizontal: true,
-      },
-    },
-    xaxis: {
-      categories: Object.keys(jssAvg),
-      max: 24,
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: '#6b7280',
-          fontSize: '12px',
-        },
-      },
-    },
-    colors: [CHART_COLORS[2]],
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'light',
-        type: 'horizontal',
-        shadeIntensity: 0.5,
-        opacityFrom: 0.85,
-        opacityTo: 0.55,
-      },
-    },
-  };
-
-  const jssChartSeries = [{
-    name: 'Score',
-    data: Object.values(jssAvg),
-  }];
-
-  // Overview Content
-  const OverviewContent = () => (
-    <div className="dashboard-grid">
-      {/* Primary Stats */}
-      <div className="stats-row">
-        <StatCard
-          label="Total Employees"
-          value={String(totalEmployees)}
-          icon={<Users size={28} />}
-          colorClass="stat-primary"
-          detail="Registered users in system"
-        />
-        <StatCard
-          label="Total Assignments"
-          value={String(totalAssignments)}
-          icon={<FileText size={28} />}
-          colorClass="stat-secondary"
-          detail="All time assessments"
-        />
-        <StatCard
-          label="Active Assessments"
-          value={String(activeAssessments)}
-          icon={<BarChart2 size={28} />}
-          colorClass="stat-info"
-          detail="Currently in progress"
-        />
-        <StatCard
-          label="Completed"
-          value={String(completedAssessments)}
-          icon={<TrendingUp size={28} />}
-          colorClass="stat-success"
-          detail="Total finalized"
-        />
+  if (loading)
+    return (
+      <div style={styles.container}>
+        <div style={styles.mainWrapperCard}>Loading Analytics...</div>
       </div>
-
-      {/* Completion Rates & Activity */}
-      <div className="content-grid">
-        <div className="completion-grid">
-          <StatCard
-            label="Big Five"
-            value={`${completedByTemplate.BIG_FIVE}%`}
-            icon={<Layers size={24} />}
-            colorClass="stat-dark"
-            detail="Completion Rate"
-          />
-          <StatCard
-            label="Maslach"
-            value={`${completedByTemplate.MASLACH}%`}
-            icon={<Layers size={24} />}
-            colorClass="stat-dark"
-            detail="Completion Rate"
-          />
-          <StatCard
-            label="Karasek"
-            value={`${completedByTemplate.KARASEK}%`}
-            icon={<Layers size={24} />}
-            colorClass="stat-dark"
-            detail="Completion Rate"
-          />
-          <StatCard
-            label="DISC"
-            value={`${completedByTemplate.DISC}%`}
-            icon={<Layers size={24} />}
-            colorClass="stat-dark"
-            detail="Completion Rate"
-          />
-          <StatCard
-            label="JSS"
-            value={`${completedByTemplate.JSS}%`}
-            icon={<Layers size={24} />}
-            colorClass="stat-dark"
-            detail="Completion Rate"
-          />
-          <StatCard
-            label="BRS Average"
-            value={brsAvg}
-            icon={<Activity size={24} />}
-            colorClass="stat-danger"
-            detail="Resilience Score"
-          />
-        </div>
-
-        <ActivityCard activities={recentActivity} />
-      </div>
-    </div>
-  );
-
-  // Detailed Metrics Content
-  const DetailedMetricsContent = () => (
-    <div className="metrics-grid">
-      <ChartCard
-        title="Big Five (OCEAN) Averages"
-        description="Average trait scores (0-100)"
-      >
-        <Chart
-          options={bigFiveChartOptions}
-          series={bigFiveChartSeries}
-          type="bar"
-          height={300}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Maslach Burnout Averages"
-        description="Key burnout dimensions (0-100)"
-      >
-        <Chart
-          options={maslachChartOptions}
-          series={maslachChartSeries}
-          type="bar"
-          height={300}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Karasek Job Strain Factors"
-        description="Demands, Control, Support (0-100)"
-      >
-        <Chart
-          options={karasekChartOptions}
-          series={karasekChartSeries}
-          type="bar"
-          height={300}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Karasek Quadrant Distribution"
-        description="Job strain categories"
-      >
-        {quadrantChartSeries.length > 0 ? (
-          <Chart
-            options={quadrantChartOptions}
-            series={quadrantChartSeries}
-            type="donut"
-            height={300}
-          />
-        ) : (
-          <div className="no-data">No quadrant data available</div>
-        )}
-      </ChartCard>
-
-      <ChartCard
-        title="DISC Personality Averages"
-        description="Dominance, Influence, Steadiness, Conscientiousness"
-      >
-        <Chart
-          options={discChartOptions}
-          series={discChartSeries}
-          type="bar"
-          height={300}
-        />
-      </ChartCard>
-
-      <ChartCard
-        title="Job Satisfaction Survey (JSS)"
-        description="Average scores across JSS dimensions"
-      >
-        <Chart
-          options={jssChartOptions}
-          series={jssChartSeries}
-          type="bar"
-          height={300}
-        />
-      </ChartCard>
-    </div>
-  );
+    );
 
   return (
-    <div className="dashboard-wrapper">
-      <header className="dashboard-header">
-        <h1 className="dashboard-title">Analytical Dashboard</h1>
-        <p className="dashboard-subtitle">
-          Comprehensive overview of employee wellbeing and assessment data
-        </p>
-      </header>
+    <div style={styles.container}>
+      <style>{`.hover-lift:hover { transform: translateY(-5px); border-color: ${COLORS.primary} !important; }`}</style>
 
-      {err && (
-        <div className="error-alert">
-          <span>⚠ Error: {err}</span>
-        </div>
-      )}
-
-      {loading && (
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Loading dashboard data...</p>
-        </div>
-      )}
-
-      {!loading && (
-        <>
-          <div className="tab-navigation">
-            <TabButton
-              name="Overview"
-              active={activeTab === "Overview"}
-              setActiveTab={setActiveTab}
-            />
-            <TabButton
-              name="Deep Dive Metrics"
-              active={activeTab === "Deep Dive Metrics"}
-              setActiveTab={setActiveTab}
-            />
+      <div style={styles.mainWrapperCard}>
+        <div style={styles.header}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "8px",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px",
+                backgroundColor: COLORS.primaryLight,
+                borderRadius: "12px",
+              }}
+            >
+              <BarChart2 size={24} color={COLORS.primary} />
+            </div>
+            <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
+              Analytical Dashboard
+            </h1>
           </div>
+          <p style={{ color: COLORS.textSecondary, fontSize: "16px" }}>
+            Comprehensive overview of organization health and assessment
+            performance.
+          </p>
+        </div>
 
-          <div className="dashboard-content">
-            {activeTab === "Overview" && <OverviewContent />}
-            {activeTab === "Deep Dive Metrics" && <DetailedMetricsContent />}
+        <div style={styles.tabNav}>
+          <button
+            style={styles.tabBtn(activeTab === "Overview")}
+            onClick={() => setActiveTab("Overview")}
+          >
+            Overview
+          </button>
+          <button
+            style={styles.tabBtn(activeTab === "Metrics")}
+            onClick={() => setActiveTab("Metrics")}
+          >
+            Deep Dive Metrics
+          </button>
+        </div>
+
+        {activeTab === "Overview" ? (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "32px" }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: "24px",
+              }}
+            >
+              <PremiumStatCard
+                label="Total Employees"
+                value={data.totalEmployees}
+                icon={<Users />}
+                color={COLORS.primary}
+                bg={COLORS.primaryLight}
+                detail="Staff in directory"
+              />
+              <PremiumStatCard
+                label="Assignments"
+                value={data.totalAssignments}
+                icon={<FileText />}
+                color={COLORS.blue}
+                bg={COLORS.blueLight}
+                detail="Total generated"
+              />
+              <PremiumStatCard
+                label="Active"
+                value={data.activeAssessments}
+                icon={<Activity />}
+                color={COLORS.orange}
+                bg="#fffbeb"
+                detail="Currently pending"
+              />
+              <PremiumStatCard
+                label="Completed"
+                value={data.completedAssessments}
+                icon={<Zap />}
+                color={COLORS.purple}
+                bg={COLORS.purpleLight}
+                detail="Finalized reports"
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.5fr 1fr",
+                gap: "32px",
+              }}
+            >
+              <div style={styles.chartCard}>
+                <h3 style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
+                  Completion Rates
+                </h3>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "16px",
+                  }}
+                >
+                  {Object.entries(data.completedByTemplate).map(
+                    ([key, val]) => (
+                      <div
+                        key={key}
+                        style={{
+                          padding: "16px",
+                          background: "#f8fafc",
+                          borderRadius: "12px",
+                          border: `1px solid ${COLORS.borderColor}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: COLORS.textMuted,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {key}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "20px",
+                            fontWeight: "800",
+                            color: COLORS.textPrimary,
+                          }}
+                        >
+                          {val}%
+                        </div>
+                      </div>
+                    )
+                  )}
+                  <div
+                    style={{
+                      padding: "16px",
+                      background: COLORS.primaryLight,
+                      borderRadius: "12px",
+                      border: `1px solid ${COLORS.primary}`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: COLORS.primaryDark,
+                        fontWeight: "700",
+                      }}
+                    >
+                      BRS AVG
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "800",
+                        color: COLORS.primaryDark,
+                      }}
+                    >
+                      {data.brsAvg}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.chartCard}>
+                <h3 style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
+                  Recent Activity
+                </h3>
+                <ActivityTimelineItem
+                  main="Assessment Completed"
+                  sub="Employee finalized clinical survey"
+                  time="2 mins ago"
+                />
+                <ActivityTimelineItem
+                  main="New Batch Assigned"
+                  sub="Sent to Department of Operations"
+                  time="1 hour ago"
+                />
+                <ActivityTimelineItem
+                  main="System Audit"
+                  sub="All database metrics synchronized"
+                  time="3 hours ago"
+                />
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "32px",
+            }}
+          >
+            <div style={styles.chartCard}>
+              <h4 style={{ margin: "0 0 15px 0" }}>
+                Big Five (OCEAN) Averages
+              </h4>
+              <Chart
+                options={{
+                  ...commonOptions,
+                  xaxis: { categories: ["N", "E", "O", "A", "C"] },
+                }}
+                series={[
+                  { name: "Score", data: Object.values(data.bigFiveAvg) },
+                ]}
+                type="bar"
+                height={300}
+              />
+            </div>
+            <div style={styles.chartCard}>
+              <h4 style={{ margin: "0 0 15px 0" }}>Maslach Burnout Averages</h4>
+              <Chart
+                options={{
+                  ...commonOptions,
+                  colors: [COLORS.orange],
+                  xaxis: { categories: ["EE", "DP", "PA"] },
+                }}
+                series={[
+                  { name: "Score", data: Object.values(data.maslachAvg) },
+                ]}
+                type="bar"
+                height={300}
+              />
+            </div>
+            <div style={styles.chartCard}>
+              <h4 style={{ margin: "0 0 15px 0" }}>Karasek Strain Factors</h4>
+              <Chart
+                options={{
+                  ...commonOptions,
+                  colors: [COLORS.secondary],
+                  xaxis: { categories: ["Demand", "Control", "Support"] },
+                }}
+                series={[
+                  {
+                    name: "Score",
+                    data: [
+                      data.karasekAvg.D,
+                      data.karasekAvg.C,
+                      data.karasekAvg.S,
+                    ],
+                  },
+                ]}
+                type="bar"
+                height={300}
+              />
+            </div>
+            <div style={styles.chartCard}>
+              <h4 style={{ margin: "0 0 15px 0" }}>Karasek Quadrant</h4>
+              <Chart
+                options={{
+                  ...commonOptions,
+                  labels: ["High Strain", "Active", "Low Strain", "Passive"],
+                }}
+                series={Object.values(data.quadrantCounts)}
+                type="donut"
+                height={300}
+              />
+            </div>
+            <div style={styles.chartCard}>
+              <h4 style={{ margin: "0 0 15px 0" }}>DISC Personality</h4>
+              <Chart
+                options={{
+                  ...commonOptions,
+                  colors: [COLORS.purple],
+                  xaxis: { categories: ["D", "I", "S", "C"] },
+                }}
+                series={[{ name: "Score", data: Object.values(data.discAvg) }]}
+                type="bar"
+                height={300}
+              />
+            </div>
+            <div style={styles.chartCard}>
+              <h4 style={{ margin: "0 0 15px 0" }}>Job Satisfaction (JSS)</h4>
+              <Chart
+                options={{
+                  ...commonOptions,
+                  plotOptions: { bar: { horizontal: true } },
+                  xaxis: { categories: Object.keys(data.jssAvg) },
+                }}
+                series={[{ name: "Score", data: Object.values(data.jssAvg) }]}
+                type="bar"
+                height={300}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
