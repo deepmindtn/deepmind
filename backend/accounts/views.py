@@ -6,11 +6,11 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.http import HttpResponse
 
-# Models
-from .models import Recruitee, Invite
+from .models import Recruitee, Invite, Department
 
-# Serializers
+# Serializers (✅ Added DepartmentSerializer)
 from .serializers import (
     SignupSerializer,
     InviteCreateSerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     UserMeSerializer,
     RecruiteeSerializer,
     UserListSerializer,
+    DepartmentSerializer,
 )
 
 User = get_user_model()
@@ -142,7 +143,7 @@ class UsersListView(generics.ListAPIView):
 
 
 # --------------------------
-# CSV Import View (Already has email logic)
+# CSV Import View
 # --------------------------
 class ImportEmployeesView(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -222,3 +223,54 @@ class ImportEmployeesView(APIView):
             "message": f"Successfully created {added_count} invites.",
             "errors": errors
         }, status=status.HTTP_201_CREATED)
+
+
+# --------------------------
+# Department Views (✅ NEW - Added these classes)
+# --------------------------
+class DepartmentListCreateView(generics.ListCreateAPIView):
+    serializer_class = DepartmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get_queryset(self):
+        # Show departments for the user's company
+        return Department.objects.filter(company=self.request.user.company).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        # Auto-assign the user's company
+        serializer.save(company=self.request.user.company)
+
+
+class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = DepartmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get_queryset(self):
+        return Department.objects.filter(company=self.request.user.company)
+
+        # --------------------------
+# Export Departments to CSV
+# --------------------------
+class ExportDepartmentsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get(self, request):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="departments.csv"'
+
+        writer = csv.writer(response)
+        # CSV Headers
+        writer.writerow(['ID', 'Name', 'Description', 'Icon', 'Created At'])
+
+        # Data
+        departments = Department.objects.filter(company=request.user.company).order_by('-created_at')
+        for dept in departments:
+            writer.writerow([
+                dept.id, 
+                dept.name, 
+                dept.description or "", 
+                dept.icon, 
+                dept.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            ])
+
+        return response

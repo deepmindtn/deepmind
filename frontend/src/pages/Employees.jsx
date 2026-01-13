@@ -14,12 +14,42 @@ import {
   FileText,
   CheckCircle,
   AlertTriangle,
-  Mail, // 👈 Added Mail icon
+  Mail,
+  // 👇 Icons for the Department Selector
+  Layers, DollarSign, Code, Megaphone, Shield, Activity, 
+  PenTool, Truck, Coffee, Home, Settings, Database, Cloud, Server, 
+  Smartphone, Monitor, Cpu, Globe, Anchor, Archive, Award, BarChart, 
+  Battery, Bell, Book, Box, Calendar, Camera, Cast, CheckCircle as CheckIcon, 
+  Clipboard, Clock, Compass, CreditCard, Flag, Folder, Gift, Heart, 
+  Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play, 
+  Power, Printer, Radio, Save, Scissors, ShoppingBag, 
+  ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella, 
+  Video, Voicemail, Wifi, Zap, Wrench
 } from "lucide-react";
 import "./Employees.css";
 
 // -----------------------
-// Tiny style helpers
+// ICON MAPPING
+// -----------------------
+const ICON_MAP = {
+  Layers, Users, Briefcase, DollarSign, Code, Megaphone, Shield, Activity, 
+  PenTool, Truck, Coffee, Home, Settings, Database, Cloud, Server, 
+  Smartphone, Monitor, Cpu, Globe, Anchor, Archive, Award, BarChart, 
+  Battery, Bell, Book, Box, Calendar, Camera, Cast, CheckCircle: CheckIcon, 
+  Clipboard, Clock, Compass, CreditCard, Flag, Folder, Gift, Heart, 
+  Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play, 
+  Power, Printer, Radio, Save, Scissors, Send, ShoppingBag, 
+  ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella, 
+  Video, Voicemail, Wifi, Zap, Wrench
+};
+
+const DynamicIcon = ({ name, size = 20, color }) => {
+  const IconComponent = ICON_MAP[name] || Layers; 
+  return <IconComponent size={size} color={color} />;
+};
+
+// -----------------------
+// Style Helpers
 // -----------------------
 const card = {
   background: "#fff",
@@ -157,6 +187,9 @@ export default function Employees() {
   const [page, setPage] = useState(1);
   const pageSize = 6;
 
+  // 👇 New: Store fetched departments here
+  const [availableDepts, setAvailableDepts] = useState([]);
+
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
   const [detailAssignments, setDetailAssignments] = useState([]);
@@ -164,23 +197,25 @@ export default function Employees() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignRow, setAssignRow] = useState(null);
   const [assignForm, setAssignForm] = useState({ template_code: "BIG_FIVE" });
+  
   const [importOpen, setImportOpen] = useState(false);
   const [csvFile, setCsvFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
   const [addOpen, setAddOpen] = useState(false);
+  // Updated Invite State to hold ID
   const [invite, setInvite] = useState({
     email: "",
     first_name: "",
     last_name: "",
-    department: "",
+    department_id: null,
   });
   const [inviteResult, setInviteResult] = useState(null);
   const [hrReport, setHrReport] = useState(null);
   const [hrReportOpen, setHrReportOpen] = useState(false);
 
-  // Fetch users
+  // 1. Fetch Users
   useEffect(() => {
     let ignore = false;
     async function run() {
@@ -215,6 +250,20 @@ export default function Employees() {
       ignore = true;
     };
   }, [API_BASE]);
+
+  // 2. Fetch Departments (For the Selector & Filters)
+  useEffect(() => {
+    async function fetchDepts() {
+      try {
+        const res = await fetch(`${API_BASE}/api/departments/`, { headers: { ...authHeader } });
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableDepts(data);
+        }
+      } catch (e) { console.error("Failed to load departments", e); }
+    }
+    fetchDepts();
+  }, []);
 
   // View details
   async function viewDetails(r) {
@@ -323,9 +372,12 @@ async function createInvite() {
       const res = await fetch(`${API_BASE}/api/invites/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify(invite),
+        body: JSON.stringify(invite), // Sends department_id
       });
-      if (!res.ok) throw new Error("Failed to create invite");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to create invite");
+      }
       const data = await res.json();
       setInviteResult(data);
     } catch (e) {
@@ -334,14 +386,6 @@ async function createInvite() {
       setIsInviting(false);
     }
   }
-
-  const departments = useMemo(
-    () => [
-      "All",
-      ...Array.from(new Set(rows.map((r) => r.department))).filter(Boolean),
-    ],
-    [rows]
-  );
 
   const filtered = rows.filter((r) => {
     const matchQ =
@@ -452,9 +496,9 @@ async function createInvite() {
           value={dep}
           onChange={(e) => setDep(e.target.value)}
         >
-          {departments.map((d) => (
-            <option key={d}>{d}</option>
-          ))}
+          <option value="All">All Depts</option>
+          {/* Dynamic Departments Filter */}
+          {availableDepts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
         </select>
 
         <select
@@ -506,7 +550,7 @@ async function createInvite() {
               email: "",
               first_name: "",
               last_name: "",
-              department: "",
+              department_id: null,
             });
             setInviteResult(null);
             setAddOpen(true);
@@ -802,190 +846,118 @@ async function createInvite() {
         </div>
       </Modal>
       
-      {/* Add Employee Modal */}
-      <Modal
-        open={addOpen}
-        title="Add New Employee" 
-        onClose={() => { setAddOpen(false); setInviteResult(null); }}
+      {/* Add Employee Modal with Dynamic Department Selector */}
+      <Modal open={addOpen} title="Add New Employee" onClose={() => { setAddOpen(false); setInviteResult(null); }}
         actions={
           <>
-            <button 
-              className="btn btn-light" 
-              onClick={() => setAddOpen(false)}
-              disabled={isInviting}
-            >
-              <X size={16} className="me-2" />
-              Cancel
-            </button>
-
-            {!inviteResult && (
-              <button 
-                className="btn btn-primary" 
-                onClick={createInvite}
-                disabled={isInviting} 
-                style={{ minWidth: "180px" }}
-              >
-                {isInviting ? (
-                  <>
-                    {}
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} className="me-2" />
-                    Create & Send Invite
-                  </>
-                )}
-              </button>
-            )}
+            <button className="btn btn-light" onClick={() => setAddOpen(false)} disabled={isInviting}>Cancel</button>
+            {!inviteResult && <button className="btn btn-primary" onClick={createInvite} disabled={isInviting || !invite.department_id || !invite.email}>{isInviting ? "Sending..." : "Create Invite"}</button>}
           </>
-        }
-      >
+        }>
         {!inviteResult ? (
           <>
-            <div className="alert alert-info mb-4">
-              <div className="d-flex align-items-start">
-                <FileText size={20} className="me-2 mt-1" />
-                <div>
-                  <strong>How it works:</strong>
-                  <p className="mb-0 small">Fill in the employee details below. An invite link will be generated that you can share with the new employee to complete their registration.</p>
-                </div>
-              </div>
-            </div>
-
+            <div className="alert alert-info mb-4"><small>This will send an invitation link to the new employee.</small></div>
             <div className="row g-3">
               <div className="col-12">
-                <label className="form-label fw-semibold">
-                  Email Address <span className="text-danger">*</span>
-                </label>
-                <div className="input-group">
-                  <span className="input-group-text bg-light">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/>
-                    </svg>
-                  </span>
-                  <input
-                    type="email"
-                    className="form-control"
-                    placeholder="employee@company.com"
-                    value={invite.email}
-                    onChange={(e) => setInvite((f) => ({ ...f, email: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="form-text">This will be used for login credentials</div>
+                <label className="form-label fw-semibold">Email <span className="text-danger">*</span></label>
+                <input type="email" className="form-control" value={invite.email} onChange={(e) => setInvite(f => ({ ...f, email: e.target.value }))} placeholder="email@company.com" />
               </div>
-
               <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  First Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="John"
-                  value={invite.first_name}
-                  onChange={(e) => setInvite((f) => ({ ...f, first_name: e.target.value }))}
-                  required
-                />
+                <label className="form-label fw-semibold">First Name</label>
+                <input type="text" className="form-control" value={invite.first_name} onChange={(e) => setInvite(f => ({ ...f, first_name: e.target.value }))} />
               </div>
-
               <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  Last Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Doe"
-                  value={invite.last_name}
-                  onChange={(e) => setInvite((f) => ({ ...f, last_name: e.target.value }))}
-                  required
-                />
+                <label className="form-label fw-semibold">Last Name</label>
+                <input type="text" className="form-control" value={invite.last_name} onChange={(e) => setInvite(f => ({ ...f, last_name: e.target.value }))} />
               </div>
-
+              
+              {/* 👇 DYNAMIC DEPARTMENT SELECTOR */}
               <div className="col-12">
-                <label className="form-label fw-semibold">
-                  Department <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select"
-                  value={invite.department}
-                  onChange={(e) => setInvite((f) => ({ ...f, department: e.target.value }))}
-                  required
-                >
-                  <option value="">Select a department...</option>
-                  <option value="sales">💼 Sales</option>
-                  <option value="hr">👥 HR</option>
-                  <option value="finance">💰 Finance</option>
-                  <option value="operations">⚙️ Operations</option>
-                  <option value="design">🎨 Design</option>
-                  <option value="product">🚀 Product</option>
-                  <option value="other">📋 Other</option>
-                </select>
-                <div className="form-text">Assign the employee to their primary department</div>
+                <label className="form-label fw-semibold">Select Department <span className="text-danger">*</span></label>
+                
+                {availableDepts.length === 0 ? (
+                    <div style={{padding: 15, background: "#f8fafc", borderRadius: 8, textAlign: "center", color: "#64748b"}}>
+                        No departments found. Go to "Departments" page to create one.
+                    </div>
+                ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10, maxHeight: 200, overflowY: "auto", padding: 4 }}>
+                    {availableDepts.map(dept => {
+                        const isSelected = invite.department_id === dept.id;
+                        return (
+                            <div 
+                                key={dept.id}
+                                onClick={() => setInvite(f => ({ ...f, department_id: dept.id }))}
+                                style={{
+                                    border: isSelected ? "2px solid #4f46e5" : "1px solid #e2e8f0",
+                                    background: isSelected ? "#eef2ff" : "#fff",
+                                    borderRadius: 10,
+                                    padding: "10px",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    transition: "all 0.2s"
+                                }}
+                            >
+                                <div style={{ 
+                                    color: isSelected ? "#4f46e5" : "#64748b",
+                                    background: isSelected ? "#fff" : "#f1f5f9",
+                                    padding: 8,
+                                    borderRadius: "50%"
+                                }}>
+                                    <DynamicIcon name={dept.icon} size={20} />
+                                </div>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: isSelected ? "#4f46e5" : "#1e293b", textAlign: "center" }}>
+                                    {dept.name}
+                                </span>
+                                {isSelected && <CheckCircle size={14} color="#4f46e5" style={{position:"absolute", top: 8, right: 8}} />}
+                            </div>
+                        );
+                    })}
+                    </div>
+                )}
               </div>
             </div>
           </>
         ) : (
           <div className="text-center py-4">
-            
-            {/* 👇 CONDITIONAL SUCCESS/ERROR MESSAGE */}
-            {inviteResult.email_sent ? (
-              <div className="alert alert-success d-flex align-items-center justify-content-center gap-2 mb-3">
-                 <Mail size={24} />
-                 <div className="text-start">
-                   <strong>Email Sent Successfully!</strong><br/>
-                   <small>An invitation has been emailed to {inviteResult.email}</small>
-                 </div>
-              </div>
-            ) : (
-              <div className="alert alert-danger d-flex align-items-center justify-content-center gap-2 mb-3">
-                 <AlertTriangle size={24} />
-                 <div className="text-start">
-                   <strong>Email Failed!</strong><br/>
-                   <small>{inviteResult.email_error || "Could not send email. Please copy the link manually."}</small>
-                 </div>
-              </div>
-            )}
-            
-            <h5 className="mb-2">Invite Created</h5>
-            <p className="text-muted mb-4">You can copy the backup link below:</p>
-            
-            <div className="card bg-light border-0 mb-3">
-              <div className="card-body">
-                <label className="form-label small text-muted mb-2">Invitation Link (Backup)</label>
-                <div className="input-group">
-                  <input 
-                    type="text" 
-                    className="form-control font-monospace small" 
-                    // Use the link returned from backend (supports automatic domain detection)
-                    value={inviteResult.invite_link || `${window.location.origin}/accept-invite?token=${inviteResult.id}`}
-                    readOnly
-                  />
-                  <button 
-                    className="btn btn-outline-primary"
-                    onClick={() => {
-                      // Prefer backend link, fallback to construction
-                      const link = inviteResult.invite_link || `${window.location.origin}/accept-invite?token=${inviteResult.id}`;
-                      navigator.clipboard.writeText(link);
-                      alert('Link copied to clipboard!');
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path fillRule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/>
-                    </svg>
-                  </button>
+             {inviteResult.email_sent ? 
+                <div className="alert alert-success d-flex align-items-center justify-content-center gap-2 mb-3">
+                    <Mail size={24} />
+                    <div className="text-start">
+                        <strong>Email Sent Successfully!</strong><br/>
+                        <small>An invitation has been emailed to {inviteResult.email}</small>
+                    </div>
+                </div> : 
+                <div className="alert alert-danger d-flex align-items-center justify-content-center gap-2 mb-3">
+                    <AlertTriangle size={24} />
+                    <div className="text-start">
+                        <strong>Email Failed!</strong><br/>
+                        <small>{inviteResult.email_error || "Could not send email. Please copy the link manually."}</small>
+                    </div>
                 </div>
-              </div>
-            </div>
+             }
+             
+             <h5 className="mb-2">Invite Created</h5>
+             <p className="text-muted mb-4">You can copy the backup link below:</p>
 
-            <div className="alert alert-warning">
-              <small>
-                <strong>⚠️ Important:</strong> This link allows the employee to set up their password and access the system.
-              </small>
-            </div>
+             <div className="card bg-light border-0 mb-3">
+               <div className="card-body">
+                 <label className="form-label small text-muted mb-2">Invitation Link (Backup)</label>
+                 <div className="input-group">
+                    <input type="text" className="form-control font-monospace small" value={inviteResult.invite_link} readOnly />
+                    <button className="btn btn-outline-primary" onClick={() => {
+                        navigator.clipboard.writeText(inviteResult.invite_link);
+                        alert('Link copied!');
+                    }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                          <path fillRule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1 2-2h1v1H2Z"/>
+                        </svg>
+                    </button>
+                 </div>
+               </div>
+             </div>
           </div>
         )}
       </Modal>

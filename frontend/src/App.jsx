@@ -41,6 +41,7 @@ import CAQTest from "./pages/Assessement/CaqTest";
 import ISETest from "./pages/Assessement/IseTest";
 import RecruitmentMatch from "./pages/RecruitmentMatch";
 import AssessmentDescription from "./components/AssessmentDescription";
+import Departments from "./pages/Departments";
 
 // Temporary stubs
 const Analytics = () => <h1>Mental Health Analytics Page</h1>;
@@ -85,6 +86,17 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <AssessmentDescription />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/departments"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <Departments />
               </LayoutComponent>
             </ProtectedRoute>
           }
