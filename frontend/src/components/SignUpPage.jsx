@@ -1,10 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Heart, Mail, Lock, User, Eye, EyeOff, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./AuthPages.css";
 
 function SignUpPage() {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+
+  // Apply language from localStorage on mount
+  useEffect(() => {
+    const savedLang = localStorage.getItem("lang");
+    if (savedLang) i18n.changeLanguage(savedLang);
+  }, [i18n]);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,23 +28,20 @@ function SignUpPage() {
     confirmPassword: "",
     firstName: "",
     lastName: "",
-    companyName: "", // ✅ added for backend
+    companyName: "",
   });
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const validateForm = () => {
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      alert(t("signup.passwordMismatch"));
       return false;
     }
     if (formData.password.length < 8) {
-      alert("Password must be at least 8 characters long");
+      alert(t("signup.passwordTooShort"));
       return false;
     }
     return true;
@@ -49,7 +55,6 @@ function SignUpPage() {
 
     setIsSubmitting(true);
     try {
-      // 1) Create account (HR self-signup)
       const res = await fetch(`${API_BASE}/api/auth/signup/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,20 +63,17 @@ function SignUpPage() {
           password: formData.password,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          company_name: formData.companyName, // ✅ send company_name
+          company_name: formData.companyName,
         }),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(
-          err?.detail ||
-            Object.values(err || {}).flat().join(" ") ||
-            "Signup failed"
+          err?.detail || Object.values(err || {}).flat().join(" ") || t("signup.signupFailed")
         );
       }
 
-      // 2) Auto-login to get JWT tokens
       const loginRes = await fetch(`${API_BASE}/api/auth/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,14 +82,13 @@ function SignUpPage() {
 
       if (!loginRes.ok) {
         const err = await loginRes.json().catch(() => ({}));
-        throw new Error(err?.detail || "Login failed right after signup");
+        throw new Error(err?.detail || t("signup.loginFailed"));
       }
 
       const tokens = await loginRes.json();
       localStorage.setItem("access", tokens.access);
       localStorage.setItem("refresh", tokens.refresh);
 
-      // 3) (Optional) fetch /me to store profile locally
       try {
         const meRes = await fetch(`${API_BASE}/api/auth/me/`, {
           headers: { Authorization: `Bearer ${tokens.access}` },
@@ -96,13 +97,11 @@ function SignUpPage() {
           const me = await meRes.json();
           localStorage.setItem("me", JSON.stringify(me));
         }
-      } catch (_) {
-        // ignore profile fetch errors
-      }
+      } catch (_) {}
 
       navigate("/dashboard");
     } catch (err) {
-      setErrorMsg(err.message || "Something went wrong");
+      setErrorMsg(err.message || t("signup.genericError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -115,13 +114,12 @@ function SignUpPage() {
           <div className="auth-logo">
             <Heart className="auth-heart-icon" />
           </div>
-          <h2 className="auth-title">Join DeepMind</h2>
-          <p className="auth-subtitle">
-            Create your account to start your wellness journey
-          </p>
+          <h2 className="auth-title">{t("signup.title")}</h2>
+          <p className="auth-subtitle">{t("signup.subtitle")}</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSignup}>
+          {/* Name Row */}
           <div className="name-row">
             <div className="form-group half-width">
               <div className="input-container">
@@ -140,7 +138,7 @@ function SignUpPage() {
                   className={`floating-label${formData.firstName ? " filled" : ""}`}
                   htmlFor="firstName"
                 >
-                  First name
+                  {t("signup.firstName")}
                 </label>
               </div>
             </div>
@@ -162,12 +160,13 @@ function SignUpPage() {
                   className={`floating-label${formData.lastName ? " filled" : ""}`}
                   htmlFor="lastName"
                 >
-                  Last name
+                  {t("signup.lastName")}
                 </label>
               </div>
             </div>
           </div>
 
+          {/* Email */}
           <div className="form-group">
             <div className="input-container">
               <Mail className="input-icon" />
@@ -184,12 +183,12 @@ function SignUpPage() {
                 className={`floating-label${formData.email ? " filled" : ""}`}
                 htmlFor="email"
               >
-                Email Address
+                {t("signup.email")}
               </label>
             </div>
           </div>
 
-          {/* ✅ New Company Name input */}
+          {/* Company Name */}
           <div className="form-group">
             <div className="input-container">
               <Building2 className="input-icon" />
@@ -206,11 +205,12 @@ function SignUpPage() {
                 className={`floating-label${formData.companyName ? " filled" : ""}`}
                 htmlFor="companyName"
               >
-                Company Name
+                {t("signup.companyName")}
               </label>
             </div>
           </div>
 
+          {/* Password */}
           <div className="form-group password-group">
             <div className="input-container">
               <Lock className="input-icon" />
@@ -227,7 +227,7 @@ function SignUpPage() {
                 className={`floating-label${formData.password ? " filled" : ""}`}
                 htmlFor="Password"
               >
-                Password
+                {t("signup.password")}
               </label>
               <button
                 type="button"
@@ -239,6 +239,7 @@ function SignUpPage() {
             </div>
           </div>
 
+          {/* Confirm Password */}
           <div className="form-group">
             <div className="input-container">
               <Lock className="input-icon" />
@@ -254,7 +255,7 @@ function SignUpPage() {
                 className={`floating-label${formData.confirmPassword ? " filled" : ""}`}
                 htmlFor="ConfirmPassword"
               >
-                Confirm Password
+                {t("signup.confirmPassword")}
               </label>
               <button
                 type="button"
@@ -269,21 +270,29 @@ function SignUpPage() {
           {errorMsg && <p className="auth-error">{errorMsg}</p>}
 
           <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Account"}
+            {isSubmitting ? t("signup.creating") : t("signup.createAccount")}
           </button>
         </form>
 
         <div className="auth-footer">
           <p className="auth-switch-text">
-            Already have an account?{" "}
-            <button onClick={() => navigate("/login")} className="auth-switch-link" type="button">
-              Sign in here
+            {t("signup.alreadyHaveAccount")}{" "}
+            <button
+              onClick={() => navigate("/login")}
+              className="auth-switch-link"
+              type="button"
+            >
+              {t("signup.signInHere")}
             </button>
           </p>
         </div>
 
-        <button onClick={() => navigate("/")} className="back-home-btn" type="button">
-          ← Back to Home
+        <button
+          onClick={() => navigate("/")}
+          className="back-home-btn"
+          type="button"
+        >
+          ← {t("signup.backHome")}
         </button>
       </div>
     </div>
