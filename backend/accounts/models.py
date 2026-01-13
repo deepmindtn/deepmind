@@ -192,3 +192,18 @@ class Recruitee(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email}) - {self.status}"
+
+
+# --------------------------
+# Department model
+# --------------------------
+class Department(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="departments")
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    # 👇 NEW FIELD
+    icon = models.CharField(max_length=50, default="Layers", blank=True) 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name

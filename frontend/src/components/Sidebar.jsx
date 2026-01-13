@@ -29,6 +29,7 @@ const Sidebar = ({ userName = "MizouH", isOpen, toggleSidebar }) => {
     { path: "/dashboard", label: "Dashboard", icon: Home },
     { path: "/employees", label: "Employee Management", icon: Users },
     { path: "/assessments", label: "Health Assessments", icon: FileText },
+    { path: "/departments", label: "Departments", icon: Brain }, 
     { path: "/recruitment", label: "AI Recruitment", icon: Brain }, // 🧠 NEW LINE
     { path: "/assesement-description", label: "Assessment Library", icon: Brain }, // 🧠 NEW LINE
   ];
