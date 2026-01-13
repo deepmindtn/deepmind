@@ -31,6 +31,27 @@
   z-index: 1;
 }
 
+.lang-switch {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem; /* bigger flag size */
+  padding: 4px;
+  border-radius: 6px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.lang-btn:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
 /* Background Effects */
 .bg-grid {
   position: fixed;
