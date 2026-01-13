@@ -1,0 +1,84 @@
+.schedule-sender {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  
+  /* Header */
+  .schedule-header h3 {
+    font-size: 1.1rem;
+    color: #047857;
+    margin-bottom: 0.25rem;
+  }
+  
+  .schedule-header p {
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+  
+  /* Options */
+  .schedule-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .schedule-card {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-content: center;
+    padding: 0.85rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    background: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.25s ease;
+  }
+  
+  .schedule-card svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    color: #10b981;
+  }
+  
+  .schedule-card:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+  
+  .schedule-card.active {
+    border-color: #10b981;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 2px #a7f3d0;
+  }
+  
+  /* Datetime */
+  .datetime-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  
+  .datetime-wrapper label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #047857;
+  }
+  
+  .datetime-wrapper input {
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    font-size: 0.9rem;
+  }
+  
+  .datetime-wrapper input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px #a7f3d0;
+  }
+  

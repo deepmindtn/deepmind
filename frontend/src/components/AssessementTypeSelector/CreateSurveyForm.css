@@ -1,112 +1,114 @@
 .form-container {
-    background: #ffffff;
-    border: 1px solid #d1fae5; /* emerald-100 */
-    border-radius: 1rem;
-    padding: 2rem;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
-    margin-bottom: 2rem;
-  }
-  
-  .form-container h3 {
-    font-size: 1.5rem;
-    color: #047857; /* emerald-700 */
-    margin-bottom: 1.25rem;
-  }
-  
-  /* Survey Choice Buttons */
-  .survey-choice {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .survey-choice button {
-    flex: 1;
-    background: #f0fdf4;
-    color: #047857;
-    border: 1px solid #a7f3d0; /* emerald-200 */
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.3s ease;
-  }
-  
-  .survey-choice button:hover {
-    background-color: #d1fae5;
-  }
-  
-  .survey-choice button.active {
-    background-color: #10b981;
-    color: white;
-    border-color: #10b981;
-  }
-  
-  /* Upload Input */
-  input[type="file"] {
-    border: 1px dashed #a7f3d0;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    width: 100%;
-    margin-bottom: 1.5rem;
-    font-size: 0.95rem;
-    color: #374151;
-  }
-  
-  /* Manual Questions */
-  .manual-questions {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .manual-questions input {
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  
-  .manual-questions input:focus {
-    border-color: #10b981;
-  }
-  
-  /* Add Question Button */
-  .add-btn {
-    align-self: flex-start;
-    background: #10b981;
-    color: white;
-    padding: 0.5rem 1rem;
-    border: none;
-    font-size: 0.95rem;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    margin-top: 0.5rem;
-  }
-  
-  .add-btn:hover {
-    background-color: #059669;
-  }
-  
-  /* Submit Button */
-  .send-assessment-btn {
-    background-color: #047857;
-    color: white;
-    font-weight: 600;
-    padding: 0.75rem 1.25rem;
-    border: none;
-    border-radius: 0.75rem;
-    font-size: 1rem;
-    cursor: pointer;
-    margin-top: 2rem;
-    transition: background 0.3s ease;
-  }
-  
-  .send-assessment-btn:hover {
-    background-color: #065f46;
-  }
-  
+  background: #ffffff;
+  border: 1px solid #d1fae5;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Header */
+.form-container h3 {
+  font-size: 1.5rem;
+  color: #047857;
+}
+
+/* Option Cards */
+.survey-choice-cards {
+  display: flex;
+  gap: 1rem;
+}
+
+.survey-card {
+  flex: 1;
+  padding: 1rem;
+  border: 1px solid #a7f3d0;
+  border-radius: 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: #f0fdf4;
+}
+
+.survey-card:hover {
+  background: #d1fae5;
+}
+
+.survey-card.active {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px #a7f3d0;
+}
+
+/* Manual Questions Modern */
+.manual-questions-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.question-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+  transition: all 0.25s ease;
+}
+
+.question-card input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.question-card input:focus {
+  border-color: #10b981;
+}
+
+.remove-question-btn {
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.remove-question-btn:hover {
+  background: #dc2626;
+}
+
+.add-question-btn {
+  align-self: flex-start;
+  background: #10b981;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.add-question-btn:hover {
+  background: #059669;
+}
+
+/* Send Button */
+.send-assessment-btn.primary {
+  margin-top: 1rem;
+  font-size: 1.05rem;
+  padding: 0.9rem;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
+}

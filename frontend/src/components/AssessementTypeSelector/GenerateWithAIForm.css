@@ -1,0 +1,49 @@
+.ai-form-container {
+    background: #ffffff;
+    border: 1px solid #d1fae5;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  /* Header */
+  .ai-form-container h3 {
+    font-size: 1.5rem;
+    color: #047857;
+  }
+  
+  /* AI Prompt Textarea */
+  .ai-prompt-section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #047857;
+  }
+  
+  .ai-prompt-section textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.2s ease;
+  }
+  
+  .ai-prompt-section textarea:focus {
+    border-color: #10b981;
+  }
+  
+  /* Send Button */
+  .send-assessment-btn.primary {
+    margin-top: 1rem;
+    font-size: 1.05rem;
+    padding: 0.9rem;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
+  }
+  
