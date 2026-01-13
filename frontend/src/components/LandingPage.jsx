@@ -152,7 +152,10 @@ const LandingPage = () => {
             <div className="lang-switch">
               <button
                 className="lang-btn"
-                onClick={() => i18n.changeLanguage("en")}
+                onClick={() => {
+                  i18n.changeLanguage("en");
+                  localStorage.setItem("lang", "en"); // store selection
+                }}
                 title="English"
               >
                 <span role="img" aria-label="English">
@@ -161,7 +164,10 @@ const LandingPage = () => {
               </button>
               <button
                 className="lang-btn"
-                onClick={() => i18n.changeLanguage("fr")}
+                onClick={() => {
+                  i18n.changeLanguage("fr");
+                  localStorage.setItem("lang", "fr"); // store selection
+                }}
                 title="Français"
               >
                 <span role="img" aria-label="French">
