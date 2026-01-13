@@ -1,0 +1,74 @@
+{
+    "nav": {
+      "signIn": "Sign In",
+      "tryFree": "Try for Free"
+    },
+  
+    "hero": {
+      "badge": "AI-Powered Mental Wellness",
+      "titleLine1": "Cut Stress &",
+      "titleHighlight": "Turnover by 30%",
+      "subtitle": "Detect burnout risks early, activate peer support, and prove ROI with real-time KPIs.",
+      "bookDemo": "Book a Demo",
+      "seeHow": "See How It Works"
+    },
+  
+    "stats": {
+      "title": "The cost of",
+      "highlight": "doing nothing",
+      "headlines": {
+        "struggling": "Your people are struggling",
+        "leaking": "Your budget is leaking",
+        "blind": "Your execs are blind"
+      },
+      "items": {
+        "unwell": "employees feel unwell at work",
+        "payroll": "of payroll lost to stress & turnover",
+        "kpis": "companies track no mental-health KPIs"
+      }
+    },
+  
+    "features": {
+      "title": "What you",
+      "highlight": "get",
+  
+      "burnout": {
+        "title": "Spot burnout before it spreads",
+        "desc": "Predict stress trends early with validated assessments and proactive nudges."
+      },
+      "empathy": {
+        "title": "Boost team empathy",
+        "desc": "Normalize check-ins with pulse surveys and colleague-to-colleague support."
+      },
+      "science": {
+        "title": "Defend your program with science",
+        "desc": "Big Five, Maslach Burnout, Karasek—science-backed insights you can trust."
+      },
+      "roi": {
+        "title": "Prove ROI to leadership",
+        "desc": "Real-time KPIs and alerts—engagement, risk, training completion."
+      },
+      "managers": {
+        "title": "Develop managers into coaches",
+        "desc": "Micro-exercises and learning paths tailored to each profile."
+      },
+      "culture": {
+        "title": "Build a culture that retains talent",
+        "desc": "Create a safe, supportive workplace where people feel valued."
+      }
+    },
+  
+    "cta": {
+      "badge": "Join 500+ organizations",
+      "title": "Ready to transform your workplace?",
+      "subtitle": "Join organizations prioritizing mental wellness with measurable impact.",
+      "getStarted": "Get Started Today"
+    },
+  
+    "trust": {
+      "free": "Free to start",
+      "noCard": "No credit card required",
+      "gdpr": "GDPR-compliant"
+    }
+  }
+  

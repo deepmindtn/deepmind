@@ -1,0 +1,74 @@
+{
+    "nav": {
+      "signIn": "Se connecter",
+      "tryFree": "Essai gratuit"
+    },
+  
+    "hero": {
+      "badge": "Bien-être mental propulsé par l’IA",
+      "titleLine1": "Réduisez le stress &",
+      "titleHighlight": "le turnover de 30 %",
+      "subtitle": "Détectez les risques d’épuisement, activez le soutien entre collègues et prouvez le ROI en temps réel.",
+      "bookDemo": "Réserver une démo",
+      "seeHow": "Voir comment ça marche"
+    },
+  
+    "stats": {
+      "title": "Le coût de",
+      "highlight": "l’inaction",
+      "headlines": {
+        "struggling": "Vos équipes souffrent",
+        "leaking": "Votre budget fuit",
+        "blind": "Vos dirigeants manquent de visibilité"
+      },
+      "items": {
+        "unwell": "des employés se sentent mal au travail",
+        "payroll": "de la masse salariale perdue à cause du stress et du turnover",
+        "kpis": "des entreprises ne suivent aucun KPI de santé mentale"
+      }
+    },
+  
+    "features": {
+      "title": "Ce que vous",
+      "highlight": "obtenez",
+  
+      "burnout": {
+        "title": "Anticipez le burn-out",
+        "desc": "Prédisez les risques de stress grâce à des évaluations validées."
+      },
+      "empathy": {
+        "title": "Renforcez l’empathie des équipes",
+        "desc": "Normalisez les check-ins via des sondages courts et du soutien entre collègues."
+      },
+      "science": {
+        "title": "Appuyez-vous sur la science",
+        "desc": "Big Five, Maslach, Karasek — des analyses scientifiquement validées."
+      },
+      "roi": {
+        "title": "Prouvez le ROI à la direction",
+        "desc": "KPIs en temps réel : engagement, risques, complétion des formations."
+      },
+      "managers": {
+        "title": "Transformez les managers en coachs",
+        "desc": "Micro-exercices et parcours adaptés à chaque profil."
+      },
+      "culture": {
+        "title": "Fidélisez vos talents",
+        "desc": "Créez une culture saine, bienveillante et durable."
+      }
+    },
+  
+    "cta": {
+      "badge": "Déjà adopté par 500+ organisations",
+      "title": "Prêt à transformer votre entreprise ?",
+      "subtitle": "Rejoignez les organisations qui investissent dans le bien-être mental.",
+      "getStarted": "Commencer maintenant"
+    },
+  
+    "trust": {
+      "free": "Démarrage gratuit",
+      "noCard": "Aucune carte requise",
+      "gdpr": "Conforme au RGPD"
+    }
+  }
+  
