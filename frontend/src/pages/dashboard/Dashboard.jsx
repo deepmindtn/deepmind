@@ -61,7 +61,6 @@ const styles = {
     boxShadow: COLORS.shadowHuge,
     margin: "0 auto",
     padding: "48px",
-    maxWidth: "1400px",
   },
   header: { marginBottom: "40px" },
   tabNav: {
