@@ -1,74 +1,294 @@
 import React, { useEffect, useState, useMemo } from "react";
 import ReactDOM from "react-dom";
 import {
-  // UI Icons
-  Plus, Search, Edit2, Trash2, X, Download, AlertTriangle, // Added AlertTriangle
-  // Department Icons
-  Layers, Users, Briefcase, DollarSign, Code, Megaphone, Shield, Activity, 
-  PenTool, Truck, Coffee, Home, Settings, Database, Cloud, Server, 
-  Smartphone, Monitor, Cpu, Globe, Anchor, Archive, Award, BarChart, 
-  Battery, Bell, Book, Box, Calendar, Camera, Cast, CheckCircle, 
-  Clipboard, Clock, Compass, CreditCard, Flag, Folder, Gift, Heart, 
-  Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play, 
-  Power, Printer, Radio, Save, Scissors, Send, ShoppingBag, 
-  ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella, 
-  Video, Voicemail, Wifi, Zap,
-  Wrench
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  X,
+  Download,
+  AlertTriangle,
+  Layers,
+  Users,
+  Briefcase,
+  DollarSign,
+  Code,
+  Megaphone,
+  Shield,
+  Activity,
+  PenTool,
+  Truck,
+  Coffee,
+  Home,
+  Settings,
+  Database,
+  Cloud,
+  Server,
+  Smartphone,
+  Monitor,
+  Cpu,
+  Globe,
+  Anchor,
+  Archive,
+  Award,
+  BarChart,
+  Battery,
+  Bell,
+  Book,
+  Box,
+  Calendar,
+  Camera,
+  Cast,
+  CheckCircle,
+  Clipboard,
+  Clock,
+  Compass,
+  CreditCard,
+  Flag,
+  Folder,
+  Gift,
+  Heart,
+  Image,
+  Key,
+  Lock,
+  Map,
+  Mic,
+  Music,
+  Package,
+  PieChart,
+  Play,
+  Power,
+  Printer,
+  Radio,
+  Save,
+  Scissors,
+  Send,
+  ShoppingBag,
+  ShoppingCart,
+  Smile,
+  Star,
+  Sun,
+  Tag,
+  Terminal,
+  Umbrella,
+  Video,
+  Voicemail,
+  Wifi,
+  Zap,
+  Wrench,
+  ChevronRight,
 } from "lucide-react";
 
 // -----------------------
-// 1. EXPANDED ICON LIBRARY
+// Theme & Constants
 // -----------------------
-const ICON_MAP = {
-  Layers, Users, Briefcase, DollarSign, Code, Megaphone, Shield, Activity, 
-  PenTool, Truck, Coffee, Home, Settings, Database, Cloud, Server, 
-  Smartphone, Monitor, Cpu, Globe, Anchor, Archive, Award, BarChart, 
-  Battery, Bell, Book, Box, Calendar, Camera, Cast, CheckCircle, 
-  Clipboard, Clock, Compass, CreditCard, Flag, Folder, Gift, Heart, 
-  Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play, 
-  Power, Printer, Radio, Save, Scissors, Send, ShoppingBag, 
-  ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella, 
-  Video, Voicemail, Wifi, Zap,
-  Wrench
+const COLORS = {
+  primary: "#10b981",
+  primaryLight: "#ecfdf5",
+  primaryDark: "#059669",
+  secondary: "#14b8a6",
+  bgMain: "#f8fafc",
+  cardBg: "#ffffff",
+  textPrimary: "#1f2937",
+  textSecondary: "#6b7280",
+  textMuted: "#9ca3af",
+  borderColor: "#e5e7eb",
+  red: "#ef4444",
+  redLight: "#fef2f2",
+  shadowHuge:
+    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
 };
 
-// Helper to render icon dynamically
+const ICON_MAP = {
+  Layers,
+  Users,
+  Briefcase,
+  DollarSign,
+  Code,
+  Megaphone,
+  Shield,
+  Activity,
+  PenTool,
+  Truck,
+  Coffee,
+  Home,
+  Settings,
+  Database,
+  Cloud,
+  Server,
+  Smartphone,
+  Monitor,
+  Cpu,
+  Globe,
+  Anchor,
+  Archive,
+  Award,
+  BarChart,
+  Battery,
+  Bell,
+  Book,
+  Box,
+  Calendar,
+  Camera,
+  Cast,
+  CheckCircle,
+  Clipboard,
+  Clock,
+  Compass,
+  CreditCard,
+  Flag,
+  Folder,
+  Gift,
+  Heart,
+  Image,
+  Key,
+  Lock,
+  Map,
+  Mic,
+  Music,
+  Package,
+  PieChart,
+  Play,
+  Power,
+  Printer,
+  Radio,
+  Save,
+  Scissors,
+  Send,
+  ShoppingBag,
+  ShoppingCart,
+  Smile,
+  Star,
+  Sun,
+  Tag,
+  Terminal,
+  Umbrella,
+  Video,
+  Voicemail,
+  Wifi,
+  Zap,
+  Wrench,
+};
+
+const styles = {
+  container: {
+    padding: "5px 14px",
+    backgroundColor: COLORS.bgMain,
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
+  mainWrapperCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "24px",
+    border: `1px solid ${COLORS.borderColor}`,
+    boxShadow: COLORS.shadowHuge,
+    margin: "0 auto",
+    padding: "48px",
+  },
+  iconBox: (bg) => ({
+    width: "52px",
+    height: "52px",
+    borderRadius: "14px",
+    backgroundColor: bg,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  }),
+  input: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: "12px",
+    border: `1px solid ${COLORS.borderColor}`,
+    fontSize: "14px",
+    outline: "none",
+    transition: "0.2s",
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.4)",
+    backdropFilter: "blur(6px)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 9999,
+    padding: 20,
+  },
+};
+
+// -----------------------
+// Shared Components
+// -----------------------
 const DynamicIcon = ({ name, size = 20, color }) => {
-  const IconComponent = ICON_MAP[name] || Layers; 
+  const IconComponent = ICON_MAP[name] || Layers;
   return <IconComponent size={size} color={color} />;
 };
 
-// -----------------------
-// Style Helpers
-// -----------------------
-const card = { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16 };
-const button = { display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontWeight: 500 };
-const primary = { ...button, background: "#4f46e5", borderColor: "#4f46e5", color: "#fff" };
-const dangerBtn = { ...button, background: "#ef4444", borderColor: "#ef4444", color: "#fff" }; // Red button
-const input = { height: 40, borderRadius: 10, border: "1px solid #e5e7eb", padding: "0 12px", outline: "none", width: "100%", boxSizing: "border-box", transition: "border 0.2s" };
-
-// -----------------------
-// MODAL COMPONENT
-// -----------------------
-function Modal({ open, title, onClose, children, actions }) {
+const Modal = ({ open, title, onClose, children, actions }) => {
   if (!open) return null;
   return ReactDOM.createPortal(
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "grid", placeItems: "center", zIndex: 9999, padding: 16 }} onClick={onClose}>
-      <div style={{ ...card, maxWidth: 520, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{title}</h3>
-          <button style={{ ...button, padding: 6, border: "none" }} onClick={onClose}><X size={20} color="#64748b" /></button>
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div
+        style={{
+          backgroundColor: "#fff",
+          borderRadius: "20px",
+          width: "100%",
+          maxWidth: "500px",
+          padding: "32px",
+          boxShadow: COLORS.shadowHuge,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "20px",
+              fontWeight: "800",
+              color: COLORS.textPrimary,
+            }}
+          >
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              color: COLORS.textMuted,
+            }}
+          >
+            <X size={20} />
+          </button>
         </div>
-        <div>{children}</div>
-        {actions && <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>{actions}</div>}
+        {children}
+        {actions && (
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              justifyContent: "flex-end",
+              marginTop: "32px",
+            }}
+          >
+            {actions}
+          </div>
+        )}
       </div>
     </div>,
     document.body
   );
-}
+};
 
 // -----------------------
-// MAIN COMPONENT
+// Main Page
 // -----------------------
 export default function Departments() {
   const API_BASE = "http://localhost:8080";
@@ -78,17 +298,16 @@ export default function Departments() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  
-  // Create/Edit Modal State
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ id: null, name: "", description: "", icon: "Layers" });
+  const [formData, setFormData] = useState({
+    id: null,
+    name: "",
+    description: "",
+    icon: "Layers",
+  });
   const [submitting, setSubmitting] = useState(false);
-  
-  // Icon Search State
   const [iconSearch, setIconSearch] = useState("");
-
-  // 👇 DELETE MODAL STATE
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -96,239 +315,468 @@ export default function Departments() {
   async function fetchDepartments() {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/departments/`, { headers: { "Content-Type": "application/json", ...authHeader } });
-      if (!res.ok) throw new Error("Failed to load");
+      const res = await fetch(`${API_BASE}/api/departments/`, {
+        headers: authHeader,
+      });
       const data = await res.json();
       setRows(data);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
-  }
-
-  useEffect(() => { fetchDepartments(); }, []);
-
-  // Filter department list
-  const filtered = rows.filter(r => r.name.toLowerCase().includes(q.toLowerCase()));
-
-  // Filter icons based on search
-  const filteredIcons = useMemo(() => {
-    return Object.keys(ICON_MAP).filter(key => 
-      key.toLowerCase().includes(iconSearch.toLowerCase())
-    );
-  }, [iconSearch]);
-
-  // Handle CSV Export
-  async function handleExportCSV() {
-    try {
-      const res = await fetch(`${API_BASE}/api/departments/export/`, {
-        method: "GET",
-        headers: { ...authHeader },
-      });
-      if (!res.ok) throw new Error("Failed to download CSV");
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "departments.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
     } catch (e) {
-      alert("Error exporting CSV: " + e.message);
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function handleSubmit() {
-    if(!formData.name) return alert("Department Name is required");
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const filtered = rows.filter((r) =>
+    r.name.toLowerCase().includes(q.toLowerCase())
+  );
+  const filteredIcons = useMemo(
+    () =>
+      Object.keys(ICON_MAP).filter((key) =>
+        key.toLowerCase().includes(iconSearch.toLowerCase())
+      ),
+    [iconSearch]
+  );
+
+  const handleExportCSV = async () => {
+    const res = await fetch(`${API_BASE}/api/departments/export/`, {
+      headers: authHeader,
+    });
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "departments.csv";
+    a.click();
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name) return;
     setSubmitting(true);
     try {
-        const url = isEditing ? `${API_BASE}/api/departments/${formData.id}/` : `${API_BASE}/api/departments/`;
-        const method = isEditing ? "PUT" : "POST";
-        const res = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json", ...authHeader },
-            body: JSON.stringify({ 
-                name: formData.name, 
-                description: formData.description,
-                icon: formData.icon 
-            })
-        });
-        if(!res.ok) throw new Error("Operation failed");
-        await fetchDepartments();
-        setOpen(false);
-        setFormData({ id: null, name: "", description: "", icon: "Layers" });
-        setIconSearch(""); 
-    } catch(e) { alert(e.message); } finally { setSubmitting(false); }
-  }
-
-  // 👇 Open Delete Confirmation Modal
-  const confirmDelete = (id) => {
-    setDeleteId(id);
-    setDeleteOpen(true);
+      const method = isEditing ? "PUT" : "POST";
+      const url = isEditing
+        ? `${API_BASE}/api/departments/${formData.id}/`
+        : `${API_BASE}/api/departments/`;
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify(formData),
+      });
+      fetchDepartments();
+      setOpen(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // 👇 Execute Delete
-  async function handleDelete() {
-      if (!deleteId) return;
-      setDeleting(true);
-      try {
-          const res = await fetch(`${API_BASE}/api/departments/${deleteId}/`, { method: "DELETE", headers: { ...authHeader } });
-          if (!res.ok) throw new Error("Failed to delete");
-          setRows(rows.filter(r => r.id !== deleteId));
-          setDeleteOpen(false);
-      } catch(e) { alert(e.message); } 
-      finally { 
-        setDeleting(false); 
-        setDeleteId(null);
-      }
-  }
-
-  const openCreate = () => { 
-    setIsEditing(false); 
-    setFormData({ id: null, name: "", description: "", icon: "Layers" }); 
-    setIconSearch(""); 
-    setOpen(true); 
-  };
-  
-  const openEdit = (dept) => { 
-    setIsEditing(true); 
-    setFormData({ id: dept.id, name: dept.name, description: dept.description, icon: dept.icon || "Layers" }); 
-    setIconSearch(""); 
-    setOpen(true); 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await fetch(`${API_BASE}/api/departments/${deleteId}/`, {
+        method: "DELETE",
+        headers: authHeader,
+      });
+      setRows(rows.filter((r) => r.id !== deleteId));
+      setDeleteOpen(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
-    <div className="p-4" style={{ maxWidth: 1200, margin: "0 auto", paddingBottom: 60 }}>
-      {/* Page Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
-        <div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1e293b", margin: 0, display:'flex', alignItems:'center', gap: 12 }}>
-                <div style={{background: "#e0e7ff", padding: 8, borderRadius: 12, display:"flex"}}>
-                  <Layers color="#4f46e5" size={28} />
-                </div>
+    <div style={styles.container}>
+      <style>{`
+        .dept-card:hover { transform: translateY(-5px); border-color: ${COLORS.primary} !important; box-shadow: ${COLORS.shadowHuge} !important; }
+        .emerald-btn { background: ${COLORS.primary}; color: white; border: none; padding: 10px 20px; borderRadius: 12px; fontWeight: 700; cursor: pointer; display: flex; alignItems: center; gap: 8px; transition: 0.2s; }
+        .emerald-btn:hover { background: ${COLORS.primaryDark}; }
+        .outline-btn { background: white; border: 1px solid ${COLORS.borderColor}; padding: 10px 20px; borderRadius: 12px; fontWeight: 700; color: ${COLORS.textSecondary}; cursor: pointer; display: flex; alignItems: center; gap: 8px; }
+        .danger-btn { background: ${COLORS.red}; color: white; border: none; padding: 10px 20px; borderRadius: 12px; fontWeight: 700; cursor: pointer; }
+        .icon-grid-item:hover { background: ${COLORS.primaryLight} !important; color: ${COLORS.primary} !important; }
+      `}</style>
+
+      <div style={styles.mainWrapperCard}>
+        {/* Header Section */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            marginBottom: "40px",
+            borderBottom: `1px solid ${COLORS.borderColor}`,
+            paddingBottom: "40px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "8px",
+              }}
+            >
+              <div
+                style={{
+                  padding: "8px",
+                  backgroundColor: COLORS.primaryLight,
+                  borderRadius: "10px",
+                }}
+              >
+                <Layers size={24} color={COLORS.primary} />
+              </div>
+              <h1
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "800",
+                  margin: 0,
+                  color: COLORS.textPrimary,
+                }}
+              >
                 Departments
-            </h1>
-            <p style={{ color: "#64748b", margin: "8px 0 0 0", fontSize: 15 }}>Manage your company's organizational structure</p>
-        </div>
-        
-        {/* Buttons Group */}
-        <div style={{ display: "flex", gap: 12 }}>
-            <button style={button} onClick={handleExportCSV}>
-                <Download size={18} /> Export CSV
+              </h1>
+            </div>
+            <p style={{ color: COLORS.textSecondary, margin: 0 }}>
+              Structure and manage your organization's business units.
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button className="outline-btn" onClick={handleExportCSV}>
+              <Download size={18} /> Export CSV
             </button>
-            <button style={primary} onClick={openCreate}>
-                <Plus size={18} /> Add Department
+            <button
+              className="emerald-btn"
+              onClick={() => {
+                setIsEditing(false);
+                setFormData({
+                  id: null,
+                  name: "",
+                  description: "",
+                  icon: "Layers",
+                });
+                setOpen(true);
+              }}
+            >
+              <Plus size={18} /> Add Department
             </button>
+          </div>
         </div>
-      </div>
 
-      {/* Main Search Toolbar */}
-      <div style={{ ...card, marginBottom: 24, display: "flex", gap: 16, alignItems: "center" }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <Search size={18} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-          <input style={{ ...input, paddingLeft: 40, height: 44 }} placeholder="Search departments..." value={q} onChange={(e) => setQ(e.target.value)} />
+        {/* Toolbar */}
+        <div
+          style={{
+            position: "relative",
+            maxWidth: "400px",
+            marginBottom: "32px",
+          }}
+        >
+          <Search
+            size={18}
+            color={COLORS.textMuted}
+            style={{
+              position: "absolute",
+              left: "16px",
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+          />
+          <input
+            style={{
+              ...styles.input,
+              paddingLeft: "48px",
+              height: "48px",
+              backgroundColor: "#f1f5f9",
+              border: "none",
+            }}
+            placeholder="Quick search departments..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
-      </div>
 
-      {/* Grid Display */}
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>Loading departments...</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 20 }}>
+        {/* Grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gap: "24px",
+          }}
+        >
           {filtered.map((r) => (
-            <div key={r.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 16, transition: "transform 0.2s, box-shadow 0.2s" }} 
-                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0,0,0,0.1)"; }}
-                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ display: "flex", gap: 16 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: "#f8fafc", display: "grid", placeItems: "center", border: "1px solid #f1f5f9" }}>
-                    <DynamicIcon name={r.icon} size={24} color="#334155" />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: "0 0 4px 0", fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{r.name}</h3>
-                    <span style={{ fontSize: 12, background: "#f1f5f9", color: "#64748b", padding: "2px 8px", borderRadius: 99 }}>Active</span>
-                  </div>
+            <div
+              key={r.id}
+              className="dept-card"
+              style={{
+                backgroundColor: "#fff",
+                border: `1px solid ${COLORS.borderColor}`,
+                borderRadius: "20px",
+                padding: "28px",
+                transition: "0.3s ease",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div style={styles.iconBox(COLORS.primaryLight)}>
+                  <DynamicIcon name={r.icon} size={24} color={COLORS.primary} />
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                   <button style={{ ...button, padding: 8, border: "none", color: "#64748b" }} onClick={() => openEdit(r)}><Edit2 size={16} /></button>
-                   {/* 👇 Trigger the delete modal */}
-                   <button style={{ ...button, padding: 8, border: "none", color: "#ef4444" }} onClick={() => confirmDelete(r.id)}><Trash2 size={16} /></button>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: COLORS.textMuted,
+                    }}
+                    onClick={() => {
+                      setIsEditing(true);
+                      setFormData(r);
+                      setOpen(true);
+                    }}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: COLORS.red,
+                    }}
+                    onClick={() => {
+                      setDeleteId(r.id);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-
-              <div style={{ fontSize: 14, color: "#64748b", lineHeight: 1.5, flex: 1 }}>
-                {r.description || "No description provided."}
+              <div>
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "800",
+                    color: COLORS.textPrimary,
+                    margin: "0 0 8px 0",
+                  }}
+                >
+                  {r.name}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: COLORS.textSecondary,
+                    lineHeight: "1.6",
+                    margin: 0,
+                    minHeight: "44px",
+                  }}
+                >
+                  {r.description || "No description provided."}
+                </p>
               </div>
             </div>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* ----------------- */}
-      {/* CREATE/EDIT MODAL */}
-      {/* ----------------- */}
-      <Modal open={open} title={isEditing ? "Edit Department" : "New Department"} onClose={() => setOpen(false)}
+      {/* Create/Edit Modal */}
+      <Modal
+        open={open}
+        title={isEditing ? "Edit Department" : "New Department"}
+        onClose={() => setOpen(false)}
         actions={
-            <>
-                <button style={button} onClick={() => setOpen(false)}>Cancel</button>
-                <button style={primary} onClick={handleSubmit} disabled={submitting}>{submitting ? "Saving..." : "Save Department"}</button>
-            </>
-        }>
-        <div style={{ display: "grid", gap: 20 }}>
-            {/* ICON PICKER WITH SEARCH */}
-            <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 14, color: "#334155" }}>Choose Icon</label>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", display:"flex", alignItems:"center", gap: 8 }}>
-                    <Search size={14} color="#64748b"/>
-                    <input style={{ border: "none", background: "transparent", outline: "none", fontSize: 13, width: "100%" }} placeholder="Search icons..." value={iconSearch} onChange={(e) => setIconSearch(e.target.value)} />
+          <>
+            <button className="outline-btn" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+            <button className="emerald-btn" onClick={handleSubmit}>
+              {submitting ? "Saving..." : "Save Changes"}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: "700",
+                color: COLORS.textSecondary,
+                marginBottom: "8px",
+              }}
+            >
+              DEPARTMENT ICON
+            </label>
+            <div
+              style={{
+                border: `1px solid ${COLORS.borderColor}`,
+                borderRadius: "12px",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "10px",
+                  backgroundColor: "#f8fafc",
+                  borderBottom: `1px solid ${COLORS.borderColor}`,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <Search size={14} color={COLORS.textMuted} />
+                <input
+                  style={{
+                    border: "none",
+                    background: "none",
+                    fontSize: "13px",
+                    outline: "none",
+                    width: "100%",
+                  }}
+                  placeholder="Search icons..."
+                  value={iconSearch}
+                  onChange={(e) => setIconSearch(e.target.value)}
+                />
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(8, 1fr)",
+                  gap: "8px",
+                  padding: "12px",
+                  maxHeight: "160px",
+                  overflowY: "auto",
+                }}
+              >
+                {filteredIcons.map((key) => (
+                  <div
+                    key={key}
+                    onClick={() => setFormData({ ...formData, icon: key })}
+                    className="icon-grid-item"
+                    style={{
+                      cursor: "pointer",
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "8px",
+                      display: "grid",
+                      placeItems: "center",
+                      backgroundColor:
+                        formData.icon === key ? COLORS.primary : "#fff",
+                      color: formData.icon === key ? "#fff" : COLORS.textMuted,
+                      border: `1px solid ${COLORS.borderColor}`,
+                    }}
+                  >
+                    <DynamicIcon name={key} size={18} color="currentColor" />
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: 12, maxHeight: 180, overflowY: "auto", background: "#fff" }}>
-                      {filteredIcons.length === 0 && <div style={{ width: "100%", padding: 10, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No icons found</div>}
-                      {filteredIcons.map(iconKey => (
-                          <div key={iconKey} onClick={() => setFormData({ ...formData, icon: iconKey })}
-                              style={{ cursor: "pointer", width: 40, height: 40, borderRadius: 8, display: "grid", placeItems: "center", background: formData.icon === iconKey ? "#4f46e5" : "#fff", color: formData.icon === iconKey ? "#fff" : "#64748b", border: formData.icon === iconKey ? "1px solid #4f46e5" : "1px solid #e2e8f0", transition: "all 0.2s" }} title={iconKey}>
-                              <DynamicIcon name={iconKey} size={20} color="currentColor" />
-                          </div>
-                      ))}
-                  </div>
-                </div>
+                ))}
+              </div>
             </div>
-            <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 14, color: "#334155" }}>Department Name</label>
-                <input style={input} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Engineering" />
-            </div>
-            <div>
-                <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 14, color: "#334155" }}>Description</label>
-                <textarea style={{ ...input, height: 100, paddingTop: 10, fontFamily: "inherit" }} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe the team's responsibilities..." />
-            </div>
+          </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: "700",
+                color: COLORS.textSecondary,
+                marginBottom: "8px",
+              }}
+            >
+              NAME
+            </label>
+            <input
+              style={styles.input}
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder="e.g. Creative Engineering"
+            />
+          </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: "700",
+                color: COLORS.textSecondary,
+                marginBottom: "8px",
+              }}
+            >
+              DESCRIPTION
+            </label>
+            <textarea
+              style={{ ...styles.input, height: "100px", resize: "none" }}
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="What does this department do?"
+            />
+          </div>
         </div>
       </Modal>
 
-      {/* ----------------- */}
-      {/* DELETE MODAL      */}
-      {/* ----------------- */}
-      <Modal 
-        open={deleteOpen} 
-        title="Confirm Deletion" 
+      {/* Delete Modal */}
+      <Modal
+        open={deleteOpen}
+        title="Permanently Delete?"
         onClose={() => setDeleteOpen(false)}
         actions={
-            <>
-                <button style={button} onClick={() => setDeleteOpen(false)}>Cancel</button>
-                <button style={dangerBtn} onClick={handleDelete} disabled={deleting}>
-                    {deleting ? "Deleting..." : "Yes, Delete"}
-                </button>
-            </>
+          <>
+            <button
+              className="outline-btn"
+              onClick={() => setDeleteOpen(false)}
+            >
+              Go Back
+            </button>
+            <button className="danger-btn" onClick={handleDelete}>
+              {deleting ? "Deleting..." : "Delete Department"}
+            </button>
+          </>
         }
       >
-        <div style={{ textAlign: "center", padding: "10px 0" }}>
-            <div style={{ background: "#fee2e2", width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                <AlertTriangle size={32} color="#dc2626" />
-            </div>
-            <h4 style={{ margin: "0 0 8px", fontSize: 18, color: "#1f2937" }}>Are you sure?</h4>
-            <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-                This action cannot be undone. This will permanently delete the department.
-            </p>
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "64px",
+              height: "64px",
+              backgroundColor: COLORS.redLight,
+              borderRadius: "50%",
+              display: "grid",
+              placeItems: "center",
+              margin: "0 auto 20px",
+            }}
+          >
+            <AlertTriangle color={COLORS.red} size={32} />
+          </div>
+          <p
+            style={{
+              color: COLORS.textSecondary,
+              lineHeight: "1.6",
+              margin: 0,
+            }}
+          >
+            This action is irreversible. All associations with this department
+            will be permanently removed.
+          </p>
         </div>
       </Modal>
     </div>
