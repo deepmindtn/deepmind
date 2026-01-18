@@ -9,6 +9,97 @@ import {
   Download,
   AlertTriangle,
   Layers,
+  CheckCircle,
+  Users,
+  Briefcase,
+  DollarSign,
+  Code,
+  Megaphone,
+  Shield,
+  Activity,
+  PenTool,
+  Truck,
+  Coffee,
+  Home,
+  Settings,
+  Database,
+  Cloud,
+  Server,
+  Smartphone,
+  Monitor,
+  Cpu,
+  Globe,
+  Anchor,
+  Archive,
+  Award,
+  BarChart,
+  Battery,
+  Bell,
+  Book,
+  Box,
+  Calendar,
+  Camera,
+  Cast,
+  Clipboard,
+  Clock,
+  Compass,
+  CreditCard,
+  Flag,
+  Folder,
+  Gift,
+  Heart,
+  Image,
+  Key,
+  Lock,
+  Map,
+  Mic,
+  Music,
+  Package,
+  PieChart,
+  Play,
+  Power,
+  Printer,
+  Radio,
+  Save,
+  Scissors,
+  Send,
+  ShoppingBag,
+  ShoppingCart,
+  Smile,
+  Star,
+  Sun,
+  Tag,
+  Terminal,
+  Umbrella,
+  Video,
+  Voicemail,
+  Wifi,
+  Zap,
+  Wrench,
+} from "lucide-react";
+
+// -----------------------
+// Theme & Constants
+// -----------------------
+const COLORS = {
+  primary: "#10b981",
+  primaryLight: "#ecfdf5",
+  primaryDark: "#059669",
+  secondary: "#14b8a6",
+  bgMain: "#f8fafc",
+  cardBg: "#ffffff",
+  textPrimary: "#1f2937",
+  textSecondary: "#6b7280",
+  textMuted: "#9ca3af",
+  borderColor: "#e5e7eb",
+  red: "#ef4444",
+  redLight: "#fef2f2",
+  shadowHuge:
+    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+};
+
+const ICON_MAP = {
+  Layers,
   Users,
   Briefcase,
   DollarSign,
@@ -76,43 +167,10 @@ import {
   Wifi,
   Zap,
   Wrench,
-} from "lucide-react";
-
-// -----------------------
-// Theme & Constants
-// -----------------------
-const COLORS = {
-  primary: "#10b981",
-  primaryLight: "#ecfdf5",
-  primaryDark: "#059669",
-  secondary: "#14b8a6",
-  bgMain: "#f8fafc",
-  cardBg: "#ffffff",
-  textPrimary: "#1f2937",
-  textSecondary: "#6b7280",
-  textMuted: "#9ca3af",
-  borderColor: "#e5e7eb",
-  red: "#ef4444",
-  redLight: "#fef2f2",
-  shadowHuge:
-    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-};
-
-const ICON_MAP = {
-  Layers, Users, Briefcase, DollarSign, Code, Megaphone, Shield, Activity,
-  PenTool, Truck, Coffee, Home, Settings, Database, Cloud, Server,
-  Smartphone, Monitor, Cpu, Globe, Anchor, Archive, Award, BarChart,
-  Battery, Bell, Book, Box, Calendar, Camera, Cast, CheckCircle,
-  Clipboard, Clock, Compass, CreditCard, Flag, Folder, Gift, Heart,
-  Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play,
-  Power, Printer, Radio, Save, Scissors, Send, ShoppingBag,
-  ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella,
-  Video, Voicemail, Wifi, Zap, Wrench,
 };
 
 const styles = {
   container: {
-    padding: "5px 14px",
     backgroundColor: COLORS.bgMain,
     minHeight: "100vh",
     fontFamily: "'Inter', system-ui, sans-serif",
@@ -123,10 +181,9 @@ const styles = {
     border: `1px solid ${COLORS.borderColor}`,
     boxShadow: COLORS.shadowHuge,
     margin: "0 auto",
-    padding: "48px",
     minHeight: "calc(100vh - 40px)",
     display: "flex",
-    flexDirection: "column"
+    flexDirection: "column",
   },
   iconBox: (bg) => ({
     width: "52px",
@@ -154,12 +211,12 @@ const styles = {
     display: "grid",
     placeItems: "center",
     zIndex: 9999,
-    padding: 20,
+    padding: "20px",
   },
 };
 
 // -----------------------
-// Shared Components
+// Components
 // -----------------------
 const DynamicIcon = ({ name, size = 20, color }) => {
   const IconComponent = ICON_MAP[name] || Layers;
@@ -170,33 +227,9 @@ const Modal = ({ open, title, onClose, children, actions }) => {
   if (!open) return null;
   return ReactDOM.createPortal(
     <div style={styles.modalOverlay} onClick={onClose}>
-      <div
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: "20px",
-          width: "100%",
-          maxWidth: "500px",
-          padding: "32px",
-          boxShadow: COLORS.shadowHuge,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: "20px",
-              fontWeight: "800",
-              color: COLORS.textPrimary,
-            }}
-          >
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "800" }}>
             {title}
           </h3>
           <button
@@ -211,40 +244,23 @@ const Modal = ({ open, title, onClose, children, actions }) => {
             <X size={20} />
           </button>
         </div>
-        {children}
-        {actions && (
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              justifyContent: "flex-end",
-              marginTop: "32px",
-            }}
-          >
-            {actions}
-          </div>
-        )}
+        <div className="modal-body">{children}</div>
+        {actions && <div className="modal-actions">{actions}</div>}
       </div>
     </div>,
     document.body
   );
 };
 
-// -----------------------
-// Main Page
-// -----------------------
 export default function Departments() {
   const API_BASE = "http://localhost:8080";
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
-  // --- States ---
-  const [toast, setToast] = useState(null); // { message: "", type: "success" | "error" }
+  const [toast, setToast] = useState(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  
-  // Modal States
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -255,13 +271,14 @@ export default function Departments() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
-  
-  // Delete States
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // --- Toast Timer ---
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 3000);
@@ -269,7 +286,6 @@ export default function Departments() {
     }
   }, [toast]);
 
-  // --- Data Fetching ---
   async function fetchDepartments() {
     setLoading(true);
     try {
@@ -277,79 +293,55 @@ export default function Departments() {
         headers: authHeader,
       });
       const data = await res.json();
-      setRows(data);
+      setRows(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
       setToast({ message: "Failed to load departments", type: "error" });
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  const filtered = rows.filter((r) =>
-    r.name.toLowerCase().includes(q.toLowerCase())
-  );
-  
-  const filteredIcons = useMemo(
-    () =>
-      Object.keys(ICON_MAP).filter((key) =>
-        key.toLowerCase().includes(iconSearch.toLowerCase())
-      ),
-    [iconSearch]
-  );
-
-  // --- Handlers ---
-
   const handleExportCSV = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/departments/export/`, {
         headers: authHeader,
       });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) throw new Error();
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "departments.csv";
       a.click();
-      setToast({ message: "Export started successfully!", type: "success" });
+      setToast({ message: "Export started!", type: "success" });
     } catch (e) {
-      setToast({ message: "Failed to export CSV.", type: "error" });
+      setToast({ message: "Export failed.", type: "error" });
     }
   };
 
   const handleSubmit = async () => {
-    if (!formData.name) {
-      setToast({ message: "Department name is required.", type: "error" });
-      return;
-    }
+    if (!formData.name)
+      return setToast({ message: "Name required.", type: "error" });
     setSubmitting(true);
     try {
       const method = isEditing ? "PUT" : "POST";
       const url = isEditing
         ? `${API_BASE}/api/departments/${formData.id}/`
         : `${API_BASE}/api/departments/`;
-      
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify(formData),
       });
-
-      if (!res.ok) throw new Error("Failed to save");
-
+      if (!res.ok) throw new Error();
       await fetchDepartments();
       setOpen(false);
-      setToast({ 
-        message: isEditing ? "Department updated successfully!" : "Department created successfully!", 
-        type: "success" 
+      setToast({
+        message: `Department ${isEditing ? "updated" : "created"}!`,
+        type: "success",
       });
     } catch (e) {
-      setToast({ message: "An error occurred while saving.", type: "error" });
+      setToast({ message: "Save failed.", type: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -362,42 +354,58 @@ export default function Departments() {
         method: "DELETE",
         headers: authHeader,
       });
-
-      if (!res.ok) throw new Error("Delete failed");
-
+      if (!res.ok) throw new Error();
       setRows(rows.filter((r) => r.id !== deleteId));
       setDeleteOpen(false);
-      setToast({ message: "Department deleted successfully!", type: "success" });
+      setToast({ message: "Deleted successfully!", type: "success" });
     } catch (e) {
-      setToast({ message: "Failed to delete department.", type: "error" });
+      setToast({ message: "Delete failed.", type: "error" });
     } finally {
       setDeleting(false);
     }
   };
 
+  const filtered = rows.filter((r) =>
+    r.name.toLowerCase().includes(q.toLowerCase())
+  );
+  const filteredIcons = useMemo(
+    () =>
+      Object.keys(ICON_MAP).filter((key) =>
+        key.toLowerCase().includes(iconSearch.toLowerCase())
+      ),
+    [iconSearch]
+  );
+
   return (
     <div style={styles.container}>
       <style>{`
-        .dept-card:hover { transform: translateY(-5px); border-color: ${COLORS.primary} !important; box-shadow: ${COLORS.shadowHuge} !important; }
-        .emerald-btn { background: ${COLORS.primary}; color: white; border: none; padding: 10px 20px; borderRadius: 12px; fontWeight: 700; cursor: pointer; display: flex; alignItems: center; gap: 8px; transition: 0.2s; }
-        .emerald-btn:hover { background: ${COLORS.primaryDark}; }
-        .outline-btn { background: white; border: 1px solid ${COLORS.borderColor}; padding: 10px 20px; borderRadius: 12px; fontWeight: 700; color: ${COLORS.textSecondary}; cursor: pointer; display: flex; alignItems: center; gap: 8px; }
-        .danger-btn { background: ${COLORS.red}; color: white; border: none; padding: 10px 20px; borderRadius: 12px; fontWeight: 700; cursor: pointer; }
-        .icon-grid-item:hover { background: ${COLORS.primaryLight} !important; color: ${COLORS.primary} !important; }
+        .responsive-wrapper { padding: 48px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 1px solid ${COLORS.borderColor}; padding-bottom: 40px; }
+        .action-btns { display: flex; gap: 12px; }
+        .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+        .modal-container { background: #fff; border-radius: 20px; width: 100%; max-width: 500px; padding: 32px; box-shadow: ${COLORS.shadowHuge}; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 32px; }
+        .icon-selector { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; padding: 12px; max-height: 160px; overflow-y: auto; }
+        
+        .emerald-btn { background: ${COLORS.primary}; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .outline-btn { background: white; border: 1px solid ${COLORS.borderColor}; padding: 10px 20px; border-radius: 12px; font-weight: 700; color: ${COLORS.textSecondary}; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .danger-btn { background: ${COLORS.red}; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+
+        @media (max-width: 1024px) { .responsive-wrapper { padding: 24px; } }
+        @media (max-width: 768px) {
+          .header-flex { flex-direction: column; align-items: flex-start; gap: 20px; padding-bottom: 24px; }
+          .action-btns { width: 100%; flex-direction: column; }
+          .action-btns button { width: 100%; justify-content: center; }
+          .dept-grid { grid-template-columns: 1fr; }
+          .modal-actions { flex-direction: column; }
+          .modal-actions button { width: 100%; }
+          .icon-selector { grid-template-columns: repeat(5, 1fr); }
+        }
       `}</style>
 
-      <div style={styles.mainWrapperCard}>
-        {/* Header Section */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            marginBottom: "40px",
-            borderBottom: `1px solid ${COLORS.borderColor}`,
-            paddingBottom: "40px",
-          }}
-        >
+      <div className="responsive-wrapper" style={styles.mainWrapperCard}>
+        <div className="header-flex">
           <div>
             <div
               style={{
@@ -416,24 +424,17 @@ export default function Departments() {
               >
                 <Layers size={24} color={COLORS.primary} />
               </div>
-              <h1
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "800",
-                  margin: 0,
-                  color: COLORS.textPrimary,
-                }}
-              >
+              <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
                 Departments
               </h1>
             </div>
             <p style={{ color: COLORS.textSecondary, margin: 0 }}>
-              Structure and manage your organization's business units.
+              Manage your organization's business units.
             </p>
           </div>
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div className="action-btns">
             <button className="outline-btn" onClick={handleExportCSV}>
-              <Download size={18} /> Export CSV
+              <Download size={18} /> Export
             </button>
             <button
               className="emerald-btn"
@@ -448,17 +449,17 @@ export default function Departments() {
                 setOpen(true);
               }}
             >
-              <Plus size={18} /> Add Department
+              <Plus size={18} /> Add New
             </button>
           </div>
         </div>
 
-        {/* Toolbar */}
         <div
           style={{
             position: "relative",
             maxWidth: "400px",
             marginBottom: "32px",
+            width: "100%",
           }}
         >
           <Search
@@ -479,362 +480,196 @@ export default function Departments() {
               backgroundColor: "#f1f5f9",
               border: "none",
             }}
-            placeholder="Quick search departments..."
+            placeholder="Search departments..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
 
-        {/* Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: "24px",
-          }}
-        >
+        <div className="dept-grid">
           {filtered.map((r) => (
             <div
               key={r.id}
-              className="dept-card"
               style={{
                 backgroundColor: "#fff",
                 border: `1px solid ${COLORS.borderColor}`,
                 borderRadius: "20px",
                 padding: "28px",
-                transition: "0.3s ease",
                 display: "flex",
                 flexDirection: "column",
                 gap: "20px",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <div style={styles.iconBox(COLORS.primaryLight)}>
                   <DynamicIcon name={r.icon} size={24} color={COLORS.primary} />
                 </div>
-                <div style={{ display: "flex", gap: "4px" }}>
+                <div style={{ display: "flex", gap: "8px" }}>
                   <button
+                    onClick={() => {
+                      setIsEditing(true);
+                      setFormData(r);
+                      setOpen(true);
+                    }}
                     style={{
                       background: "none",
                       border: "none",
                       cursor: "pointer",
                       color: COLORS.textMuted,
                     }}
-                    onClick={() => {
-                      setIsEditing(true);
-                      setFormData(r);
-                      setOpen(true);
-                    }}
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
+                    onClick={() => {
+                      setDeleteId(r.id);
+                      setDeleteOpen(true);
+                    }}
                     style={{
                       background: "none",
                       border: "none",
                       cursor: "pointer",
                       color: COLORS.red,
                     }}
-                    onClick={() => {
-                      setDeleteId(r.id);
-                      setDeleteOpen(true);
-                    }}
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
-              <div>
-                <h3
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: "800",
-                    color: COLORS.textPrimary,
-                    margin: "0 0 8px 0",
-                  }}
-                >
-                  {r.name}
-                </h3>
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: COLORS.textSecondary,
-                    lineHeight: "1.6",
-                    margin: 0,
-                    minHeight: "44px",
-                  }}
-                >
-                  {r.description || "No description provided."}
-                </p>
-              </div>
+              <h3 style={{ fontSize: "18px", fontWeight: "800", margin: 0 }}>
+                {r.name}
+              </h3>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: COLORS.textSecondary,
+                  margin: 0,
+                }}
+              >
+                {r.description || "No description."}
+              </p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
       <Modal
         open={open}
         title={isEditing ? "Edit Department" : "New Department"}
         onClose={() => setOpen(false)}
         actions={
-          <>
+          <React.Fragment>
             <button className="outline-btn" onClick={() => setOpen(false)}>
               Cancel
             </button>
             <button className="emerald-btn" onClick={handleSubmit}>
-              {submitting ? "Saving..." : "Save Changes"}
+              {submitting ? "Saving..." : "Save"}
             </button>
-          </>
+          </React.Fragment>
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "13px",
-                fontWeight: "700",
-                color: COLORS.textSecondary,
-                marginBottom: "8px",
-              }}
-            >
-              DEPARTMENT ICON
-            </label>
+          <div
+            style={{
+              border: `1px solid ${COLORS.borderColor}`,
+              borderRadius: "12px",
+              overflow: "hidden",
+            }}
+          >
             <div
               style={{
-                border: `1px solid ${COLORS.borderColor}`,
-                borderRadius: "12px",
-                overflow: "hidden",
+                padding: "10px",
+                backgroundColor: "#f8fafc",
+                borderBottom: `1px solid ${COLORS.borderColor}`,
+                display: "flex",
+                gap: "8px",
               }}
             >
-              <div
-                style={{
-                  padding: "10px",
-                  backgroundColor: "#f8fafc",
-                  borderBottom: `1px solid ${COLORS.borderColor}`,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <Search size={14} color={COLORS.textMuted} />
-                <input
+              <Search size={14} />
+              <input
+                style={{ border: "none", background: "none", width: "100%" }}
+                placeholder="Search icons..."
+                value={iconSearch}
+                onChange={(e) => setIconSearch(e.target.value)}
+              />
+            </div>
+            <div className="icon-selector">
+              {filteredIcons.map((key) => (
+                <div
+                  key={key}
+                  onClick={() => setFormData({ ...formData, icon: key })}
                   style={{
-                    border: "none",
-                    background: "none",
-                    fontSize: "13px",
-                    outline: "none",
-                    width: "100%",
+                    cursor: "pointer",
+                    width: "36px",
+                    height: "36px",
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: "8px",
+                    backgroundColor:
+                      formData.icon === key ? COLORS.primary : "transparent",
+                    color: formData.icon === key ? "#fff" : COLORS.textMuted,
                   }}
-                  placeholder="Search icons..."
-                  value={iconSearch}
-                  onChange={(e) => setIconSearch(e.target.value)}
-                />
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(8, 1fr)",
-                  gap: "8px",
-                  padding: "12px",
-                  maxHeight: "160px",
-                  overflowY: "auto",
-                }}
-              >
-                {filteredIcons.map((key) => (
-                  <div
-                    key={key}
-                    onClick={() => setFormData({ ...formData, icon: key })}
-                    className="icon-grid-item"
-                    style={{
-                      cursor: "pointer",
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "8px",
-                      display: "grid",
-                      placeItems: "center",
-                      backgroundColor:
-                        formData.icon === key ? COLORS.primary : "#fff",
-                      color: formData.icon === key ? "#fff" : COLORS.textMuted,
-                      border: `1px solid ${COLORS.borderColor}`,
-                    }}
-                  >
-                    <DynamicIcon name={key} size={18} color="currentColor" />
-                  </div>
-                ))}
-              </div>
+                >
+                  <DynamicIcon name={key} size={18} color="currentColor" />
+                </div>
+              ))}
             </div>
           </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "13px",
-                fontWeight: "700",
-                color: COLORS.textSecondary,
-                marginBottom: "8px",
-              }}
-            >
-              NAME
-            </label>
-            <input
-              style={styles.input}
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="e.g. Creative Engineering"
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "13px",
-                fontWeight: "700",
-                color: COLORS.textSecondary,
-                marginBottom: "8px",
-              }}
-            >
-              DESCRIPTION
-            </label>
-            <textarea
-              style={{ ...styles.input, height: "100px", resize: "none" }}
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="What does this department do?"
-            />
-          </div>
+          <input
+            style={styles.input}
+            placeholder="Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+          <textarea
+            style={{ ...styles.input, height: "100px" }}
+            placeholder="Description"
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+          />
         </div>
       </Modal>
 
-      {/* Delete Modal */}
       <Modal
         open={deleteOpen}
-        title="Permanently Delete?"
+        title="Delete?"
         onClose={() => setDeleteOpen(false)}
         actions={
-          <>
+          <React.Fragment>
             <button
               className="outline-btn"
               onClick={() => setDeleteOpen(false)}
             >
-              Go Back
+              No
             </button>
             <button className="danger-btn" onClick={handleDelete}>
-              {deleting ? "Deleting..." : "Delete Department"}
+              Delete
             </button>
-          </>
+          </React.Fragment>
         }
       >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              backgroundColor: COLORS.redLight,
-              borderRadius: "50%",
-              display: "grid",
-              placeItems: "center",
-              margin: "0 auto 20px",
-            }}
-          >
-            <AlertTriangle color={COLORS.red} size={32} />
-          </div>
-          <p
-            style={{
-              color: COLORS.textSecondary,
-              lineHeight: "1.6",
-              margin: 0,
-            }}
-          >
-            This action is irreversible. All associations with this department
-            will be permanently removed.
-          </p>
-        </div>
+        <p>This action cannot be undone.</p>
       </Modal>
 
-      {/* FLASH MESSAGE / TOAST COMPONENT */}
       {toast && (
         <div
           style={{
             position: "fixed",
-            bottom: "32px",
-            right: "32px",
-            zIndex: 9999, // Ensure it sits on top of modals
-            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5", // Red or Green bg
-            border: `1px solid ${toast.type === "error" ? "#ef4444" : "#10b981"}`,
+            bottom: "24px",
+            right: "24px",
+            backgroundColor: "#fff",
+            padding: "16px",
             borderRadius: "12px",
-            padding: "16px 20px",
-            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            minWidth: "300px",
-            animation: "fadeIn 0.3s ease-out", 
+            boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
+            border: `1px solid ${
+              toast.type === "error" ? COLORS.red : COLORS.primary
+            }`,
+            zIndex: 10001,
           }}
         >
-          {/* Icon based on type */}
-          <div
-            style={{
-              backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5",
-              padding: "8px",
-              borderRadius: "50%",
-              display: "flex",
-            }}
-          >
-            {toast.type === "error" ? (
-              <AlertTriangle size={20} color="#dc2626" />
-            ) : (
-              <CheckCircle size={20} color="#059669" />
-            )}
-          </div>
-
-          {/* Message Content */}
-          <div style={{ flex: 1 }}>
-            <h4
-              style={{
-                margin: "0 0 4px 0",
-                fontSize: "14px",
-                fontWeight: "700",
-                color: toast.type === "error" ? "#991b1b" : "#065f46",
-              }}
-            >
-              {toast.type === "error" ? "Error" : "Success"}
-            </h4>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "13px",
-                color: toast.type === "error" ? "#b91c1c" : "#047857",
-              }}
-            >
-              {toast.message}
-            </p>
-          </div>
-
-          {/* Close Button */}
-          <button
-            onClick={() => setToast(null)}
-            style={{
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              padding: "4px",
-              opacity: 0.6,
-            }}
-          >
-            <X size={16} color={toast.type === "error" ? "#991b1b" : "#065f46"} />
-          </button>
+          {toast.message}
         </div>
       )}
     </div>
