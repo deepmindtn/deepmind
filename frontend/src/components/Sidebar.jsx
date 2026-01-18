@@ -101,7 +101,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
           
           {isOpen && (
             <div className="profile-details">
-              <span className="profile-name">{userName}</span>
+              <span className="profile-sidebar-name">{userName}</span>
               <span className="profile-role-tag">{role === "HR" ? "Admin" : "Member"}</span>
             </div>
           )}
