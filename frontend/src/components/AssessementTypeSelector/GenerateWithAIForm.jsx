@@ -118,6 +118,157 @@ const styles = {
   },
 };
 
+const responsiveStyles = `
+  @media (max-width: 1024px) {
+    .ai-form-main-wrapper {
+      padding: 32px 24px !important;
+    }
+    .ai-form-settings-grid {
+      grid-template-columns: 1fr !important;
+      gap: 20px !important;
+    }
+    .ai-form-schedule-section {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 20px !important;
+    }
+    .ai-form-schedule-container {
+      width: 100% !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .ai-form-container {
+      padding: 5px 10px !important;
+    }
+    .ai-form-main-wrapper {
+      padding: 24px 16px !important;
+      border-radius: 20px !important;
+    }
+    .ai-form-header {
+      margin-bottom: 32px !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+    }
+    .ai-form-header h1 {
+      font-size: 28px !important;
+    }
+    .ai-form-header p {
+      font-size: 15px !important;
+    }
+    .ai-form-card {
+      padding: 20px !important;
+    }
+    .ai-form-content-wrapper {
+      gap: 24px !important;
+    }
+    .ai-form-action-section {
+      margin-top: 12px !important;
+      padding-top: 24px !important;
+    }
+    .ai-form-btn-primary {
+      width: 100% !important;
+      padding: 12px 24px !important;
+      font-size: 15px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .ai-form-container {
+      padding: 5px 8px !important;
+    }
+    .ai-form-main-wrapper {
+      padding: 20px 12px !important;
+      border-radius: 16px !important;
+    }
+    .ai-form-header {
+      margin-bottom: 24px !important;
+    }
+    .ai-form-header-title-wrapper {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+    .ai-form-header h1 {
+      font-size: 24px !important;
+    }
+    .ai-form-header p {
+      font-size: 14px !important;
+    }
+    .ai-form-icon-box {
+      padding: 8px !important;
+    }
+    .ai-form-icon-box svg {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    .ai-form-card {
+      padding: 16px !important;
+    }
+    .ai-form-content-wrapper {
+      gap: 20px !important;
+    }
+    .ai-form-label {
+      font-size: 13px !important;
+      margin-bottom: 8px !important;
+    }
+    .ai-form-label svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+    .ai-form-textarea {
+      min-height: 120px !important;
+      font-size: 15px !important;
+      padding: 10px 14px !important;
+    }
+    .ai-form-suggestion-chip {
+      font-size: 11px !important;
+      padding: 3px 8px !important;
+    }
+    .ai-form-card-description {
+      font-size: 12px !important;
+      margin-bottom: 12px !important;
+    }
+    .ai-form-schedule-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+    .ai-form-schedule-title {
+      font-size: 14px !important;
+    }
+    .ai-form-schedule-desc {
+      font-size: 12px !important;
+    }
+    .ai-form-schedule-inner {
+      padding: 12px 14px !important;
+    }
+    .ai-form-action-section {
+      padding-top: 20px !important;
+    }
+    .ai-form-btn-primary {
+      padding: 10px 20px !important;
+      font-size: 14px !important;
+    }
+    .ai-form-btn-primary svg {
+      width: 18px !important;
+      height: 18px !important;
+    }
+  }
+
+  .spin { 
+    animation: spin 1s linear infinite; 
+  } 
+  @keyframes spin { 
+    from { transform: rotate(0deg); } 
+    to { transform: rotate(360deg); } 
+  } 
+  textarea:focus { 
+    border-color: ${COLORS.primary} !important; 
+    box-shadow: 0 0 0 4px ${COLORS.primaryLight}; 
+  }
+`;
+
 const GenerateWithAIForm = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -138,14 +289,15 @@ const GenerateWithAIForm = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } textarea:focus { border-color: ${COLORS.primary} !important; box-shadow: 0 0 0 4px ${COLORS.primaryLight}; }`}</style>
+    <div className="ai-form-container" style={styles.container}>
+      <style>{responsiveStyles}</style>
 
-      <div style={styles.mainWrapperCard}>
+      <div className="ai-form-main-wrapper" style={styles.mainWrapperCard}>
         {/* Header Section */}
-        <div style={styles.sectionHeader}>
+        <div className="ai-form-header" style={styles.sectionHeader}>
           <div>
             <div
+              className="ai-form-header-title-wrapper"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -153,7 +305,7 @@ const GenerateWithAIForm = () => {
                 marginBottom: "8px",
               }}
             >
-              <div style={styles.iconBox}>
+              <div className="ai-form-icon-box" style={styles.iconBox}>
                 <Sparkles size={24} color={COLORS.primary} />
               </div>
               <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
@@ -172,14 +324,15 @@ const GenerateWithAIForm = () => {
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+        <div className="ai-form-content-wrapper" style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
           {/* Main Prompt Area - Full Width */}
-          <div style={styles.card}>
-            <label style={styles.label}>
+          <div className="ai-form-card" style={styles.card}>
+            <label className="ai-form-label" style={styles.label}>
               <Wand2 size={18} color={COLORS.primary} />
               The AI Prompt
             </label>
             <textarea
+              className="ai-form-textarea"
               style={{
                 ...styles.input,
                 minHeight: "140px",
@@ -191,8 +344,9 @@ const GenerateWithAIForm = () => {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g. Create a professional survey for high-level executives regarding digital transformation challenges in 2026..."
             />
-            <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <span
+                className="ai-form-suggestion-chip"
                 style={{
                   fontSize: "12px",
                   color: COLORS.textMuted,
@@ -204,6 +358,7 @@ const GenerateWithAIForm = () => {
                 Suggested: Employee Engagement
               </span>
               <span
+                className="ai-form-suggestion-chip"
                 style={{
                   fontSize: "12px",
                   color: COLORS.textMuted,
@@ -219,6 +374,7 @@ const GenerateWithAIForm = () => {
 
           {/* Settings Grid - 2 Columns */}
           <div
+            className="ai-form-settings-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -226,12 +382,13 @@ const GenerateWithAIForm = () => {
             }}
           >
             {/* Response Configuration */}
-            <div style={styles.card}>
-              <label style={styles.label}>
+            <div className="ai-form-card" style={styles.card}>
+              <label className="ai-form-label" style={styles.label}>
                 <Layout size={18} color={COLORS.primary} />
                 Response Format
               </label>
               <div
+                className="ai-form-card-description"
                 style={{
                   color: COLORS.textSecondary,
                   fontSize: "13px",
@@ -259,12 +416,13 @@ const GenerateWithAIForm = () => {
             </div>
 
             {/* Target Audience */}
-            <div style={styles.card}>
-              <label style={styles.label}>
+            <div className="ai-form-card" style={styles.card}>
+              <label className="ai-form-label" style={styles.label}>
                 <Target size={18} color={COLORS.primary} />
                 Target Audience
               </label>
               <div
+                className="ai-form-card-description"
                 style={{
                   color: COLORS.textSecondary,
                   fontSize: "13px",
@@ -291,6 +449,7 @@ const GenerateWithAIForm = () => {
 
           {/* Schedule Section */}
           <div
+            className="ai-form-card ai-form-schedule-section"
             style={{
               ...styles.card,
               display: "flex",
@@ -299,8 +458,9 @@ const GenerateWithAIForm = () => {
               backgroundColor: "#fcfcfd",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div className="ai-form-schedule-header" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <div
+                className="ai-form-icon-box"
                 style={{
                   ...styles.iconBox,
                   backgroundColor: COLORS.primaryLight,
@@ -309,10 +469,11 @@ const GenerateWithAIForm = () => {
                 <Calendar size={20} color={COLORS.primary} />
               </div>
               <div>
-                <div style={{ fontWeight: "700", fontSize: "15px" }}>
+                <div className="ai-form-schedule-title" style={{ fontWeight: "700", fontSize: "15px" }}>
                   Delivery Schedule
                 </div>
                 <div
+                  className="ai-form-schedule-desc"
                   style={{
                     fontSize: "13px",
                     color: COLORS.textSecondary,
@@ -324,8 +485,9 @@ const GenerateWithAIForm = () => {
             </div>
 
             {/* Wider container */}
-            <div style={{ width: "65%" }}>
+            <div className="ai-form-schedule-container" style={{ width: "65%" }}>
               <div
+                className="ai-form-schedule-inner"
                 style={{
                   padding: "16px 18px",
                   borderRadius: "14px",
@@ -341,6 +503,7 @@ const GenerateWithAIForm = () => {
 
           {/* Form Action */}
           <div
+            className="ai-form-action-section"
             style={{
               display: "flex",
               justifyContent: "flex-end",
@@ -350,6 +513,7 @@ const GenerateWithAIForm = () => {
             }}
           >
             <button
+              className="ai-form-btn-primary"
               style={{
                 ...styles.btnPrimary,
                 opacity: isGenerating ? 0.7 : 1,

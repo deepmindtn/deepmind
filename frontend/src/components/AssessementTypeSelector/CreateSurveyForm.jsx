@@ -134,6 +134,178 @@ const styles = {
   },
 };
 
+const responsiveStyles = `
+  @media (max-width: 1024px) {
+    .survey-builder-main-wrapper {
+      padding: 32px 24px !important;
+    }
+    .survey-builder-settings-grid {
+      grid-template-columns: 1fr !important;
+      gap: 20px !important;
+    }
+    .survey-builder-schedule-section {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 20px !important;
+    }
+    .survey-builder-schedule-container {
+      width: 100% !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .survey-builder-container {
+      padding: 5px 10px !important;
+    }
+    .survey-builder-main-wrapper {
+      padding: 24px 16px !important;
+      border-radius: 20px !important;
+    }
+    .survey-builder-header {
+      margin-bottom: 32px !important;
+    }
+    .survey-builder-header h1 {
+      font-size: 28px !important;
+    }
+    .survey-builder-header p {
+      font-size: 15px !important;
+    }
+    .survey-builder-choice-wrapper {
+      flex-direction: column !important;
+      gap: 16px !important;
+    }
+    .survey-builder-card {
+      padding: 20px !important;
+    }
+    .survey-builder-content-wrapper {
+      gap: 20px !important;
+    }
+    .survey-builder-btn-primary {
+      width: 100% !important;
+      padding: 12px 24px !important;
+      font-size: 15px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .survey-builder-container {
+      padding: 5px 8px !important;
+    }
+    .survey-builder-main-wrapper {
+      padding: 20px 12px !important;
+      border-radius: 16px !important;
+    }
+    .survey-builder-header {
+      margin-bottom: 24px !important;
+    }
+    .survey-builder-header-title-wrapper {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+    .survey-builder-header h1 {
+      font-size: 24px !important;
+    }
+    .survey-builder-header p {
+      font-size: 14px !important;
+    }
+    .survey-builder-icon-box {
+      padding: 8px !important;
+    }
+    .survey-builder-icon-box svg {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    .survey-builder-choice-wrapper {
+      gap: 12px !important;
+    }
+    .survey-builder-choice-card {
+      padding: 20px !important;
+    }
+    .survey-builder-choice-card svg {
+      width: 24px !important;
+      height: 24px !important;
+    }
+    .survey-builder-choice-title {
+      font-size: 14px !important;
+    }
+    .survey-builder-choice-desc {
+      font-size: 11px !important;
+    }
+    .survey-builder-card {
+      padding: 16px !important;
+    }
+    .survey-builder-content-wrapper {
+      gap: 16px !important;
+    }
+    .survey-builder-label {
+      font-size: 13px !important;
+      margin-bottom: 10px !important;
+    }
+    .survey-builder-label svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+    .survey-builder-question-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      margin-bottom: 16px !important;
+    }
+    .survey-builder-btn-secondary {
+      padding: 8px 14px !important;
+      font-size: 13px !important;
+      width: 100%;
+    }
+    .survey-builder-btn-secondary svg {
+      width: 14px !important;
+      height: 14px !important;
+    }
+    .survey-builder-question-row {
+      padding: 12px !important;
+      gap: 8px !important;
+      margin-bottom: 10px !important;
+    }
+    .survey-builder-question-number {
+      font-size: 13px !important;
+      width: 25px !important;
+    }
+    .survey-builder-question-input {
+      font-size: 14px !important;
+      padding: 8px 12px !important;
+    }
+    .survey-builder-question-delete svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+    .survey-builder-upload-area {
+      padding: 30px 20px !important;
+    }
+    .survey-builder-schedule-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+    .survey-builder-schedule-title {
+      font-size: 14px !important;
+    }
+    .survey-builder-schedule-desc {
+      font-size: 12px !important;
+    }
+    .survey-builder-schedule-inner {
+      padding: 12px 14px !important;
+    }
+    .survey-builder-btn-primary {
+      padding: 10px 20px !important;
+      font-size: 14px !important;
+    }
+    .survey-builder-btn-primary svg {
+      width: 18px !important;
+      height: 18px !important;
+    }
+  }
+`;
+
 const CreateSurveyForm = () => {
   const [option, setOption] = useState("manual"); // 'upload' | 'manual'
   const [questions, setQuestions] = useState([{ id: Date.now(), text: "" }]);
@@ -154,11 +326,14 @@ const CreateSurveyForm = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.mainWrapperCard}>
+    <div className="survey-builder-container" style={styles.container}>
+      <style>{responsiveStyles}</style>
+
+      <div className="survey-builder-main-wrapper" style={styles.mainWrapperCard}>
         {/* Header */}
-        <div style={styles.sectionHeader}>
+        <div className="survey-builder-header" style={styles.sectionHeader}>
           <div
+            className="survey-builder-header-title-wrapper"
             style={{
               display: "flex",
               alignItems: "center",
@@ -167,6 +342,7 @@ const CreateSurveyForm = () => {
             }}
           >
             <div
+              className="survey-builder-icon-box"
               style={{
                 padding: "10px",
                 backgroundColor: COLORS.primaryLight,
@@ -186,10 +362,11 @@ const CreateSurveyForm = () => {
           </p>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        <div className="survey-builder-content-wrapper" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           {/* Methodology Choice */}
-          <div style={{ display: "flex", gap: "20px" }}>
+          <div className="survey-builder-choice-wrapper" style={{ display: "flex", gap: "20px" }}>
             <div
+              className="survey-builder-choice-card"
               style={styles.choiceCard(option === "upload")}
               onClick={() => setOption("upload")}
             >
@@ -199,6 +376,7 @@ const CreateSurveyForm = () => {
               />
               <div style={{ textAlign: "center" }}>
                 <div
+                  className="survey-builder-choice-title"
                   style={{
                     fontWeight: "700",
                     color:
@@ -209,12 +387,13 @@ const CreateSurveyForm = () => {
                 >
                   Upload File
                 </div>
-                <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>
+                <div className="survey-builder-choice-desc" style={{ fontSize: "12px", color: COLORS.textSecondary }}>
                   Import PDF or Excel
                 </div>
               </div>
             </div>
             <div
+              className="survey-builder-choice-card"
               style={styles.choiceCard(option === "manual")}
               onClick={() => setOption("manual")}
             >
@@ -224,6 +403,7 @@ const CreateSurveyForm = () => {
               />
               <div style={{ textAlign: "center" }}>
                 <div
+                  className="survey-builder-choice-title"
                   style={{
                     fontWeight: "700",
                     color:
@@ -234,7 +414,7 @@ const CreateSurveyForm = () => {
                 >
                   Build Manually
                 </div>
-                <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>
+                <div className="survey-builder-choice-desc" style={{ fontSize: "12px", color: COLORS.textSecondary }}>
                   Write custom questions
                 </div>
               </div>
@@ -242,13 +422,14 @@ const CreateSurveyForm = () => {
           </div>
 
           {/* Dynamic Content Area */}
-          <div style={styles.card}>
+          <div className="survey-builder-card" style={styles.card}>
             {option === "upload" ? (
               <div>
-                <label style={styles.label}>
+                <label className="survey-builder-label" style={styles.label}>
                   <FileText size={18} color={COLORS.primary} /> Document Upload
                 </label>
                 <div
+                  className="survey-builder-upload-area"
                   style={{
                     padding: "40px",
                     border: `2px dashed ${COLORS.borderColor}`,
@@ -262,6 +443,7 @@ const CreateSurveyForm = () => {
             ) : (
               <div>
                 <div
+                  className="survey-builder-question-header"
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
@@ -269,10 +451,11 @@ const CreateSurveyForm = () => {
                     marginBottom: "20px",
                   }}
                 >
-                  <label style={{ ...styles.label, marginBottom: 0 }}>
+                  <label className="survey-builder-label" style={{ ...styles.label, marginBottom: 0 }}>
                     <Edit3 size={18} color={COLORS.primary} /> Question List
                   </label>
                   <button
+                    className="survey-builder-btn-secondary"
                     style={styles.btnSecondary}
                     onClick={handleAddQuestion}
                   >
@@ -281,8 +464,9 @@ const CreateSurveyForm = () => {
                 </div>
 
                 {questions.map((q, i) => (
-                  <div key={q.id} style={styles.questionRow}>
+                  <div key={q.id} className="survey-builder-question-row" style={styles.questionRow}>
                     <div
+                      className="survey-builder-question-number"
                       style={{
                         fontWeight: "700",
                         color: COLORS.textMuted,
@@ -292,6 +476,7 @@ const CreateSurveyForm = () => {
                       {i + 1}.
                     </div>
                     <input
+                      className="survey-builder-question-input"
                       style={{
                         ...styles.input,
                         border: "none",
@@ -308,6 +493,7 @@ const CreateSurveyForm = () => {
                     />
                     {questions.length > 1 && (
                       <button
+                        className="survey-builder-question-delete"
                         onClick={() => handleRemoveQuestion(q.id)}
                         style={{
                           background: "none",
@@ -328,14 +514,15 @@ const CreateSurveyForm = () => {
 
           {/* Settings Grid */}
           <div
+            className="survey-builder-settings-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: "24px",
             }}
           >
-            <div style={styles.card}>
-              <label style={styles.label}>
+            <div className="survey-builder-card" style={styles.card}>
+              <label className="survey-builder-label" style={styles.label}>
                 <Layout size={18} color={COLORS.primary} /> Response Setup
               </label>
               <ResponseOptions
@@ -343,8 +530,8 @@ const CreateSurveyForm = () => {
                 onChange={setResponseType}
               />
             </div>
-            <div style={styles.card}>
-              <label style={styles.label}>
+            <div className="survey-builder-card" style={styles.card}>
+              <label className="survey-builder-label" style={styles.label}>
                 <Target size={18} color={COLORS.primary} /> Recipients
               </label>
               <AudienceSelector value={audience} onChange={setAudience} />
@@ -353,6 +540,7 @@ const CreateSurveyForm = () => {
 
           {/* Footer Schedule Bar */}
           <div
+            className="survey-builder-card survey-builder-schedule-section"
             style={{
               ...styles.card,
               display: "flex",
@@ -361,20 +549,23 @@ const CreateSurveyForm = () => {
               backgroundColor: "#fcfcfd",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div className="survey-builder-schedule-header" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <div
+                className="survey-builder-icon-box"
                 style={{
-                  ...styles.iconBox,
+                  padding: "10px",
                   backgroundColor: COLORS.primaryLight,
+                  borderRadius: "12px",
                 }}
               >
                 <Calendar size={20} color={COLORS.primary} />
               </div>
               <div>
-                <div style={{ fontWeight: "700", fontSize: "15px" }}>
+                <div className="survey-builder-schedule-title" style={{ fontWeight: "700", fontSize: "15px" }}>
                   Delivery Schedule
                 </div>
                 <div
+                  className="survey-builder-schedule-desc"
                   style={{
                     fontSize: "13px",
                     color: COLORS.textSecondary,
@@ -386,8 +577,9 @@ const CreateSurveyForm = () => {
             </div>
 
             {/* Wider container */}
-            <div style={{ width: "65%" }}>
+            <div className="survey-builder-schedule-container" style={{ width: "65%" }}>
               <div
+                className="survey-builder-schedule-inner"
                 style={{
                   padding: "16px 18px",
                   borderRadius: "14px",
@@ -402,7 +594,7 @@ const CreateSurveyForm = () => {
           </div>
 
           {/* Final Action */}
-          <button style={styles.btnPrimary} onClick={handleSubmit}>
+          <button className="survey-builder-btn-primary" style={styles.btnPrimary} onClick={handleSubmit}>
             <CheckCircle2 size={20} />
             Launch Custom Survey
           </button>
