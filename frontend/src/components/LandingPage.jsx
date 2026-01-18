@@ -143,7 +143,13 @@ const LandingPage = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
             <div className="logo-icon">
-              <Heart size={20} color="white" />
+              <img
+                src="/icon_sidebar.png"
+                alt="DeepMind logo"
+                width={22}
+                height={22}
+                style={{ objectFit: "contain" }}
+              ></img>
             </div>
             <span className="logo-text">DeepMind</span>
           </div>
