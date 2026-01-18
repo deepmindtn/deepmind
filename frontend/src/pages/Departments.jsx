@@ -82,20 +82,20 @@ import {
 // Theme & Constants
 // -----------------------
 const COLORS = {
-  primary: "#10b981",
-  primaryLight: "#ecfdf5",
-  primaryDark: "#059669",
-  secondary: "#14b8a6",
-  bgMain: "#f8fafc",
-  cardBg: "#ffffff",
-  textPrimary: "#1f2937",
-  textSecondary: "#6b7280",
-  textMuted: "#9ca3af",
-  borderColor: "#e5e7eb",
-  red: "#ef4444",
-  redLight: "#fef2f2",
-  shadowHuge:
-    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  primary: "var(--primary)",
+  primaryLight: "var(--primary-light)",
+  primaryDark: "var(--primary-dark)",
+  secondary: "var(--secondary)",
+  blue: "var(--blue)",
+  blueLight: "var(--blue-light)",
+  bgMain: "var(--bg-main)",
+  cardBg: "var(--card-bg)",
+  textPrimary: "var(--text-primary)",
+  textSecondary: "var(--text-secondary)",
+  textMuted: "var(--text-muted)",
+  borderColor: "var(--border-color)",
+  red: "#ef4444", // Usually remains red in both modes
+  shadowHuge: "var(--shadow-huge)",
 };
 
 const ICON_MAP = {
@@ -389,7 +389,7 @@ export default function Departments() {
         .icon-selector { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; padding: 12px; max-height: 160px; overflow-y: auto; }
         
         .emerald-btn { background: ${COLORS.primary}; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .outline-btn { background: white; border: 1px solid ${COLORS.borderColor}; padding: 10px 20px; border-radius: 12px; font-weight: 700; color: ${COLORS.textSecondary}; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .outline-btn { background: ${COLORS.cardBg}; border: 1px solid ${COLORS.borderColor}; padding: 10px 20px; border-radius: 12px; font-weight: 700; color: ${COLORS.textSecondary}; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .danger-btn { background: ${COLORS.red}; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 
         @media (max-width: 1024px) { .responsive-wrapper { padding: 24px; } }
@@ -491,7 +491,7 @@ export default function Departments() {
             <div
               key={r.id}
               style={{
-                backgroundColor: "#fff",
+                backgroundColor: COLORS.cardBg,
                 border: `1px solid ${COLORS.borderColor}`,
                 borderRadius: "20px",
                 padding: "28px",

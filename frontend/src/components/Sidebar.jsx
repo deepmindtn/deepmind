@@ -1,13 +1,13 @@
 import React from "react";
 import {
   Heart, Users, Home, ClipboardList, Bolt, Brain, 
-  LogOut, User, ChevronLeft, ChevronRight, FileText,
+  LogOut, User, ChevronLeft, ChevronRight,
   Search, Briefcase, Zap
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Sidebar.css";
 
-const Sidebar = ({ isOpen, toggleSidebar }) => {
+const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -39,25 +39,26 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     window.location.reload();
   };
 
-  // Inside Sidebar component, update the navigation clicks:
-const handleNavClick = (path) => {
-  navigate(path);
-  if (isMobile) toggleSidebar(); // Close sidebar after selecting on mobile
-};
+  const handleNavClick = (path) => {
+    navigate(path);
+    if (isMobile) toggleSidebar(); 
+  };
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
 
   return (
     <div className={`sidebar-island ${!isOpen ? "collapsed" : ""}`}>
       {/* Integrated Toggle Button */}
-      <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
-        {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-      </button>
+      {!isMobile && (
+        <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
+          {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+      )}
 
       {/* Logo Section */}
       <div className="sidebar-header">
         <div className="logo-box-emerald">
-          <Heart className="heart-icon-white" fill="white" />
+          <Heart size={22} fill="white" color="white" />
         </div>
         {isOpen && <span className="brand-name">DeepMind</span>}
       </div>
@@ -70,10 +71,10 @@ const handleNavClick = (path) => {
             const active = isActive(item.path);
             return (
               <button
-              key={item.label}
-              onClick={() => handleNavClick(item.path)} // Changed to the new handler
-              className={`nav-link ${active ? "active" : ""}`}
-            >
+                key={item.label}
+                onClick={() => handleNavClick(item.path)}
+                className={`nav-link ${active ? "active" : ""}`}
+              >
                 <div className={`nav-icon-container ${active ? "active" : ""}`}>
                   <Icon size={20} />
                 </div>
