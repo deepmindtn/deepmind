@@ -171,6 +171,7 @@ const ICON_MAP = {
 
 const styles = {
   container: {
+    padding: "5px 14px",
     backgroundColor: COLORS.bgMain,
     minHeight: "100vh",
     fontFamily: "'Inter', system-ui, sans-serif",
