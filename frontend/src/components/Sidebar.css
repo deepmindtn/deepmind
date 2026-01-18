@@ -1,12 +1,7 @@
+/* Sidebar.css */
 :root {
-  --emerald-primary: #10b981;
-  --emerald-dark: #059669;
-  --emerald-light: #ecfdf5;
-  --slate-700: #334155;
-  --slate-400: #94a3b8;
   --sidebar-width: 280px;
   --sidebar-collapsed: 88px;
-  --shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .sidebar-island {
@@ -15,10 +10,12 @@
   top: 24px;
   bottom: 15px;
   width: var(--sidebar-width);
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  /* Theme Aware */
+  border: 1px solid var(--border-color);
+  /* Theme Aware */
   border-radius: 24px;
-  box-shadow: var(--shadow-premium);
+  box-shadow: var(--shadow-huge);
   display: flex;
   flex-direction: column;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -40,7 +37,7 @@
 .logo-box-emerald {
   width: 42px;
   height: 42px;
-  background: linear-gradient(135deg, var(--emerald-primary), #14b8a6);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -52,7 +49,8 @@
 .brand-name {
   font-size: 20px;
   font-weight: 800;
-  color: #1f2937;
+  color: var(--text-primary);
+  /* Theme Aware */
   letter-spacing: -0.02em;
 }
 
@@ -78,19 +76,22 @@
   border-radius: 16px;
   cursor: pointer;
   transition: 0.2s;
-  color: var(--slate-400);
+  color: var(--text-muted);
+  /* Theme Aware */
   position: relative;
   width: 100%;
 }
 
 .nav-link:hover {
-  background: #f8fafc;
-  color: var(--slate-700);
+  background: var(--bg-main);
+  /* Theme Aware */
+  color: var(--text-primary);
 }
 
 .nav-link.active {
-  background: var(--emerald-light);
-  color: var(--emerald-dark);
+  background: var(--primary-light);
+  /* Theme Aware */
+  color: var(--primary-dark);
 }
 
 .nav-icon-container {
@@ -104,8 +105,9 @@
 }
 
 .nav-link.active .nav-icon-container {
-  background: var(--emerald-primary);
+  background: var(--primary);
   color: white;
+  /* Maintain contrast on green background */
   box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.2);
 }
 
@@ -119,7 +121,7 @@
   right: 12px;
   width: 6px;
   height: 6px;
-  background: var(--emerald-primary);
+  background: var(--primary);
   border-radius: 50%;
 }
 
@@ -129,8 +131,10 @@
 }
 
 .profile-mini-card {
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
+  background: var(--bg-main);
+  /* Theme Aware */
+  border: 1px solid var(--border-color);
+  /* Theme Aware */
   border-radius: 20px;
   padding: 12px;
   display: flex;
@@ -147,7 +151,8 @@
 .avatar-emerald {
   width: 40px;
   height: 40px;
-  background: #334155;
+  background: var(--dark);
+  /* Adjusted for theme */
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -158,7 +163,7 @@
 
 .avatar-emerald:hover {
   transform: scale(1.05);
-  background: var(--emerald-primary);
+  background: var(--primary);
 }
 
 .profile-details {
@@ -171,7 +176,7 @@
 .profile-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--slate-700);
+  color: var(--text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -180,14 +185,14 @@
 .profile-role-tag {
   font-size: 11px;
   font-weight: 600;
-  color: var(--slate-400);
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .logout-action {
-  background: white;
-  border: 1px solid #fee2e2;
-  color: #ef4444;
+  background: var(--card-bg);
+  border: 1px solid var(--red);
+  color: var(--red);
   padding: 8px;
   border-radius: 10px;
   cursor: pointer;
@@ -195,7 +200,7 @@
 }
 
 .logout-action:hover {
-  background: #ef4444;
+  background: var(--red);
   color: white;
 }
 
@@ -206,117 +211,57 @@
   top: 86px;
   width: 28px;
   height: 28px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  color: var(--slate-400);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-muted);
   z-index: 10;
 }
 
 .sidebar-toggle-btn:hover {
-  color: var(--emerald-primary);
-  border-color: var(--emerald-primary);
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.nav-text, .brand-name, .profile-details {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-
-/* --- Mobile Responsive Logic --- */
-
-/* The Overlay Background */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.3);
-  backdrop-filter: blur(4px);
-  z-index: 999; /* Just below the sidebar */
-  animation: fadeIn 0.3s ease;
-}
-
-/* Mobile Header Bar */
-.mobile-top-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  border-bottom: 1px solid #e5e7eb;
-  z-index: 900;
-}
-
-.mobile-menu-btn {
-  background: #ecfdf5;
-  border: none;
-  padding: 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mobile-logo-text {
-  font-weight: 800;
-  color: var(--slate-700);
-  font-size: 18px;
-}
-
+/* --- Mobile Logic --- */
 @media (max-width: 1024px) {
   .sidebar-island {
     left: 0;
     top: 0;
     bottom: 0;
-    border-radius: 0 24px 24px 0; /* Curve only the right side */
+    border-radius: 0 24px 24px 0;
     width: 280px;
-    transform: translateX(-100%); /* Hide completely off-screen */
-    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.1);
+    height: 100vh;
+    transform: translateX(-100%);
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.2);
   }
 
-  /* When open on mobile, slide in */
   .sidebar-island:not(.collapsed) {
     transform: translateX(0);
   }
 
-  /* Hide the toggle chevron on mobile (redundant with overlay/menu btn) */
   .sidebar-toggle-btn {
     display: none;
   }
+}
 
-  /* Make sidebar full height on mobile */
-  .sidebar-island {
-    height: 100vh;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 
-  /* Make header tighter on mobile */
-  .sidebar-header {
-    padding: 24px 20px;
+  to {
+    opacity: 1;
   }
 }
 
-/* For very small screens, make sidebar slightly narrower */
-@media (max-width: 480px) {
-  .sidebar-island {
-    width: 260px;
-  }
+.nav-text,
+.brand-name,
+.profile-details {
+  animation: fadeIn 0.3s ease-in-out;
 }

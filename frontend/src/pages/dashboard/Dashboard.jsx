@@ -18,24 +18,28 @@ import Chart from "react-apexcharts";
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary: "#10b981",
-  primaryLight: "#ecfdf5",
-  primaryDark: "#059669",
-  secondary: "#14b8a6",
-  blue: "#3b82f6",
-  blueLight: "#eff6ff",
-  purple: "#8b5cf6",
-  purpleLight: "#f5f3ff",
-  orange: "#f59e0b",
-  red: "#ef4444",
-  bgMain: "#f8fafc",
-  cardBg: "#ffffff",
-  textPrimary: "#1f2937",
-  textSecondary: "#6b7280",
-  textMuted: "#9ca3af",
-  borderColor: "#e5e7eb",
-  shadowHuge:
-    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  primary: "var(--primary)",
+  primaryLight: "var(--primary-light)",
+  primaryDark: "var(--primary-dark)",
+  secondary: "var(--secondary)",
+  blue: "var(--blue)",
+  blueLight: "var(--blue-light)",
+  purple: "var(--purple)",
+  purpleLight: "var(--purple-light)",
+  orange: "var(--orange)",
+  orangeLight: "var(--orange-light)",
+  red: "var(--red)",
+  dark: "var(--dark)",
+  bgMain: "var(--bg-main)",
+  cardBg: "var(--card-bg)",
+  textPrimary: "var(--text-primary)",
+  textSecondary: "var(--text-secondary)",
+  textMuted: "var(--text-muted)",
+  borderColor: "var(--border-color)",
+  shadowSm: "var(--shadow-sm)",
+  shadowMd: "var(--shadow-md)",
+  shadowLg: "var(--shadow-lg)",
+  shadowHuge: "var(--shadow-huge)",
 };
 
 const CHART_COLORS = [
@@ -599,11 +603,17 @@ const Dashboard = () => {
             >
               <BarChart2 size={24} color={COLORS.primary} />
             </div>
-            <h1 className="dashboard-header-title" style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
+            <h1
+              className="dashboard-header-title"
+              style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}
+            >
               Analytical Dashboard
             </h1>
           </div>
-          <p className="dashboard-header-subtitle" style={{ color: COLORS.textSecondary, fontSize: "16px" }}>
+          <p
+            className="dashboard-header-subtitle"
+            style={{ color: COLORS.textSecondary, fontSize: "16px" }}
+          >
             Comprehensive overview of organization health and assessment
             performance.
           </p>
@@ -681,87 +691,96 @@ const Dashboard = () => {
               }}
             >
               <div className="dashboard-chart-card" style={styles.chartCard}>
-                <h3 className="dashboard-chart-title" style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
-                  Completion Rates
-                </h3>
-                <div
-                  className="dashboard-completion-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "16px",
-                  }}
-                >
-                  {Object.entries(data.completedByTemplate).map(
-                    ([key, val]) => (
-                      <div
-                        key={key}
-                        className="dashboard-completion-item"
-                        style={{
-                          padding: "16px",
-                          background: "#f8fafc",
-                          borderRadius: "12px",
-                          border: `1px solid ${COLORS.borderColor}`,
-                        }}
-                      >
-                        <div
-                          className="dashboard-completion-label"
-                          style={{
-                            fontSize: "12px",
-                            color: COLORS.textMuted,
-                            fontWeight: "700",
-                          }}
-                        >
-                          {key}
-                        </div>
-                        <div
-                          className="dashboard-completion-value"
-                          style={{
-                            fontSize: "20px",
-                            fontWeight: "800",
-                            color: COLORS.textPrimary,
-                          }}
-                        >
-                          {val}%
-                        </div>
-                      </div>
-                    )
-                  )}
-                  <div
-                    className="dashboard-completion-item"
-                    style={{
-                      padding: "16px",
-                      background: COLORS.primaryLight,
-                      borderRadius: "12px",
-                      border: `1px solid ${COLORS.primary}`,
-                    }}
-                  >
-                    <div
-                      className="dashboard-completion-label"
-                      style={{
-                        fontSize: "12px",
-                        color: COLORS.primaryDark,
-                        fontWeight: "700",
-                      }}
-                    >
-                      BRS AVG
-                    </div>
-                    <div
-                      className="dashboard-completion-value"
-                      style={{
-                        fontSize: "20px",
-                        fontWeight: "800",
-                        color: COLORS.primaryDark,
-                      }}
-                    >
-                      {data.brsAvg}
-                    </div>
-                  </div>
-                </div>
-              </div>
+  <h3
+    className="dashboard-chart-title"
+    style={{ margin: "0 0 20px 0", fontSize: "18px", color: COLORS.textPrimary }}
+  >
+    Completion Rates
+  </h3>
+  <div
+    className="dashboard-completion-grid"
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: "16px",
+    }}
+  >
+    {Object.entries(data.completedByTemplate).map(([key, val]) => (
+      <div
+        key={key}
+        className="dashboard-completion-item"
+        style={{
+          padding: "16px",
+          /* Updated: Now uses the same background as BRS AVG */
+          background: COLORS.primaryLight, 
+          borderRadius: "12px",
+          border: `1px solid ${COLORS.primary}`,
+        }}
+      >
+        <div
+          className="dashboard-completion-label"
+          style={{
+            fontSize: "12px",
+            /* Updated: Using primaryDark for better contrast on the light green bg */
+            color: COLORS.primaryDark, 
+            fontWeight: "700",
+          }}
+        >
+          {key}
+        </div>
+        <div
+          className="dashboard-completion-value"
+          style={{
+            fontSize: "20px",
+            fontWeight: "800",
+            /* Updated: Text color now matches the primary theme */
+            color: COLORS.primaryDark,
+          }}
+        >
+          {val}%
+        </div>
+      </div>
+    ))}
+
+    {/* BRS AVG Card (Matches the loop above now) */}
+    <div
+      className="dashboard-completion-item"
+      style={{
+        padding: "16px",
+        background: COLORS.primaryLight,
+        borderRadius: "12px",
+        border: `1px solid ${COLORS.primary}`,
+      }}
+    >
+      <div
+        className="dashboard-completion-label"
+        style={{
+          fontSize: "12px",
+          color: COLORS.primaryDark,
+          fontWeight: "700",
+        }}
+      >
+        BRS AVG
+      </div>
+      <div
+        className="dashboard-completion-value"
+        style={{
+          fontSize: "20px",
+          fontWeight: "800",
+          color: COLORS.primaryDark,
+        }}
+      >
+        {data.brsAvg}
+      </div>
+    </div>
+  </div>
+</div>
 
               <div className="dashboard-chart-card" style={styles.chartCard}>
-                <h3 className="dashboard-chart-title" style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
+                <h3
+                  className="dashboard-chart-title"
+                  style={{ margin: "0 0 20px 0", fontSize: "18px" }}
+                >
                   Recent Activity
                 </h3>
                 <ActivityTimelineItem
@@ -792,7 +811,10 @@ const Dashboard = () => {
             }}
           >
             <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
                 Big Five (OCEAN) Averages
               </h4>
               <Chart
@@ -808,7 +830,12 @@ const Dashboard = () => {
               />
             </div>
             <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Maslach Burnout Averages</h4>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                Maslach Burnout Averages
+              </h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -823,7 +850,12 @@ const Dashboard = () => {
               />
             </div>
             <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Karasek Strain Factors</h4>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                Karasek Strain Factors
+              </h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -845,7 +877,12 @@ const Dashboard = () => {
               />
             </div>
             <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Karasek Quadrant</h4>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                Karasek Quadrant
+              </h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -857,7 +894,12 @@ const Dashboard = () => {
               />
             </div>
             <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>DISC Personality</h4>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                DISC Personality
+              </h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -870,7 +912,12 @@ const Dashboard = () => {
               />
             </div>
             <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Job Satisfaction (JSS)</h4>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                Job Satisfaction (JSS)
+              </h4>
               <Chart
                 options={{
                   ...commonOptions,
