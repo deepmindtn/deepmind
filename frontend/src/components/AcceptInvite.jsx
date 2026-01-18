@@ -135,7 +135,13 @@ export default function AcceptInvite() {
             borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 16px", boxShadow: "0 10px 20px -5px rgba(16, 185, 129, 0.3)"
           }}>
-            <Heart size={28} fill="white" color="white" />
+            <img
+                src="/icon_sidebar.png"
+                alt="DeepMind logo"
+                width={28}
+                height={28}
+                style={{ objectFit: "contain" }}
+              ></img>
           </div>
           <h1 style={{ fontSize: "28px", fontWeight: "800", color: COLORS.textPrimary, margin: "0 0 8px 0" }}>
             Join DeepMind
