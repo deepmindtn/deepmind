@@ -57,11 +57,17 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
 
       {/* Logo Section */}
       <div className="sidebar-header">
-        <div className="logo-box-emerald">
-          <Heart size={22} fill="white" color="white" />
-        </div>
-        {isOpen && <span className="brand-name">DeepMind</span>}
-      </div>
+  <div className="logo-box-emerald">
+    <img
+      src="/icon_sidebar.png"
+      alt="DeepMind logo"
+      width={22}
+      height={22}
+      style={{ objectFit: "contain" }}
+    />
+  </div>
+  {isOpen && <span className="brand-name">DeepMind</span>}
+</div>
 
       {/* Navigation */}
       <div className="sidebar-content">
