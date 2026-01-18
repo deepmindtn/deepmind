@@ -17,7 +17,7 @@ import {
   Edit2,
   ChevronDown,
   Check,
-  Mail
+  Mail,
 } from "lucide-react";
 
 // -----------------------
@@ -94,7 +94,7 @@ const styles = {
     padding: "48px",
     minHeight: "calc(100vh - 40px)",
     display: "flex",
-    flexDirection: "column"
+    flexDirection: "column",
   },
   card: {
     backgroundColor: COLORS.cardBg,
@@ -202,7 +202,7 @@ const styles = {
     width: "18px",
     height: "18px",
     cursor: "pointer",
-    accentColor: COLORS.primary
+    accentColor: COLORS.primary,
   },
   modalOverlay: {
     position: "fixed",
@@ -238,14 +238,32 @@ const Modal = ({ open, title, onClose, children, actions }) => {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>{title}</h3>
-          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "20px",
+          }}
+        >
+          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{ border: "none", background: "none", cursor: "pointer" }}
+          >
             <X size={20} />
           </button>
         </div>
         {children}
-        <div style={{ marginTop: "24px", display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+        <div
+          style={{
+            marginTop: "24px",
+            display: "flex",
+            gap: "12px",
+            justifyContent: "flex-end",
+          }}
+        >
           {actions}
         </div>
       </div>
@@ -266,14 +284,21 @@ export default function RecruitmentMatch() {
   const [toast, setToast] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [q, setQ] = useState("");
-  
+
   // Selection States (NEW)
   const [selectedIds, setSelectedIds] = useState([]);
 
   // CRUD States
   const [formOpen, setFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ id: null, email: "", first_name: "", last_name: "", position: "", status: "pending" });
+  const [formData, setFormData] = useState({
+    id: null,
+    email: "",
+    first_name: "",
+    last_name: "",
+    position: "",
+    status: "pending",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -308,31 +333,37 @@ export default function RecruitmentMatch() {
 
   async function fetchCandidates() {
     try {
-      const res = await fetch(`${API_BASE}/api/recruitment/candidates/`, { headers: authHeader });
+      const res = await fetch(`${API_BASE}/api/recruitment/candidates/`, {
+        headers: authHeader,
+      });
       const data = await res.json();
-      setCandidates(data.map((c) => ({
-        id: c.id,
-        first_name: c.first_name,
-        last_name: c.last_name,
-        name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email,
-        email: c.email,
-        position: c.position || "Not Specified",
-        status: c.status || "Pending",
-      })));
-    } catch (e) { 
+      setCandidates(
+        data.map((c) => ({
+          id: c.id,
+          first_name: c.first_name,
+          last_name: c.last_name,
+          name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email,
+          email: c.email,
+          position: c.position || "Not Specified",
+          status: c.status || "Pending",
+        }))
+      );
+    } catch (e) {
       console.error(e);
       setToast({ message: "Failed to load candidates", type: "error" });
     }
   }
 
   // --- Bulk Selection Logic ---
-  const filtered = candidates.filter((c) =>
-    c.name.toLowerCase().includes(q.toLowerCase()) || c.position.toLowerCase().includes(q.toLowerCase())
+  const filtered = candidates.filter(
+    (c) =>
+      c.name.toLowerCase().includes(q.toLowerCase()) ||
+      c.position.toLowerCase().includes(q.toLowerCase())
   );
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(filtered.map(c => c.id));
+      setSelectedIds(filtered.map((c) => c.id));
     } else {
       setSelectedIds([]);
     }
@@ -340,7 +371,7 @@ export default function RecruitmentMatch() {
 
   const handleSelectRow = (id) => {
     if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(itemId => itemId !== id));
+      setSelectedIds(selectedIds.filter((itemId) => itemId !== id));
     } else {
       setSelectedIds([...selectedIds, id]);
     }
@@ -362,8 +393,8 @@ export default function RecruitmentMatch() {
     setSubmitting(true);
     try {
       const method = isEditing ? "PUT" : "POST";
-      const url = isEditing 
-        ? `${API_BASE}/api/recruitment/candidates/${formData.id}/` 
+      const url = isEditing
+        ? `${API_BASE}/api/recruitment/candidates/${formData.id}/`
         : `${API_BASE}/api/recruitment/candidates/`;
 
       const res = await fetch(url, {
@@ -376,7 +407,10 @@ export default function RecruitmentMatch() {
 
       await fetchCandidates();
       setFormOpen(false);
-      setToast({ message: isEditing ? "Candidate updated!" : "Candidate added!", type: "success" });
+      setToast({
+        message: isEditing ? "Candidate updated!" : "Candidate added!",
+        type: "success",
+      });
     } catch (e) {
       setToast({ message: "Error saving candidate.", type: "error" });
     } finally {
@@ -387,15 +421,18 @@ export default function RecruitmentMatch() {
   const handleDeleteCandidate = async () => {
     setDeleting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/recruitment/candidates/${deleteId}/`, {
-        method: "DELETE",
-        headers: authHeader,
-      });
+      const res = await fetch(
+        `${API_BASE}/api/recruitment/candidates/${deleteId}/`,
+        {
+          method: "DELETE",
+          headers: authHeader,
+        }
+      );
 
       if (!res.ok) throw new Error("Delete failed");
 
-      setCandidates(candidates.filter(c => c.id !== deleteId));
-      setSelectedIds(selectedIds.filter(id => id !== deleteId)); // Remove from selection
+      setCandidates(candidates.filter((c) => c.id !== deleteId));
+      setSelectedIds(selectedIds.filter((id) => id !== deleteId)); // Remove from selection
       setDeleteOpen(false);
       setToast({ message: "Candidate removed.", type: "success" });
     } catch (e) {
@@ -420,76 +457,102 @@ export default function RecruitmentMatch() {
 
   const openAddModal = () => {
     setIsEditing(false);
-    setFormData({ id: null, email: "", first_name: "", last_name: "", position: "", status: "pending" });
+    setFormData({
+      id: null,
+      email: "",
+      first_name: "",
+      last_name: "",
+      position: "",
+      status: "pending",
+    });
     setFormOpen(true);
   };
 
   // --- Assign Assessment Logic ---
   const toggleAssessment = (code) => {
-    setSelectedCodes(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+    setSelectedCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
   };
 
   const handleSendAssessment = async () => {
-    if (selectedCodes.length === 0) return setToast({ message: "Select at least one assessment.", type: "error" });
-    
+    if (selectedCodes.length === 0)
+      return setToast({
+        message: "Select at least one assessment.",
+        type: "error",
+      });
+
     setSendingAssessment(true);
     try {
-        // Prepare List of Emails
-        let targetEmails = [];
-        if (assignRow) {
-            // Single Mode
-            targetEmails = [assignRow.email];
-        } else {
-            // Bulk Mode
-            targetEmails = candidates
-                .filter(c => selectedIds.includes(c.id))
-                .map(c => c.email);
-        }
+      // Prepare List of Emails
+      let targetEmails = [];
+      if (assignRow) {
+        // Single Mode
+        targetEmails = [assignRow.email];
+      } else {
+        // Bulk Mode
+        targetEmails = candidates
+          .filter((c) => selectedIds.includes(c.id))
+          .map((c) => c.email);
+      }
 
-        const res = await fetch(`${API_BASE}/api/assessments/assign-candidate/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...authHeader },
-            body: JSON.stringify({
-                candidate_emails: targetEmails, // CHANGED: now sending array
-                template_codes: selectedCodes
-            })
-        });
-        
-        if (!res.ok) throw new Error("Failed to send.");
-        
-        const data = await res.json();
-        setToast({ message: `Sent to ${data.sent_count || targetEmails.length} candidates!`, type: "success" });
-        setAssignOpen(false);
-        setSelectedCodes([]);
-        
-        if (!assignRow) {
-            setSelectedIds([]); // Clear selection after bulk send
-        }
+      const res = await fetch(`${API_BASE}/api/assessments/assign-candidate/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          candidate_emails: targetEmails, // CHANGED: now sending array
+          template_codes: selectedCodes,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to send.");
+
+      const data = await res.json();
+      setToast({
+        message: `Sent to ${
+          data.sent_count || targetEmails.length
+        } candidates!`,
+        type: "success",
+      });
+      setAssignOpen(false);
+      setSelectedCodes([]);
+
+      if (!assignRow) {
+        setSelectedIds([]); // Clear selection after bulk send
+      }
     } catch (e) {
-        setToast({ message: "Error sending assessments.", type: "error" });
+      setToast({ message: "Error sending assessments.", type: "error" });
     } finally {
-        setSendingAssessment(false);
+      setSendingAssessment(false);
     }
   };
 
   // --- AI Matcher Handlers ---
   const handleDrag = (e) => {
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
     else if (e.type === "dragleave") setIsDragging(false);
   };
 
   const handleDrop = (e) => {
-    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
-    if (e.dataTransfer.files?.length) setFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length)
+      setFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
   };
 
-  const removeFile = (index) => setFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (index) =>
+    setFiles((prev) => prev.filter((_, i) => i !== index));
 
   async function analyzeMatches() {
     if (!files.length || !jobDescription) {
-        setToast({ message: "Upload CVs and enter a description.", type: "error" });
-        return;
+      setToast({
+        message: "Upload CVs and enter a description.",
+        type: "error",
+      });
+      return;
     }
     setMatchLoading(true);
     const tempResults = [];
@@ -498,11 +561,15 @@ export default function RecruitmentMatch() {
       form.append("cv", file);
       form.append("job_description", jobDescription);
       try {
-        const res = await fetch(`${API_BASE}/api/recruitment/match/`, { method: "POST", headers: authHeader, body: form });
+        const res = await fetch(`${API_BASE}/api/recruitment/match/`, {
+          method: "POST",
+          headers: authHeader,
+          body: form,
+        });
         const data = await res.json();
         tempResults.push({ name: file.name, ...data });
-      } catch (err) { 
-          tempResults.push({ name: file.name, error: "Failed to analyze" }); 
+      } catch (err) {
+        tempResults.push({ name: file.name, error: "Failed to analyze" });
       }
     }
     setResults(tempResults);
@@ -516,30 +583,76 @@ export default function RecruitmentMatch() {
 
       <div style={styles.mainWrapperCard}>
         {/* Header */}
-        <div style={styles.sectionHeader}>
-          <div>
-            <h1 style={{ fontSize: "32px", fontWeight: "800", marginBottom: "8px" }}>Talent Matching</h1>
-            <p style={{ color: COLORS.textSecondary, margin: 0, fontSize: "16px" }}>
-              Centralized candidate management and AI assessment hub.
-            </p>
+        {/* Header */}
+        <div
+          style={{
+            ...styles.sectionHeader,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* Icon Badge */}
+            <div
+              style={{
+                padding: "10px",
+                backgroundColor: COLORS.primaryLight,
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Users size={28} color={COLORS.primary} />
+            </div>
+
+            <div>
+              <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
+                Talent Matching
+              </h1>
+              <p
+                style={{
+                  color: COLORS.textSecondary,
+                  fontSize: "16px",
+                  margin: 0,
+                }}
+              >
+                Centralized candidate management and AI assessment hub.
+              </p>
+            </div>
           </div>
-          
+
           {selectedIds.length > 0 ? (
-             <button style={styles.btnBulk} onClick={openBulkAssignModal}>
-                <Mail size={20} /> Send Assessment to {selectedIds.length} Selected
-             </button>
+            <button style={styles.btnBulk} onClick={openBulkAssignModal}>
+              <Mail size={20} /> Send Assessment to {selectedIds.length}{" "}
+              Selected
+            </button>
           ) : (
             <button style={styles.btnPrimary} onClick={openAddModal}>
-                <Plus size={20} /> Add Candidate
+              <Plus size={20} /> Add Candidate
             </button>
           )}
         </div>
 
         {/* Search */}
         <div style={{ position: "relative", marginBottom: "32px" }}>
-          <Search size={18} style={{ position: "absolute", left: "14px", top: "14px", color: COLORS.textMuted }} />
+          <Search
+            size={18}
+            style={{
+              position: "absolute",
+              left: "14px",
+              top: "14px",
+              color: COLORS.textMuted,
+            }}
+          />
           <input
-            style={{ ...styles.input, paddingLeft: "44px", backgroundColor: "#fcfcfd" }}
+            style={{
+              ...styles.input,
+              paddingLeft: "44px",
+              backgroundColor: "#fcfcfd",
+            }}
             placeholder="Search candidates by name, email, or role..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -548,68 +661,142 @@ export default function RecruitmentMatch() {
 
         {/* Pipeline Table */}
         <div style={{ ...styles.card, marginBottom: "56px" }}>
-          <div style={{ padding: "20px", borderBottom: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#fcfcfd" }}>
+          <div
+            style={{
+              padding: "20px",
+              borderBottom: `1px solid ${COLORS.borderColor}`,
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              backgroundColor: "#fcfcfd",
+            }}
+          >
             <Users size={20} color={COLORS.primary} />
             <span style={{ fontWeight: "700" }}>Active Pipeline</span>
-            {selectedIds.length > 0 && <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>({selectedIds.length} selected)</span>}
+            {selectedIds.length > 0 && (
+              <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>
+                ({selectedIds.length} selected)
+              </span>
+            )}
           </div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                textAlign: "left",
+              }}
+            >
               <thead style={{ backgroundColor: "#fafafa" }}>
                 <tr>
                   <th style={{ padding: "16px 20px", width: "40px" }}>
-                    <input 
-                        type="checkbox" 
-                        style={styles.checkbox}
-                        onChange={handleSelectAll}
-                        checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                    <input
+                      type="checkbox"
+                      style={styles.checkbox}
+                      onChange={handleSelectAll}
+                      checked={
+                        filtered.length > 0 &&
+                        selectedIds.length === filtered.length
+                      }
                     />
                   </th>
                   {["Candidate", "Role", "Status", "Actions"].map((h) => (
-                    <th key={h} style={{ padding: "16px 20px", color: COLORS.textSecondary, fontSize: "12px", fontWeight: "600", textTransform: "uppercase" }}>{h}</th>
+                    <th
+                      key={h}
+                      style={{
+                        padding: "16px 20px",
+                        color: COLORS.textSecondary,
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} style={{ borderBottom: `1px solid ${COLORS.borderColor}`, backgroundColor: selectedIds.includes(c.id) ? "#eff6ff" : "transparent" }}>
+                  <tr
+                    key={c.id}
+                    style={{
+                      borderBottom: `1px solid ${COLORS.borderColor}`,
+                      backgroundColor: selectedIds.includes(c.id)
+                        ? "#eff6ff"
+                        : "transparent",
+                    }}
+                  >
                     <td style={{ padding: "16px 20px" }}>
-                        <input 
-                            type="checkbox" 
-                            style={styles.checkbox}
-                            checked={selectedIds.includes(c.id)}
-                            onChange={() => handleSelectRow(c.id)}
-                        />
+                      <input
+                        type="checkbox"
+                        style={styles.checkbox}
+                        checked={selectedIds.includes(c.id)}
+                        onChange={() => handleSelectRow(c.id)}
+                      />
                     </td>
                     <td style={{ padding: "16px 20px" }}>
                       <div style={{ fontWeight: "600" }}>{c.name}</div>
-                      <div style={{ fontSize: "13px", color: COLORS.textSecondary }}>{c.email}</div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: COLORS.textSecondary,
+                        }}
+                      >
+                        {c.email}
+                      </div>
                     </td>
-                    <td style={{ padding: "16px 20px", fontSize: "14px" }}>{c.position}</td>
-                    <td style={{ padding: "16px 20px" }}><StatusBadge status={c.status} /></td>
+                    <td style={{ padding: "16px 20px", fontSize: "14px" }}>
+                      {c.position}
+                    </td>
                     <td style={{ padding: "16px 20px" }}>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                                onClick={() => { setAssignRow(c); setSelectedCodes([]); setAssignOpen(true); }}
-                                style={{ border: "none", background: "none", cursor: "pointer", color: COLORS.blue }}
-                                title="Send Assessment"
-                            >
-                                <Send size={16} />
-                            </button>
-                            <button
-                                onClick={() => openEditModal(c)}
-                                style={{ border: "none", background: "none", cursor: "pointer", color: COLORS.textMuted }}
-                                title="Edit Candidate"
-                            >
-                                <Edit2 size={16} />
-                            </button>
-                            <button
-                                onClick={() => { setDeleteId(c.id); setDeleteOpen(true); }}
-                                style={{ border: "none", background: "none", cursor: "pointer", color: COLORS.red }}
-                                title="Delete Candidate"
-                            >
-                                <Trash2 size={16} />
-                            </button>
+                      <StatusBadge status={c.status} />
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => {
+                            setAssignRow(c);
+                            setSelectedCodes([]);
+                            setAssignOpen(true);
+                          }}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: "pointer",
+                            color: COLORS.blue,
+                          }}
+                          title="Send Assessment"
+                        >
+                          <Send size={16} />
+                        </button>
+                        <button
+                          onClick={() => openEditModal(c)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: "pointer",
+                            color: COLORS.textMuted,
+                          }}
+                          title="Edit Candidate"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteId(c.id);
+                            setDeleteOpen(true);
+                          }}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: "pointer",
+                            color: COLORS.red,
+                          }}
+                          title="Delete Candidate"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -621,43 +808,173 @@ export default function RecruitmentMatch() {
 
         {/* AI Matcher Section */}
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
-            <div style={{ padding: "10px", backgroundColor: COLORS.primaryLight, borderRadius: "12px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "24px",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px",
+                backgroundColor: COLORS.primaryLight,
+                borderRadius: "12px",
+              }}
+            >
               <Brain size={28} color={COLORS.primary} />
             </div>
-            <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "0px" }}>AI CV Matcher</h2>
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: "700",
+                marginBottom: "0px",
+              }}
+            >
+              AI CV Matcher
+            </h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-            <div style={{ ...styles.card, padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "600" }}>1. Upload CVs</h3>
-              <div 
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "24px",
+            }}
+          >
+            <div
+              style={{
+                ...styles.card,
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+              }}
+            >
+              <h3 style={{ fontSize: "16px", fontWeight: "600" }}>
+                1. Upload CVs
+              </h3>
+              <div
                 style={styles.dropZone(isDragging)}
-                onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
               >
-                <div style={{ padding: "16px", backgroundColor: isDragging ? "#fff" : COLORS.blueLight, borderRadius: "50%", color: isDragging ? COLORS.primary : COLORS.blue }}>
+                <div
+                  style={{
+                    padding: "16px",
+                    backgroundColor: isDragging ? "#fff" : COLORS.blueLight,
+                    borderRadius: "50%",
+                    color: isDragging ? COLORS.primary : COLORS.blue,
+                  }}
+                >
                   <Upload size={32} />
                 </div>
                 <div>
-                  <p style={{ margin: "0 0 4px 0", fontWeight: "600" }}>{isDragging ? "Drop to upload" : "Click or drag CVs here"}</p>
-                  <p style={{ margin: 0, fontSize: "12px", color: COLORS.textSecondary }}>PDF or TXT files supported</p>
+                  <p style={{ margin: "0 0 4px 0", fontWeight: "600" }}>
+                    {isDragging ? "Drop to upload" : "Click or drag CVs here"}
+                  </p>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "12px",
+                      color: COLORS.textSecondary,
+                    }}
+                  >
+                    PDF or TXT files supported
+                  </p>
                 </div>
-                <input type="file" multiple accept=".pdf,.txt" onChange={(e) => setFiles((prev) => [...prev, ...Array.from(e.target.files)])} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }} />
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.txt"
+                  onChange={(e) =>
+                    setFiles((prev) => [...prev, ...Array.from(e.target.files)])
+                  }
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    opacity: 0,
+                    cursor: "pointer",
+                  }}
+                />
               </div>
               {files.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "11px", fontWeight: "700", color: COLORS.textMuted }}>SELECTED FILES</span>
-                    <button onClick={() => setFiles([])} style={{ border: "none", background: "none", color: COLORS.red, fontSize: "11px", cursor: "pointer", fontWeight: "700" }}>CLEAR ALL</button>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: "700",
+                        color: COLORS.textMuted,
+                      }}
+                    >
+                      SELECTED FILES
+                    </span>
+                    <button
+                      onClick={() => setFiles([])}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        color: COLORS.red,
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        fontWeight: "700",
+                      }}
+                    >
+                      CLEAR ALL
+                    </button>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "180px", overflowY: "auto" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                      maxHeight: "180px",
+                      overflowY: "auto",
+                    }}
+                  >
                     {files.map((f, i) => (
                       <div key={i} style={styles.fileItem}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            overflow: "hidden",
+                          }}
+                        >
                           <FileText size={16} color={COLORS.blue} />
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</span>
+                          <span
+                            style={{
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {f.name}
+                          </span>
                         </div>
-                        <X size={14} color={COLORS.textMuted} onClick={() => removeFile(i)} style={{ cursor: "pointer" }} />
+                        <X
+                          size={14}
+                          color={COLORS.textMuted}
+                          onClick={() => removeFile(i)}
+                          style={{ cursor: "pointer" }}
+                        />
                       </div>
                     ))}
                   </div>
@@ -666,9 +983,22 @@ export default function RecruitmentMatch() {
             </div>
 
             <div style={{ ...styles.card, padding: "24px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px" }}>2. Job Description</h3>
+              <h3
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  marginBottom: "16px",
+                }}
+              >
+                2. Job Description
+              </h3>
               <textarea
-                style={{ ...styles.input, minHeight: "180px", resize: "none", backgroundColor: "#fcfcfd" }}
+                style={{
+                  ...styles.input,
+                  minHeight: "180px",
+                  resize: "none",
+                  backgroundColor: "#fcfcfd",
+                }}
                 placeholder="Paste the job requirements here..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
@@ -676,9 +1006,20 @@ export default function RecruitmentMatch() {
               <button
                 onClick={analyzeMatches}
                 disabled={matchLoading}
-                style={{ ...styles.btnPrimary, width: "100%", marginTop: "20px", justifyContent: "center", backgroundColor: COLORS.dark, padding: "14px" }}
+                style={{
+                  ...styles.btnPrimary,
+                  width: "100%",
+                  marginTop: "20px",
+                  justifyContent: "center",
+                  backgroundColor: COLORS.dark,
+                  padding: "14px",
+                }}
               >
-                {matchLoading ? <Loader2 className="spin" size={18} /> : <BarChart3 size={18} />}
+                {matchLoading ? (
+                  <Loader2 className="spin" size={18} />
+                ) : (
+                  <BarChart3 size={18} />
+                )}
                 {matchLoading ? "Analyzing..." : "Calculate Match Fit"}
               </button>
             </div>
@@ -686,19 +1027,78 @@ export default function RecruitmentMatch() {
 
           {results.length > 0 && (
             <div style={{ marginTop: "32px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Analysis Results</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+              <h3
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "700",
+                  marginBottom: "16px",
+                }}
+              >
+                Analysis Results
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                  gap: "16px",
+                }}
+              >
                 {results.map((r, i) => (
-                  <div key={i} style={{ ...styles.card, padding: "20px", border: `1px solid ${COLORS.primary}33` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <div
+                    key={i}
+                    style={{
+                      ...styles.card,
+                      padding: "20px",
+                      border: `1px solid ${COLORS.primary}33`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "12px",
+                      }}
+                    >
                       <div style={{ fontWeight: "700" }}>{r.name}</div>
-                      <div style={{ color: COLORS.primary, fontWeight: "800", fontSize: "20px" }}>{r.score}%</div>
+                      <div
+                        style={{
+                          color: COLORS.primary,
+                          fontWeight: "800",
+                          fontSize: "20px",
+                        }}
+                      >
+                        {r.score}%
+                      </div>
                     </div>
-                    <div style={{ width: "100%", height: "6px", backgroundColor: "#e2e8f0", borderRadius: "3px", marginBottom: "16px" }}>
-                      <div style={{ width: `${r.score}%`, height: "100%", backgroundColor: COLORS.primary, borderRadius: "3px" }} />
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "6px",
+                        backgroundColor: "#e2e8f0",
+                        borderRadius: "3px",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${r.score}%`,
+                          height: "100%",
+                          backgroundColor: COLORS.primary,
+                          borderRadius: "3px",
+                        }}
+                      />
                     </div>
-                    <p style={{ fontSize: "13px", color: COLORS.textSecondary, margin: 0 }}>
-                      <strong style={{ color: COLORS.textPrimary }}>Fit: {r.fit}</strong> — {r.summary}
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: COLORS.textSecondary,
+                        margin: 0,
+                      }}
+                    >
+                      <strong style={{ color: COLORS.textPrimary }}>
+                        Fit: {r.fit}
+                      </strong>{" "}
+                      — {r.summary}
                     </p>
                   </div>
                 ))}
@@ -709,154 +1109,266 @@ export default function RecruitmentMatch() {
       </div>
 
       {/* Add/Edit Modal */}
-      <Modal 
-        open={formOpen} 
-        title={isEditing ? "Edit Candidate" : "Add New Candidate"} 
-        onClose={() => setFormOpen(false)} 
+      <Modal
+        open={formOpen}
+        title={isEditing ? "Edit Candidate" : "Add New Candidate"}
+        onClose={() => setFormOpen(false)}
         actions={
-            <button style={styles.btnPrimary} onClick={handleSaveCandidate} disabled={submitting}>
-                {submitting ? "Saving..." : "Save Candidate"}
-            </button>
+          <button
+            style={styles.btnPrimary}
+            onClick={handleSaveCandidate}
+            disabled={submitting}
+          >
+            {submitting ? "Saving..." : "Save Candidate"}
+          </button>
         }
       >
-         <div style={{ display: "grid", gap: 16 }}>
-            <div>
-                <label style={styles.label}>Email</label>
-                <input 
-                    style={styles.input} 
-                    type="email" 
-                    value={formData.email} 
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                />
+        <div style={{ display: "grid", gap: 16 }}>
+          <div>
+            <label style={styles.label}>Email</label>
+            <input
+              style={styles.input}
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+            />
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>First Name</label>
+              <input
+                style={styles.input}
+                value={formData.first_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, first_name: e.target.value })
+                }
+              />
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                  <label style={styles.label}>First Name</label>
-                  <input 
-                    style={styles.input}
-                    value={formData.first_name}
-                    onChange={e => setFormData({...formData, first_name: e.target.value})}
-                  />
-              </div>
-              <div style={{ flex: 1 }}>
-                  <label style={styles.label}>Last Name</label>
-                  <input 
-                    style={styles.input}
-                    value={formData.last_name}
-                    onChange={e => setFormData({...formData, last_name: e.target.value})}
-                  />
-              </div>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>Last Name</label>
+              <input
+                style={styles.input}
+                value={formData.last_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, last_name: e.target.value })
+                }
+              />
             </div>
-            <div>
-                <label style={styles.label}>Position</label>
-                <input 
-                    style={styles.input}
-                    value={formData.position}
-                    onChange={e => setFormData({...formData, position: e.target.value})}
-                />
-            </div>
-            <div>
-                <label style={styles.label}>Status</label>
-                <select 
-                    style={styles.input} 
-                    value={formData.status} 
-                    onChange={e => setFormData({...formData, status: e.target.value})}
-                >
-                    <option value="pending">Pending</option>
-                    <option value="invited">Invited</option>
-                    <option value="interview">Interview</option>
-                    <option value="hired">Hired</option>
-                    <option value="rejected">Rejected</option>
-                </select>
-            </div>
-         </div>
+          </div>
+          <div>
+            <label style={styles.label}>Position</label>
+            <input
+              style={styles.input}
+              value={formData.position}
+              onChange={(e) =>
+                setFormData({ ...formData, position: e.target.value })
+              }
+            />
+          </div>
+          <div>
+            <label style={styles.label}>Status</label>
+            <select
+              style={styles.input}
+              value={formData.status}
+              onChange={(e) =>
+                setFormData({ ...formData, status: e.target.value })
+              }
+            >
+              <option value="pending">Pending</option>
+              <option value="invited">Invited</option>
+              <option value="interview">Interview</option>
+              <option value="hired">Hired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
       </Modal>
 
       {/* Delete Modal */}
-      <Modal open={deleteOpen} title="Delete Candidate?" onClose={() => setDeleteOpen(false)}
+      <Modal
+        open={deleteOpen}
+        title="Delete Candidate?"
+        onClose={() => setDeleteOpen(false)}
         actions={
-            <>
-                <button onClick={() => setDeleteOpen(false)} style={{ padding: "8px 16px", border: "1px solid #ccc", borderRadius: "8px", background: "white", cursor: "pointer" }}>Cancel</button>
-                <button onClick={handleDeleteCandidate} style={{ ...styles.btnPrimary, backgroundColor: COLORS.red }}>
-                    {deleting ? "Deleting..." : "Delete Permanently"}
-                </button>
-            </>
+          <>
+            <button
+              onClick={() => setDeleteOpen(false)}
+              style={{
+                padding: "8px 16px",
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+                background: "white",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteCandidate}
+              style={{ ...styles.btnPrimary, backgroundColor: COLORS.red }}
+            >
+              {deleting ? "Deleting..." : "Delete Permanently"}
+            </button>
+          </>
         }
       >
         <div style={{ textAlign: "center" }}>
-            <AlertTriangle size={40} color={COLORS.red} style={{ marginBottom: 16 }} />
-            <p>Are you sure you want to remove this candidate? This action cannot be undone.</p>
+          <AlertTriangle
+            size={40}
+            color={COLORS.red}
+            style={{ marginBottom: 16 }}
+          />
+          <p>
+            Are you sure you want to remove this candidate? This action cannot
+            be undone.
+          </p>
         </div>
       </Modal>
 
       {/* Assign Modal (UPDATED FOR BULK) */}
-      <Modal 
-        open={assignOpen} 
-        title={assignRow ? "Send Assessment" : `Bulk Send (${selectedIds.length} Candidates)`} 
-        onClose={() => setAssignOpen(false)} 
+      <Modal
+        open={assignOpen}
+        title={
+          assignRow
+            ? "Send Assessment"
+            : `Bulk Send (${selectedIds.length} Candidates)`
+        }
+        onClose={() => setAssignOpen(false)}
         actions={
-            <button style={styles.btnPrimary} onClick={handleSendAssessment} disabled={sendingAssessment}>
-                {sendingAssessment ? <Loader2 className="spin" size={16} /> : <Send size={16} />} 
-                {sendingAssessment ? "Sending..." : "Send Now"}
-            </button>
+          <button
+            style={styles.btnPrimary}
+            onClick={handleSendAssessment}
+            disabled={sendingAssessment}
+          >
+            {sendingAssessment ? (
+              <Loader2 className="spin" size={16} />
+            ) : (
+              <Send size={16} />
+            )}
+            {sendingAssessment ? "Sending..." : "Send Now"}
+          </button>
         }
       >
         {assignRow ? (
-            <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#f8fafc", borderRadius: 8 }}>
-                <strong>{assignRow.name}</strong> <span style={{ color: "#64748b" }}>({assignRow.email})</span>
-            </div>
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 12,
+              backgroundColor: "#f8fafc",
+              borderRadius: 8,
+            }}
+          >
+            <strong>{assignRow.name}</strong>{" "}
+            <span style={{ color: "#64748b" }}>({assignRow.email})</span>
+          </div>
         ) : (
-            <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#eff6ff", borderRadius: 8, color: COLORS.blue }}>
-                <strong>Bulk Action:</strong> Sending to {selectedIds.length} selected candidates.
-            </div>
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 12,
+              backgroundColor: "#eff6ff",
+              borderRadius: 8,
+              color: COLORS.blue,
+            }}
+          >
+            <strong>Bulk Action:</strong> Sending to {selectedIds.length}{" "}
+            selected candidates.
+          </div>
         )}
 
         <label style={styles.label}>Select Assessments</label>
-        
+
         {/* Custom Multi-Select Dropdown */}
         <div style={{ position: "relative", marginBottom: "120px" }}>
-            <div 
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                style={{ ...styles.input, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" }}
-            >
-                <span>{selectedCodes.length > 0 ? `${selectedCodes.length} Selected` : "Select templates..."}</span>
-                <ChevronDown size={16} />
-            </div>
+          <div
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            style={{
+              ...styles.input,
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              background: "#fff",
+            }}
+          >
+            <span>
+              {selectedCodes.length > 0
+                ? `${selectedCodes.length} Selected`
+                : "Select templates..."}
+            </span>
+            <ChevronDown size={16} />
+          </div>
 
-            {isDropdownOpen && (
-                <>
-                    <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setIsDropdownOpen(false)} />
-                    <div style={{
-                        position: "absolute", top: "100%", left: 0, width: "100%", zIndex: 20,
-                        backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "10px",
-                        boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", maxHeight: "250px", overflowY: "auto"
-                    }}>
-                        {ASSESSMENT_OPTIONS.map(group => (
-                            <div key={group.group}>
-                                <div style={{ padding: "8px 12px", background: "#f9fafb", fontWeight: "bold", fontSize: "12px", color: "#6b7280" }}>
-                                    {group.group}
-                                </div>
-                                {group.items.map(item => {
-                                    const isSelected = selectedCodes.includes(item.code);
-                                    return (
-                                        <div 
-                                            key={item.code} 
-                                            onClick={() => toggleAssessment(item.code)}
-                                            style={{
-                                                padding: "10px 12px", cursor: "pointer", display: "flex", justifyContent: "space-between",
-                                                background: isSelected ? "#eff6ff" : "white"
-                                            }}
-                                        >
-                                            <span style={{ color: isSelected ? COLORS.blue : COLORS.textPrimary }}>{item.label}</span>
-                                            {isSelected && <Check size={16} color={COLORS.blue} />}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
+          {isDropdownOpen && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 10 }}
+                onClick={() => setIsDropdownOpen(false)}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  width: "100%",
+                  zIndex: 20,
+                  backgroundColor: "white",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "10px",
+                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                  maxHeight: "250px",
+                  overflowY: "auto",
+                }}
+              >
+                {ASSESSMENT_OPTIONS.map((group) => (
+                  <div key={group.group}>
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        background: "#f9fafb",
+                        fontWeight: "bold",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {group.group}
                     </div>
-                </>
-            )}
+                    {group.items.map((item) => {
+                      const isSelected = selectedCodes.includes(item.code);
+                      return (
+                        <div
+                          key={item.code}
+                          onClick={() => toggleAssessment(item.code)}
+                          style={{
+                            padding: "10px 12px",
+                            cursor: "pointer",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            background: isSelected ? "#eff6ff" : "white",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: isSelected
+                                ? COLORS.blue
+                                : COLORS.textPrimary,
+                            }}
+                          >
+                            {item.label}
+                          </span>
+                          {isSelected && (
+                            <Check size={16} color={COLORS.blue} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
@@ -864,25 +1376,73 @@ export default function RecruitmentMatch() {
       {toast && (
         <div
           style={{
-            position: "fixed", bottom: "32px", right: "32px", zIndex: 9999,
+            position: "fixed",
+            bottom: "32px",
+            right: "32px",
+            zIndex: 9999,
             backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5",
-            border: `1px solid ${toast.type === "error" ? "#ef4444" : "#10b981"}`,
-            borderRadius: "12px", padding: "16px 20px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-            display: "flex", alignItems: "center", gap: "12px", minWidth: "300px",
+            border: `1px solid ${
+              toast.type === "error" ? "#ef4444" : "#10b981"
+            }`,
+            borderRadius: "12px",
+            padding: "16px 20px",
+            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            minWidth: "300px",
             animation: "fadeIn 0.3s ease-out",
           }}
         >
-          <div style={{ backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5", padding: "8px", borderRadius: "50%", display: "flex" }}>
-            {toast.type === "error" ? <AlertTriangle size={20} color="#dc2626" /> : <CheckCircle size={20} color="#059669" />}
+          <div
+            style={{
+              backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5",
+              padding: "8px",
+              borderRadius: "50%",
+              display: "flex",
+            }}
+          >
+            {toast.type === "error" ? (
+              <AlertTriangle size={20} color="#dc2626" />
+            ) : (
+              <CheckCircle size={20} color="#059669" />
+            )}
           </div>
           <div style={{ flex: 1 }}>
-            <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "700", color: toast.type === "error" ? "#991b1b" : "#065f46" }}>
+            <h4
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: "14px",
+                fontWeight: "700",
+                color: toast.type === "error" ? "#991b1b" : "#065f46",
+              }}
+            >
               {toast.type === "error" ? "Error" : "Success"}
             </h4>
-            <p style={{ margin: 0, fontSize: "13px", color: toast.type === "error" ? "#b91c1c" : "#047857" }}>{toast.message}</p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "13px",
+                color: toast.type === "error" ? "#b91c1c" : "#047857",
+              }}
+            >
+              {toast.message}
+            </p>
           </div>
-          <button onClick={() => setToast(null)} style={{ border: "none", background: "none", cursor: "pointer", padding: "4px", opacity: 0.6 }}>
-            <X size={16} color={toast.type === "error" ? "#991b1b" : "#065f46"} />
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              padding: "4px",
+              opacity: 0.6,
+            }}
+          >
+            <X
+              size={16}
+              color={toast.type === "error" ? "#991b1b" : "#065f46"}
+            />
           </button>
         </div>
       )}
