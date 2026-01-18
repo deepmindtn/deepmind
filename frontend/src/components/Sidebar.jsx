@@ -1,123 +1,106 @@
 import React from "react";
 import {
-  Heart,
-  Users,
-  BarChart3,
-  LogOut,
-  User,
-  Home,
-  TrendingUp,
-  Calendar,
-  FileText,
-  ClipboardList,
-  Bolt,
-  Brain, 
+  Heart, Users, Home, ClipboardList, Bolt, Brain, 
+  LogOut, User, ChevronLeft, ChevronRight, FileText,
+  Search, Briefcase, Zap
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Sidebar.css";
 
-const Sidebar = ({ userName = "MizouH", isOpen, toggleSidebar }) => {
+const Sidebar = ({ isOpen, toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ read role from localStorage (set at login in LoginPage)
   const storedUser = JSON.parse(localStorage.getItem("me") || "{}");
-  const role = storedUser.role || "EMPLOYEE"; // fallback if not logged
+  const role = storedUser.role || "EMPLOYEE";
+  const userName = `${storedUser.first_name || "User"} ${storedUser.last_name || ""}`;
 
-  // ✅ HR menu
   const hrMenu = [
     { path: "/dashboard", label: "Dashboard", icon: Home },
-    { path: "/employees", label: "Employee Management", icon: Users },
-    { path: "/assessments", label: "Health Assessments", icon: FileText },
-    { path: "/departments", label: "Departments", icon: Brain }, 
-    { path: "/recruitment", label: "AI Recruitment", icon: Brain }, // 🧠 NEW LINE
-    { path: "/assesement-description", label: "Assessment Library", icon: Brain }, // 🧠 NEW LINE
+    { path: "/employees", label: "Team Management", icon: Users },
+    { path: "/assessments", label: "Health Insights", icon: Zap },
+    { path: "/departments", label: "Departments", icon: Briefcase }, 
+    { path: "/recruitment", label: "AI Recruitment", icon: Brain },
+    { path: "/assesement-description", label: "Library", icon: Search },
   ];
 
-  // ✅ Employee menu
   const employeeMenu = [
-    { path: "/my-assessments", label: "My Assessments", icon: ClipboardList },
-    { path: "/wellbeing-techniques", label: "Well-Being Techniques", icon: Heart },
-    { path: "/productivity-tools", label: "Productivity Tools", icon: Bolt },
-    { path: "/assesement-description", label: "Assessment Library", icon: Brain }, // 🧠 NEW LINE
+    { path: "/my-assessments", label: "My Growth", icon: ClipboardList },
+    { path: "/wellbeing-techniques", label: "Well-Being", icon: Heart },
+    { path: "/productivity-tools", label: "Focus Tools", icon: Bolt },
+    { path: "/assesement-description", label: "Library", icon: Search },
   ];
 
-  // ✅ Pick menu based on role
   const menuItems = role === "HR" ? hrMenu : employeeMenu;
 
-  const handleNavigation = (path) => navigate(path);
-
   const handleLogout = () => {
-    localStorage.removeItem("authenticated");
-    localStorage.removeItem("me"); // ✅ clear stored profile
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    localStorage.clear();
     navigate("/");
     window.location.reload();
   };
 
-  const handleProfileClick = () => navigate("/profile");
+  // Inside Sidebar component, update the navigation clicks:
+const handleNavClick = (path) => {
+  navigate(path);
+  if (isMobile) toggleSidebar(); // Close sidebar after selecting on mobile
+};
 
-  const isActivePath = (itemPath) =>
-    location.pathname === itemPath || location.pathname.startsWith(itemPath + "/");
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
 
   return (
-    <div className={`sidebar ${!isOpen ? "collapsed" : ""}`}>
-      <button
-        className={`sidebar-toggle ${isOpen ? "sidebar-open" : "sidebar-collapsed"}`}
-        onClick={toggleSidebar}
-        title="Toggle Sidebar"
-      >
-        ☰
+    <div className={`sidebar-island ${!isOpen ? "collapsed" : ""}`}>
+      {/* Integrated Toggle Button */}
+      <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
+        {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </button>
 
-      <div className="sidebar-logo">
-        <div className="logo-container">
-          <div className="logo-icon">
-            <Heart className="logo-heart" />
-          </div>
-          {isOpen && <span className="logo-text">DeepMind</span>}
+      {/* Logo Section */}
+      <div className="sidebar-header">
+        <div className="logo-box-emerald">
+          <Heart className="heart-icon-white" fill="white" />
         </div>
+        {isOpen && <span className="brand-name">DeepMind</span>}
       </div>
 
-      <div className="sidebar-nav">
-        <nav className="nav-menu">
+      {/* Navigation */}
+      <div className="sidebar-content">
+        <nav className="nav-stack">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const active = isActivePath(item.path);
+            const active = isActive(item.path);
             return (
               <button
-                key={item.label}
-                onClick={() => handleNavigation(item.path)}
-                className={`nav-item ${active ? "active" : ""}`}
-              >
-                <Icon className="nav-icon" />
-                {isOpen && <span className="nav-label">{item.label}</span>}
+              key={item.label}
+              onClick={() => handleNavClick(item.path)} // Changed to the new handler
+              className={`nav-link ${active ? "active" : ""}`}
+            >
+                <div className={`nav-icon-container ${active ? "active" : ""}`}>
+                  <Icon size={20} />
+                </div>
+                {isOpen && <span className="nav-text">{item.label}</span>}
+                {active && isOpen && <div className="active-indicator" />}
               </button>
             );
           })}
         </nav>
       </div>
 
-      <div className="sidebar-profile">
-        <div className="profileName-container">
-          <div className="profile-avatar">
-            <User className="avatar-icon" />
+      {/* Profile Card Section */}
+      <div className="sidebar-footer">
+        <div className={`profile-mini-card ${!isOpen ? "collapsed" : ""}`}>
+          <div className="avatar-emerald" onClick={() => navigate("/profile")}>
+            <User size={20} color="white" />
           </div>
+          
           {isOpen && (
-            <div className="profile-info">
-              <button onClick={handleProfileClick} className="sideprofile-name">
-                {storedUser.first_name
-                  ? `${storedUser.first_name} ${storedUser.last_name || ""}`
-                  : userName}
-              </button>
-              <p className="profile-role">
-                {role === "HR" ? "Administrator" : "Employee"}
-              </p>
+            <div className="profile-details">
+              <span className="profile-name">{userName}</span>
+              <span className="profile-role-tag">{role === "HR" ? "Admin" : "Member"}</span>
             </div>
           )}
-          <button onClick={handleLogout} className="logout-btn" title="Logout">
-            <LogOut className="logout-icon" />
+
+          <button className="logout-action" onClick={handleLogout} title="Logout">
+            <LogOut size={18} />
           </button>
         </div>
       </div>

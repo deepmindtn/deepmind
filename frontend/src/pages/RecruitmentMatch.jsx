@@ -57,6 +57,9 @@ const styles = {
     boxShadow: COLORS.shadowHuge,
     margin: "0 auto",
     padding: "48px",
+    minHeight: "calc(100vh - 40px)",
+    display: "flex",
+    flexDirection: "column"
   },
   card: {
     backgroundColor: COLORS.cardBg,
