@@ -2,7 +2,12 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from .models import Assignment, AssessmentTemplate
+from rest_framework.views import APIView
+from django.core.mail import send_mail
+from django.conf import settings
+from accounts.models import Recruitee
+from .models import Assignment, AssessmentTemplate ,CandidateAssignment
+from rest_framework import permissions
 
 from .serializers import (
     AssignRequestSerializer,
@@ -10,6 +15,7 @@ from .serializers import (
     AssignmentDetailSerializer,
     SubmitAnswersSerializer,
 )
+
 
 User = get_user_model()
 
@@ -1074,4 +1080,67 @@ class AICandidateMatchView(APIView):
             "score": score,
             "fit": fit,
             "summary": f"Similarity-based AI match score: {score} ({fit})."
+        })
+
+class AssignCandidateAssessmentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        # CHANGED: Now accepts a list of emails
+        candidate_emails = request.data.get("candidate_emails", []) 
+        template_codes = request.data.get("template_codes", []) # Array of strings
+
+        if not candidate_emails or not template_codes:
+            return Response({"detail": "Candidate emails and templates are required."}, status=400)
+
+        # Ensure it's a list even if frontend sends a single string by mistake
+        if isinstance(candidate_emails, str):
+            candidate_emails = [candidate_emails]
+
+        assigned_count = 0
+        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
+        errors = []
+
+        for email in candidate_emails:
+            try:
+                recruitee = get_object_or_404(Recruitee, email=email)
+                
+                for code in template_codes:
+                    try:
+                        template = AssessmentTemplate.objects.get(code=code)
+                        
+                        # Create the assignment
+                        assignment, created = CandidateAssignment.objects.get_or_create(
+                            recruitee=recruitee,
+                            template=template
+                        )
+                        
+                        # Only send email if a new assignment was created or if you want to resend
+                        # Here we send it regardless to ensure they get the link
+                        
+                        # Generate the unique link
+                        link = f"{origin}/take-assessment/{assignment.token}"
+                        
+                        print(f"Sending {code} assessment to {email}...")
+                        send_mail(
+                            subject=f"Assessment Invitation: {template.name}",
+                            message=f"Hi {recruitee.first_name},\n\nPlease complete your {template.name} assessment using the link below:\n\n{link}\n\nGood luck!",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[email],
+                            fail_silently=True, 
+                        )
+                        assigned_count += 1
+
+                    except AssessmentTemplate.DoesNotExist:
+                        print(f"Template {code} not found.")
+                        continue
+            
+            except Exception as e:
+                errors.append(f"Error for {email}: {str(e)}")
+                continue
+
+        return Response({
+            "message": f"Successfully processed assignments.",
+            "sent_count": assigned_count,
+            "errors": errors
         })

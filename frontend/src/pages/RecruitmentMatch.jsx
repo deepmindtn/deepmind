@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import {
   Plus,
   Upload,
@@ -10,9 +11,13 @@ import {
   Loader2,
   BarChart3,
   X,
-  CheckCircle2,
-  Briefcase,
+  CheckCircle,
+  AlertTriangle,
   Trash2,
+  Edit2,
+  ChevronDown,
+  Check,
+  Mail
 } from "lucide-react";
 
 // -----------------------
@@ -38,9 +43,37 @@ const COLORS = {
   shadowSm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
   shadowMd: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
   shadowLg: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-  shadowHuge:
-    "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  shadowHuge: "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
 };
+
+// -----------------------
+// Assessment Options Data
+// -----------------------
+const ASSESSMENT_OPTIONS = [
+  {
+    group: "Personality & Behavior",
+    items: [
+      { code: "BIG_FIVE", label: "🧠 Big Five Personality Traits" },
+      { code: "DISC", label: "💼 DISC Personality Assessment" },
+    ],
+  },
+  {
+    group: "Work Style & Motivation",
+    items: [
+      { code: "KARASEK", label: "⚖️ Karasek Job Demand-Control" },
+      { code: "GCOS", label: "🎯 General Causality Orientations" },
+      { code: "WSES", label: "✨ Work Self-Efficacy Scale" },
+    ],
+  },
+  {
+    group: "Cognitive & Creativity",
+    items: [
+      { code: "RIBS", label: "💡 Runco Ideational Behavior" },
+      { code: "CAQ", label: "🎨 Creative Achievement" },
+      { code: "ISE", label: "🚀 Innovation Self-Efficacy" },
+    ],
+  },
+];
 
 const styles = {
   container: {
@@ -80,6 +113,19 @@ const styles = {
     gap: "8px",
     padding: "10px 20px",
     backgroundColor: COLORS.primary,
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  btnBulk: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "10px 20px",
+    backgroundColor: COLORS.blue,
     color: "white",
     border: "none",
     borderRadius: "10px",
@@ -136,6 +182,7 @@ const styles = {
       rejected: { bg: "#fef2f2", text: "#ef4444" },
       invited: { bg: "#eff6ff", text: "#3b82f6" },
       pending: { bg: "#fffbeb", text: "#d97706" },
+      interview: { bg: "#fef3c7", text: "#d97706" },
       default: { bg: "#f3f4f6", text: "#6b7280" },
     };
     const style = colors[status?.toLowerCase()] || colors.default;
@@ -149,6 +196,22 @@ const styles = {
       textTransform: "capitalize",
     };
   },
+  checkbox: {
+    width: "18px",
+    height: "18px",
+    cursor: "pointer",
+    accentColor: COLORS.primary
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.4)",
+    backdropFilter: "blur(6px)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 9999,
+    padding: 20,
+  },
 };
 
 // -----------------------
@@ -158,21 +221,10 @@ function StatusBadge({ status }) {
   return <span style={styles.badge(status)}>{status}</span>;
 }
 
-function Modal({ open, title, onClose, children, actions }) {
+const Modal = ({ open, title, onClose, children, actions }) => {
   if (!open) return null;
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.4)",
-        display: "grid",
-        placeItems: "center",
-        zIndex: 1000,
-        backdropFilter: "blur(4px)",
-      }}
-      onClick={onClose}
-    >
+  return ReactDOM.createPortal(
+    <div style={styles.modalOverlay} onClick={onClose}>
       <div
         style={{
           ...styles.card,
@@ -180,6 +232,7 @@ function Modal({ open, title, onClose, children, actions }) {
           maxWidth: "600px",
           padding: "24px",
           boxShadow: COLORS.shadowLg,
+          overflow: "visible", // Allow dropdown to flow out
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -194,9 +247,10 @@ function Modal({ open, title, onClose, children, actions }) {
           {actions}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
-}
+};
 
 // -----------------------
 // Main Component
@@ -206,12 +260,30 @@ export default function RecruitmentMatch() {
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
-  // States
+  // --- States ---
+  const [toast, setToast] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [q, setQ] = useState("");
-  const [addOpen, setAddOpen] = useState(false);
+  
+  // Selection States (NEW)
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // CRUD States
+  const [formOpen, setFormOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ id: null, email: "", first_name: "", last_name: "", position: "", status: "pending" });
+  const [submitting, setSubmitting] = useState(false);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Assign Assessment States
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignRow, setAssignRow] = useState(null);
+  const [assignRow, setAssignRow] = useState(null); // If null, means Bulk Mode
+  const [selectedCodes, setSelectedCodes] = useState([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [sendingAssessment, setSendingAssessment] = useState(false);
 
   // AI Matcher States
   const [files, setFiles] = useState([]);
@@ -220,11 +292,13 @@ export default function RecruitmentMatch() {
   const [results, setResults] = useState([]);
   const [matchLoading, setMatchLoading] = useState(false);
 
-  // Form States
-  const [newRecruitee, setNewRecruitee] = useState({
-    email: "", first_name: "", last_name: "", position: "", status: "invited",
-  });
-  const [assignForm, setAssignForm] = useState({ template_code: "BIG_FIVE" });
+  // --- Toast Timer ---
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     fetchCandidates();
@@ -236,35 +310,185 @@ export default function RecruitmentMatch() {
       const data = await res.json();
       setCandidates(data.map((c) => ({
         id: c.id,
+        first_name: c.first_name,
+        last_name: c.last_name,
         name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email,
         email: c.email,
-        role: c.position || "Not Specified",
+        position: c.position || "Not Specified",
         status: c.status || "Pending",
       })));
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e);
+      setToast({ message: "Failed to load candidates", type: "error" });
+    }
   }
 
-  // File Handlers
+  // --- Bulk Selection Logic ---
+  const filtered = candidates.filter((c) =>
+    c.name.toLowerCase().includes(q.toLowerCase()) || c.position.toLowerCase().includes(q.toLowerCase())
+  );
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(filtered.map(c => c.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(itemId => itemId !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const openBulkAssignModal = () => {
+    if (selectedIds.length === 0) return;
+    setAssignRow(null); // Null means bulk mode
+    setSelectedCodes([]);
+    setAssignOpen(true);
+  };
+
+  // --- CRUD Handlers ---
+  const handleSaveCandidate = async () => {
+    if (!formData.email || !formData.first_name) {
+      setToast({ message: "Email and Name are required.", type: "error" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const method = isEditing ? "PUT" : "POST";
+      const url = isEditing 
+        ? `${API_BASE}/api/recruitment/candidates/${formData.id}/` 
+        : `${API_BASE}/api/recruitment/candidates/`;
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) throw new Error("Failed to save candidate");
+
+      await fetchCandidates();
+      setFormOpen(false);
+      setToast({ message: isEditing ? "Candidate updated!" : "Candidate added!", type: "success" });
+    } catch (e) {
+      setToast({ message: "Error saving candidate.", type: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCandidate = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/recruitment/candidates/${deleteId}/`, {
+        method: "DELETE",
+        headers: authHeader,
+      });
+
+      if (!res.ok) throw new Error("Delete failed");
+
+      setCandidates(candidates.filter(c => c.id !== deleteId));
+      setSelectedIds(selectedIds.filter(id => id !== deleteId)); // Remove from selection
+      setDeleteOpen(false);
+      setToast({ message: "Candidate removed.", type: "success" });
+    } catch (e) {
+      setToast({ message: "Failed to delete candidate.", type: "error" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openEditModal = (c) => {
+    setIsEditing(true);
+    setFormData({
+      id: c.id,
+      email: c.email,
+      first_name: c.first_name,
+      last_name: c.last_name,
+      position: c.position,
+      status: c.status,
+    });
+    setFormOpen(true);
+  };
+
+  const openAddModal = () => {
+    setIsEditing(false);
+    setFormData({ id: null, email: "", first_name: "", last_name: "", position: "", status: "pending" });
+    setFormOpen(true);
+  };
+
+  // --- Assign Assessment Logic ---
+  const toggleAssessment = (code) => {
+    setSelectedCodes(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+  };
+
+  const handleSendAssessment = async () => {
+    if (selectedCodes.length === 0) return setToast({ message: "Select at least one assessment.", type: "error" });
+    
+    setSendingAssessment(true);
+    try {
+        // Prepare List of Emails
+        let targetEmails = [];
+        if (assignRow) {
+            // Single Mode
+            targetEmails = [assignRow.email];
+        } else {
+            // Bulk Mode
+            targetEmails = candidates
+                .filter(c => selectedIds.includes(c.id))
+                .map(c => c.email);
+        }
+
+        const res = await fetch(`${API_BASE}/api/assessments/assign-candidate/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeader },
+            body: JSON.stringify({
+                candidate_emails: targetEmails, // CHANGED: now sending array
+                template_codes: selectedCodes
+            })
+        });
+        
+        if (!res.ok) throw new Error("Failed to send.");
+        
+        const data = await res.json();
+        setToast({ message: `Sent to ${data.sent_count || targetEmails.length} candidates!`, type: "success" });
+        setAssignOpen(false);
+        setSelectedCodes([]);
+        
+        if (!assignRow) {
+            setSelectedIds([]); // Clear selection after bulk send
+        }
+    } catch (e) {
+        setToast({ message: "Error sending assessments.", type: "error" });
+    } finally {
+        setSendingAssessment(false);
+    }
+  };
+
+  // --- AI Matcher Handlers ---
   const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
     else if (e.type === "dragleave") setIsDragging(false);
   };
 
   const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
-    }
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+    if (e.dataTransfer.files?.length) setFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
   };
 
   const removeFile = (index) => setFiles((prev) => prev.filter((_, i) => i !== index));
 
   async function analyzeMatches() {
-    if (!files.length || !jobDescription) return alert("Upload CVs and enter job description");
+    if (!files.length || !jobDescription) {
+        setToast({ message: "Upload CVs and enter a description.", type: "error" });
+        return;
+    }
     setMatchLoading(true);
     const tempResults = [];
     for (const file of files) {
@@ -275,15 +499,14 @@ export default function RecruitmentMatch() {
         const res = await fetch(`${API_BASE}/api/recruitment/match/`, { method: "POST", headers: authHeader, body: form });
         const data = await res.json();
         tempResults.push({ name: file.name, ...data });
-      } catch (err) { tempResults.push({ name: file.name, error: "Failed to analyze" }); }
+      } catch (err) { 
+          tempResults.push({ name: file.name, error: "Failed to analyze" }); 
+      }
     }
     setResults(tempResults);
     setMatchLoading(false);
+    setToast({ message: "Analysis complete!", type: "success" });
   }
-
-  const filtered = candidates.filter((c) =>
-    c.name.toLowerCase().includes(q.toLowerCase()) || c.role.toLowerCase().includes(q.toLowerCase())
-  );
 
   return (
     <div style={styles.container}>
@@ -298,9 +521,16 @@ export default function RecruitmentMatch() {
               Centralized candidate management and AI assessment hub.
             </p>
           </div>
-          <button style={styles.btnPrimary} onClick={() => setAddOpen(true)}>
-            <Plus size={20} /> Add Candidate
-          </button>
+          
+          {selectedIds.length > 0 ? (
+             <button style={styles.btnBulk} onClick={openBulkAssignModal}>
+                <Mail size={20} /> Send Assessment to {selectedIds.length} Selected
+             </button>
+          ) : (
+            <button style={styles.btnPrimary} onClick={openAddModal}>
+                <Plus size={20} /> Add Candidate
+            </button>
+          )}
         </div>
 
         {/* Search */}
@@ -319,32 +549,66 @@ export default function RecruitmentMatch() {
           <div style={{ padding: "20px", borderBottom: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#fcfcfd" }}>
             <Users size={20} color={COLORS.primary} />
             <span style={{ fontWeight: "700" }}>Active Pipeline</span>
+            {selectedIds.length > 0 && <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>({selectedIds.length} selected)</span>}
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead style={{ backgroundColor: "#fafafa" }}>
                 <tr>
-                  {["Candidate", "Role", "Status", "Action"].map((h) => (
+                  <th style={{ padding: "16px 20px", width: "40px" }}>
+                    <input 
+                        type="checkbox" 
+                        style={styles.checkbox}
+                        onChange={handleSelectAll}
+                        checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                    />
+                  </th>
+                  {["Candidate", "Role", "Status", "Actions"].map((h) => (
                     <th key={h} style={{ padding: "16px 20px", color: COLORS.textSecondary, fontSize: "12px", fontWeight: "600", textTransform: "uppercase" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} style={{ borderBottom: `1px solid ${COLORS.borderColor}` }}>
+                  <tr key={c.id} style={{ borderBottom: `1px solid ${COLORS.borderColor}`, backgroundColor: selectedIds.includes(c.id) ? "#eff6ff" : "transparent" }}>
+                    <td style={{ padding: "16px 20px" }}>
+                        <input 
+                            type="checkbox" 
+                            style={styles.checkbox}
+                            checked={selectedIds.includes(c.id)}
+                            onChange={() => handleSelectRow(c.id)}
+                        />
+                    </td>
                     <td style={{ padding: "16px 20px" }}>
                       <div style={{ fontWeight: "600" }}>{c.name}</div>
                       <div style={{ fontSize: "13px", color: COLORS.textSecondary }}>{c.email}</div>
                     </td>
-                    <td style={{ padding: "16px 20px", fontSize: "14px" }}>{c.role}</td>
+                    <td style={{ padding: "16px 20px", fontSize: "14px" }}>{c.position}</td>
                     <td style={{ padding: "16px 20px" }}><StatusBadge status={c.status} /></td>
                     <td style={{ padding: "16px 20px" }}>
-                      <button
-                        onClick={() => { setAssignRow(c); setAssignOpen(true); }}
-                        style={{ ...styles.btnPrimary, backgroundColor: "transparent", color: COLORS.primary, border: `1px solid ${COLORS.primary}`, padding: "6px 12px", fontSize: "13px" }}
-                      >
-                        <Send size={14} /> Send Assessment
-                      </button>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                                onClick={() => { setAssignRow(c); setSelectedCodes([]); setAssignOpen(true); }}
+                                style={{ border: "none", background: "none", cursor: "pointer", color: COLORS.blue }}
+                                title="Send Assessment"
+                            >
+                                <Send size={16} />
+                            </button>
+                            <button
+                                onClick={() => openEditModal(c)}
+                                style={{ border: "none", background: "none", cursor: "pointer", color: COLORS.textMuted }}
+                                title="Edit Candidate"
+                            >
+                                <Edit2 size={16} />
+                            </button>
+                            <button
+                                onClick={() => { setDeleteId(c.id); setDeleteOpen(true); }}
+                                style={{ border: "none", background: "none", cursor: "pointer", color: COLORS.red }}
+                                title="Delete Candidate"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -363,7 +627,6 @@ export default function RecruitmentMatch() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-            {/* Modernized Upload Zone */}
             <div style={{ ...styles.card, padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
               <h3 style={{ fontSize: "16px", fontWeight: "600" }}>1. Upload CVs</h3>
               <div 
@@ -379,8 +642,6 @@ export default function RecruitmentMatch() {
                 </div>
                 <input type="file" multiple accept=".pdf,.txt" onChange={(e) => setFiles((prev) => [...prev, ...Array.from(e.target.files)])} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }} />
               </div>
-
-              {/* File List */}
               {files.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -402,7 +663,6 @@ export default function RecruitmentMatch() {
               )}
             </div>
 
-            {/* Job Description Zone */}
             <div style={{ ...styles.card, padding: "24px" }}>
               <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px" }}>2. Job Description</h3>
               <textarea
@@ -422,7 +682,6 @@ export default function RecruitmentMatch() {
             </div>
           </div>
 
-          {/* AI Results */}
           {results.length > 0 && (
             <div style={{ marginTop: "32px" }}>
               <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Analysis Results</h3>
@@ -447,28 +706,184 @@ export default function RecruitmentMatch() {
         </div>
       </div>
 
-      {/* Modals */}
-      <Modal open={addOpen} title="Add New Candidate" onClose={() => setAddOpen(false)} actions={<button style={styles.btnPrimary} onClick={() => setAddOpen(false)}>Create Candidate</button>}>
+      {/* Add/Edit Modal */}
+      <Modal 
+        open={formOpen} 
+        title={isEditing ? "Edit Candidate" : "Add New Candidate"} 
+        onClose={() => setFormOpen(false)} 
+        actions={
+            <button style={styles.btnPrimary} onClick={handleSaveCandidate} disabled={submitting}>
+                {submitting ? "Saving..." : "Save Candidate"}
+            </button>
+        }
+      >
          <div style={{ display: "grid", gap: 16 }}>
-            <div><label style={styles.label}>Email</label><input style={styles.input} type="email" /></div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}><label style={styles.label}>First Name</label><input style={styles.input} /></div>
-              <div style={{ flex: 1 }}><label style={styles.label}>Last Name</label><input style={styles.input} /></div>
+            <div>
+                <label style={styles.label}>Email</label>
+                <input 
+                    style={styles.input} 
+                    type="email" 
+                    value={formData.email} 
+                    onChange={e => setFormData({...formData, email: e.target.value})}
+                />
             </div>
-            <div><label style={styles.label}>Position</label><input style={styles.input} /></div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                  <label style={styles.label}>First Name</label>
+                  <input 
+                    style={styles.input}
+                    value={formData.first_name}
+                    onChange={e => setFormData({...formData, first_name: e.target.value})}
+                  />
+              </div>
+              <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Last Name</label>
+                  <input 
+                    style={styles.input}
+                    value={formData.last_name}
+                    onChange={e => setFormData({...formData, last_name: e.target.value})}
+                  />
+              </div>
+            </div>
+            <div>
+                <label style={styles.label}>Position</label>
+                <input 
+                    style={styles.input}
+                    value={formData.position}
+                    onChange={e => setFormData({...formData, position: e.target.value})}
+                />
+            </div>
+            <div>
+                <label style={styles.label}>Status</label>
+                <select 
+                    style={styles.input} 
+                    value={formData.status} 
+                    onChange={e => setFormData({...formData, status: e.target.value})}
+                >
+                    <option value="pending">Pending</option>
+                    <option value="invited">Invited</option>
+                    <option value="interview">Interview</option>
+                    <option value="hired">Hired</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
          </div>
       </Modal>
 
-      <Modal open={assignOpen} title="Send Assessment" onClose={() => setAssignOpen(false)} actions={<button style={styles.btnPrimary} onClick={() => setAssignOpen(false)}>Send Now</button>}>
-        {assignRow && <div style={{ marginBottom: 20, padding: 12, backgroundColor: COLORS.bgMain, borderRadius: 10 }}>
-          <div style={{ fontWeight: 700 }}>{assignRow.name}</div><div style={{ color: COLORS.textSecondary, fontSize: 13 }}>{assignRow.email}</div>
-        </div>}
-        <label style={styles.label}>Assessment Template</label>
-        <select style={styles.input}>
-          <option>🧠 Big Five Personality Traits</option>
-          <option>💼 DISC Assessment</option>
-        </select>
+      {/* Delete Modal */}
+      <Modal open={deleteOpen} title="Delete Candidate?" onClose={() => setDeleteOpen(false)}
+        actions={
+            <>
+                <button onClick={() => setDeleteOpen(false)} style={{ padding: "8px 16px", border: "1px solid #ccc", borderRadius: "8px", background: "white", cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleDeleteCandidate} style={{ ...styles.btnPrimary, backgroundColor: COLORS.red }}>
+                    {deleting ? "Deleting..." : "Delete Permanently"}
+                </button>
+            </>
+        }
+      >
+        <div style={{ textAlign: "center" }}>
+            <AlertTriangle size={40} color={COLORS.red} style={{ marginBottom: 16 }} />
+            <p>Are you sure you want to remove this candidate? This action cannot be undone.</p>
+        </div>
       </Modal>
+
+      {/* Assign Modal (UPDATED FOR BULK) */}
+      <Modal 
+        open={assignOpen} 
+        title={assignRow ? "Send Assessment" : `Bulk Send (${selectedIds.length} Candidates)`} 
+        onClose={() => setAssignOpen(false)} 
+        actions={
+            <button style={styles.btnPrimary} onClick={handleSendAssessment} disabled={sendingAssessment}>
+                {sendingAssessment ? <Loader2 className="spin" size={16} /> : <Send size={16} />} 
+                {sendingAssessment ? "Sending..." : "Send Now"}
+            </button>
+        }
+      >
+        {assignRow ? (
+            <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#f8fafc", borderRadius: 8 }}>
+                <strong>{assignRow.name}</strong> <span style={{ color: "#64748b" }}>({assignRow.email})</span>
+            </div>
+        ) : (
+            <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#eff6ff", borderRadius: 8, color: COLORS.blue }}>
+                <strong>Bulk Action:</strong> Sending to {selectedIds.length} selected candidates.
+            </div>
+        )}
+
+        <label style={styles.label}>Select Assessments</label>
+        
+        {/* Custom Multi-Select Dropdown */}
+        <div style={{ position: "relative", marginBottom: "120px" }}>
+            <div 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                style={{ ...styles.input, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" }}
+            >
+                <span>{selectedCodes.length > 0 ? `${selectedCodes.length} Selected` : "Select templates..."}</span>
+                <ChevronDown size={16} />
+            </div>
+
+            {isDropdownOpen && (
+                <>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setIsDropdownOpen(false)} />
+                    <div style={{
+                        position: "absolute", top: "100%", left: 0, width: "100%", zIndex: 20,
+                        backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "10px",
+                        boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", maxHeight: "250px", overflowY: "auto"
+                    }}>
+                        {ASSESSMENT_OPTIONS.map(group => (
+                            <div key={group.group}>
+                                <div style={{ padding: "8px 12px", background: "#f9fafb", fontWeight: "bold", fontSize: "12px", color: "#6b7280" }}>
+                                    {group.group}
+                                </div>
+                                {group.items.map(item => {
+                                    const isSelected = selectedCodes.includes(item.code);
+                                    return (
+                                        <div 
+                                            key={item.code} 
+                                            onClick={() => toggleAssessment(item.code)}
+                                            style={{
+                                                padding: "10px 12px", cursor: "pointer", display: "flex", justifyContent: "space-between",
+                                                background: isSelected ? "#eff6ff" : "white"
+                                            }}
+                                        >
+                                            <span style={{ color: isSelected ? COLORS.blue : COLORS.textPrimary }}>{item.label}</span>
+                                            {isSelected && <Check size={16} color={COLORS.blue} />}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+      </Modal>
+
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed", bottom: "32px", right: "32px", zIndex: 9999,
+            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5",
+            border: `1px solid ${toast.type === "error" ? "#ef4444" : "#10b981"}`,
+            borderRadius: "12px", padding: "16px 20px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+            display: "flex", alignItems: "center", gap: "12px", minWidth: "300px",
+            animation: "fadeIn 0.3s ease-out",
+          }}
+        >
+          <div style={{ backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5", padding: "8px", borderRadius: "50%", display: "flex" }}>
+            {toast.type === "error" ? <AlertTriangle size={20} color="#dc2626" /> : <CheckCircle size={20} color="#059669" />}
+          </div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: "700", color: toast.type === "error" ? "#991b1b" : "#065f46" }}>
+              {toast.type === "error" ? "Error" : "Success"}
+            </h4>
+            <p style={{ margin: 0, fontSize: "13px", color: toast.type === "error" ? "#b91c1c" : "#047857" }}>{toast.message}</p>
+          </div>
+          <button onClick={() => setToast(null)} style={{ border: "none", background: "none", cursor: "pointer", padding: "4px", opacity: 0.6 }}>
+            <X size={16} color={toast.type === "error" ? "#991b1b" : "#065f46"} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

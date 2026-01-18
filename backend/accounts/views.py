@@ -10,7 +10,6 @@ from django.http import HttpResponse
 
 from .models import Recruitee, Invite, Department
 
-# Serializers (✅ Added DepartmentSerializer)
 from .serializers import (
     SignupSerializer,
     InviteCreateSerializer,
@@ -23,6 +22,12 @@ from .serializers import (
 
 User = get_user_model()
 
+# --------------------------
+# ✅ 1. HR Permission Helper (MOVED TO TOP)
+# --------------------------
+class IsHR(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and getattr(request.user, "role", "") == User.Roles.HR
 
 # --------------------------
 # HR Signup
@@ -32,36 +37,54 @@ class SignupView(generics.CreateAPIView):
     serializer_class = SignupSerializer
     permission_classes = [permissions.AllowAny]
 
+# --------------------------
+# Recruitee Management
+# --------------------------
+class RecruiteeListCreateView(generics.ListCreateAPIView):
+    serializer_class = RecruiteeSerializer
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Recruitee.objects.filter(company=user.company).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, company=self.request.user.company)
+
+class RecruiteeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Handles GET (single), PUT (update), DELETE (remove) for a candidate.
+    """
+    serializer_class = RecruiteeSerializer
+    permission_classes = [permissions.IsAuthenticated, IsHR] # ✅ Now IsHR is defined
+
+    def get_queryset(self):
+        return Recruitee.objects.filter(company=self.request.user.company)
 
 # --------------------------
 # Invite Employee (Single - WITH EMAIL)
 # --------------------------
 class InviteCreateView(generics.CreateAPIView):
-    """
-    HR-only: create an invite AND send email immediately.
-    """
     serializer_class = InviteCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        # 1. Validate and Save to DB
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         invite = serializer.save()
 
-        # 2. Generate Link
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
-        invite_link = f"{origin}/accept-invite?token={invite.id}"
+        # ✅ FIXED: Use .token (Secure UUID) instead of .id (PK)
+        invite_link = f"{origin}/accept-invite?token={invite.token}"
         
         email_sent = False
         email_error_msg = None
 
-        # 3. Send Email
         try:
             print(f"Sending single invite to {invite.email}...")
             send_mail(
                 subject="You're invited to join DeepMind HR!",
-                message=f"Hi {invite.first_name},\n\nYou have been invited to join the platform. Click the link below to set up your account:\n\n{invite_link}\n\nBest regards,\nHR Team",
+                message=f"Hi {invite.first_name},\n\nYou have been invited to join. Click here:\n\n{invite_link}\n\nBest regards,",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[invite.email],
                 fail_silently=False,
@@ -71,17 +94,15 @@ class InviteCreateView(generics.CreateAPIView):
             print(f"Email failed: {e}")
             email_error_msg = str(e)
 
-        # 4. Return Response with Email Status
         headers = self.get_success_headers(serializer.data)
         response_data = serializer.data
         response_data['email_sent'] = email_sent
-        response_data['invite_link'] = invite_link # Send back link in case email fails
+        response_data['invite_link'] = invite_link
         
         if not email_sent:
             response_data['email_error'] = email_error_msg
 
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
-
 
 # --------------------------
 # Accept Invite
@@ -89,7 +110,6 @@ class InviteCreateView(generics.CreateAPIView):
 class AcceptInviteView(generics.CreateAPIView):
     serializer_class = AcceptInviteSerializer
     permission_classes = [permissions.AllowAny]
-
 
 # --------------------------
 # Current User (Me)
@@ -107,30 +127,6 @@ class MeView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-# --------------------------
-# HR Permission Helper
-# --------------------------
-class IsHR(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and getattr(request.user, "role", "") == User.Roles.HR
-
-
-# --------------------------
-# Recruitee Management
-# --------------------------
-class RecruiteeListCreateView(generics.ListCreateAPIView):
-    serializer_class = RecruiteeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsHR]
-
-    def get_queryset(self):
-        user = self.request.user
-        return Recruitee.objects.filter(company=user.company).order_by("-created_at")
-
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, company=self.request.user.company)
-
-
 # --------------------------
 # Employees List
 # --------------------------
@@ -140,7 +136,6 @@ class UsersListView(generics.ListAPIView):
 
     def get_queryset(self):
         return User.objects.filter(company=self.request.user.company).order_by("-date_joined")
-
 
 # --------------------------
 # CSV Import View
@@ -167,7 +162,6 @@ class ImportEmployeesView(APIView):
             "Product": "product", "Other": "other"
         }
 
-        # Automatic URL Detection
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         base_url = f"{origin}/accept-invite"
 
@@ -180,25 +174,16 @@ class ImportEmployeesView(APIView):
             last_name = row.get('Last Name', '').strip()
             raw_dept = row.get('Department', '').strip()
 
-            if not email: 
-                continue
+            if not email: continue
 
-            # ---------------------------------------------------------
-            # NEW LOGIC: Check for existing User or Invite
-            # ---------------------------------------------------------
-            
-            # 1. Check if they are already a registered user
             if User.objects.filter(email=email).exists():
                 errors.append(f"Skipped {email}: User already registered.")
                 continue
 
-            # 2. Check if an invite is already pending
             if Invite.objects.filter(email=email).exists():
                 errors.append(f"Skipped {email}: Invite already sent/pending.")
                 continue
             
-            # ---------------------------------------------------------
-
             department_key = dept_map.get(raw_dept)
             if not department_key: department_key = raw_dept.lower() 
 
@@ -214,7 +199,8 @@ class ImportEmployeesView(APIView):
                     invite_instance = serializer.save()
                     added_count += 1
                     
-                    token = str(invite_instance.id) 
+                    # ✅ FIXED: Use .token (Secure UUID) instead of .id
+                    token = str(invite_instance.token) 
                     invite_link = f"{base_url}?token={token}"
                     
                     try:
@@ -233,7 +219,6 @@ class ImportEmployeesView(APIView):
                 except Exception as e:
                     errors.append(f"DB Error {email}: {str(e)}")
             else:
-                # This catches other validation errors (like invalid email format)
                 err_msg = "; ".join([f"{k}: {v[0]}" for k, v in serializer.errors.items()])
                 errors.append(f"Skipped {email}: {err_msg}")
 
@@ -243,20 +228,17 @@ class ImportEmployeesView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 # --------------------------
-# Department Views (✅ NEW - Added these classes)
+# Department Views
 # --------------------------
 class DepartmentListCreateView(generics.ListCreateAPIView):
     serializer_class = DepartmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get_queryset(self):
-        # Show departments for the user's company
         return Department.objects.filter(company=self.request.user.company).order_by("-created_at")
 
     def perform_create(self, serializer):
-        # Auto-assign the user's company
         serializer.save(company=self.request.user.company)
-
 
 class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DepartmentSerializer
@@ -265,7 +247,7 @@ class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Department.objects.filter(company=self.request.user.company)
 
-        # --------------------------
+# --------------------------
 # Export Departments to CSV
 # --------------------------
 class ExportDepartmentsView(APIView):
@@ -276,10 +258,8 @@ class ExportDepartmentsView(APIView):
         response['Content-Disposition'] = 'attachment; filename="departments.csv"'
 
         writer = csv.writer(response)
-        # CSV Headers
         writer.writerow(['ID', 'Name', 'Description', 'Icon', 'Created At'])
 
-        # Data
         departments = Department.objects.filter(company=request.user.company).order_by('-created_at')
         for dept in departments:
             writer.writerow([
