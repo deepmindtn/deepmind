@@ -76,7 +76,6 @@ import {
   Wifi,
   Zap,
   Wrench,
-  ChevronRight,
 } from "lucide-react";
 
 // -----------------------
@@ -100,74 +99,15 @@ const COLORS = {
 };
 
 const ICON_MAP = {
-  Layers,
-  Users,
-  Briefcase,
-  DollarSign,
-  Code,
-  Megaphone,
-  Shield,
-  Activity,
-  PenTool,
-  Truck,
-  Coffee,
-  Home,
-  Settings,
-  Database,
-  Cloud,
-  Server,
-  Smartphone,
-  Monitor,
-  Cpu,
-  Globe,
-  Anchor,
-  Archive,
-  Award,
-  BarChart,
-  Battery,
-  Bell,
-  Book,
-  Box,
-  Calendar,
-  Camera,
-  Cast,
-  CheckCircle,
-  Clipboard,
-  Clock,
-  Compass,
-  CreditCard,
-  Flag,
-  Folder,
-  Gift,
-  Heart,
-  Image,
-  Key,
-  Lock,
-  Map,
-  Mic,
-  Music,
-  Package,
-  PieChart,
-  Play,
-  Power,
-  Printer,
-  Radio,
-  Save,
-  Scissors,
-  Send,
-  ShoppingBag,
-  ShoppingCart,
-  Smile,
-  Star,
-  Sun,
-  Tag,
-  Terminal,
-  Umbrella,
-  Video,
-  Voicemail,
-  Wifi,
-  Zap,
-  Wrench,
+  Layers, Users, Briefcase, DollarSign, Code, Megaphone, Shield, Activity,
+  PenTool, Truck, Coffee, Home, Settings, Database, Cloud, Server,
+  Smartphone, Monitor, Cpu, Globe, Anchor, Archive, Award, BarChart,
+  Battery, Bell, Book, Box, Calendar, Camera, Cast, CheckCircle,
+  Clipboard, Clock, Compass, CreditCard, Flag, Folder, Gift, Heart,
+  Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play,
+  Power, Printer, Radio, Save, Scissors, Send, ShoppingBag,
+  ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella,
+  Video, Voicemail, Wifi, Zap, Wrench,
 };
 
 const styles = {
@@ -295,9 +235,13 @@ export default function Departments() {
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
+  // --- States ---
+  const [toast, setToast] = useState(null); // { message: "", type: "success" | "error" }
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  
+  // Modal States
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -308,10 +252,21 @@ export default function Departments() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
+  
+  // Delete States
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // --- Toast Timer ---
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // --- Data Fetching ---
   async function fetchDepartments() {
     setLoading(true);
     try {
@@ -322,6 +277,7 @@ export default function Departments() {
       setRows(data);
     } catch (e) {
       console.error(e);
+      setToast({ message: "Failed to load departments", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -334,6 +290,7 @@ export default function Departments() {
   const filtered = rows.filter((r) =>
     r.name.toLowerCase().includes(q.toLowerCase())
   );
+  
   const filteredIcons = useMemo(
     () =>
       Object.keys(ICON_MAP).filter((key) =>
@@ -342,35 +299,54 @@ export default function Departments() {
     [iconSearch]
   );
 
+  // --- Handlers ---
+
   const handleExportCSV = async () => {
-    const res = await fetch(`${API_BASE}/api/departments/export/`, {
-      headers: authHeader,
-    });
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "departments.csv";
-    a.click();
+    try {
+      const res = await fetch(`${API_BASE}/api/departments/export/`, {
+        headers: authHeader,
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "departments.csv";
+      a.click();
+      setToast({ message: "Export started successfully!", type: "success" });
+    } catch (e) {
+      setToast({ message: "Failed to export CSV.", type: "error" });
+    }
   };
 
   const handleSubmit = async () => {
-    if (!formData.name) return;
+    if (!formData.name) {
+      setToast({ message: "Department name is required.", type: "error" });
+      return;
+    }
     setSubmitting(true);
     try {
       const method = isEditing ? "PUT" : "POST";
       const url = isEditing
         ? `${API_BASE}/api/departments/${formData.id}/`
         : `${API_BASE}/api/departments/`;
-      await fetch(url, {
+      
+      const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify(formData),
       });
-      fetchDepartments();
+
+      if (!res.ok) throw new Error("Failed to save");
+
+      await fetchDepartments();
       setOpen(false);
+      setToast({ 
+        message: isEditing ? "Department updated successfully!" : "Department created successfully!", 
+        type: "success" 
+      });
     } catch (e) {
-      console.error(e);
+      setToast({ message: "An error occurred while saving.", type: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -379,14 +355,18 @@ export default function Departments() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`${API_BASE}/api/departments/${deleteId}/`, {
+      const res = await fetch(`${API_BASE}/api/departments/${deleteId}/`, {
         method: "DELETE",
         headers: authHeader,
       });
+
+      if (!res.ok) throw new Error("Delete failed");
+
       setRows(rows.filter((r) => r.id !== deleteId));
       setDeleteOpen(false);
+      setToast({ message: "Department deleted successfully!", type: "success" });
     } catch (e) {
-      console.error(e);
+      setToast({ message: "Failed to delete department.", type: "error" });
     } finally {
       setDeleting(false);
     }
@@ -779,6 +759,81 @@ export default function Departments() {
           </p>
         </div>
       </Modal>
+
+      {/* FLASH MESSAGE / TOAST COMPONENT */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "32px",
+            right: "32px",
+            zIndex: 9999, // Ensure it sits on top of modals
+            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5", // Red or Green bg
+            border: `1px solid ${toast.type === "error" ? "#ef4444" : "#10b981"}`,
+            borderRadius: "12px",
+            padding: "16px 20px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            minWidth: "300px",
+            animation: "fadeIn 0.3s ease-out", 
+          }}
+        >
+          {/* Icon based on type */}
+          <div
+            style={{
+              backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5",
+              padding: "8px",
+              borderRadius: "50%",
+              display: "flex",
+            }}
+          >
+            {toast.type === "error" ? (
+              <AlertTriangle size={20} color="#dc2626" />
+            ) : (
+              <CheckCircle size={20} color="#059669" />
+            )}
+          </div>
+
+          {/* Message Content */}
+          <div style={{ flex: 1 }}>
+            <h4
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: "14px",
+                fontWeight: "700",
+                color: toast.type === "error" ? "#991b1b" : "#065f46",
+              }}
+            >
+              {toast.type === "error" ? "Error" : "Success"}
+            </h4>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "13px",
+                color: toast.type === "error" ? "#b91c1c" : "#047857",
+              }}
+            >
+              {toast.message}
+            </p>
+          </div>
+
+          {/* Close Button */}
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              padding: "4px",
+              opacity: 0.6,
+            }}
+          >
+            <X size={16} color={toast.type === "error" ? "#991b1b" : "#065f46"} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

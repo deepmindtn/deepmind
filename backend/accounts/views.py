@@ -180,7 +180,24 @@ class ImportEmployeesView(APIView):
             last_name = row.get('Last Name', '').strip()
             raw_dept = row.get('Department', '').strip()
 
-            if not email: continue
+            if not email: 
+                continue
+
+            # ---------------------------------------------------------
+            # NEW LOGIC: Check for existing User or Invite
+            # ---------------------------------------------------------
+            
+            # 1. Check if they are already a registered user
+            if User.objects.filter(email=email).exists():
+                errors.append(f"Skipped {email}: User already registered.")
+                continue
+
+            # 2. Check if an invite is already pending
+            if Invite.objects.filter(email=email).exists():
+                errors.append(f"Skipped {email}: Invite already sent/pending.")
+                continue
+            
+            # ---------------------------------------------------------
 
             department_key = dept_map.get(raw_dept)
             if not department_key: department_key = raw_dept.lower() 
@@ -216,6 +233,7 @@ class ImportEmployeesView(APIView):
                 except Exception as e:
                     errors.append(f"DB Error {email}: {str(e)}")
             else:
+                # This catches other validation errors (like invalid email format)
                 err_msg = "; ".join([f"{k}: {v[0]}" for k, v in serializer.errors.items()])
                 errors.append(f"Skipped {email}: {err_msg}")
 
@@ -223,7 +241,6 @@ class ImportEmployeesView(APIView):
             "message": f"Successfully created {added_count} invites.",
             "errors": errors
         }, status=status.HTTP_201_CREATED)
-
 
 # --------------------------
 # Department Views (✅ NEW - Added these classes)

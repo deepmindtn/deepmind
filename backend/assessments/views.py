@@ -1,8 +1,9 @@
-from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from .models import Assignment, AssessmentTemplate
 
-from .models import Assignment
 from .serializers import (
     AssignRequestSerializer,
     AssignmentListItemSerializer,
@@ -10,13 +11,62 @@ from .serializers import (
     SubmitAnswersSerializer,
 )
 
+User = get_user_model()
 
 class AssignAssessmentView(generics.CreateAPIView):
     """
-    HR: POST { "employee_email": "...", "template_code": "BIG_FIVE" }
+    HR: POST { "employee_email": "...", "template_codes": ["BIG_FIVE", "DISC"] }
     """
     serializer_class = AssignRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        # 1. Validate the incoming data (email + list of codes)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["employee_email"]
+        codes = serializer.validated_data["template_codes"]
+
+        # 2. Check if Employee exists
+        try:
+            employee = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": f"Employee with email {email} not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 3. Create Assignments Loop
+        assigned_count = 0
+        errors = []
+
+        for code in codes:
+            try:
+                template = AssessmentTemplate.objects.get(code=code)
+                
+                # Check for duplicate pending assignment to prevent spamming
+                if Assignment.objects.filter(employee=employee, template=template, status="PENDING").exists():
+                    continue 
+
+                Assignment.objects.create(
+                    employee=employee,
+                    template=template,
+                    status="PENDING",
+                    assigned_by=request.user
+                    # assigned_by=request.user # Uncomment if your model has this field
+                )
+                assigned_count += 1
+            except AssessmentTemplate.DoesNotExist:
+                errors.append(f"Template code '{code}' not found in database.")
+            except Exception as e:
+                errors.append(f"Error assigning '{code}': {str(e)}")
+
+        # 4. Return Summary Response
+        return Response({
+            "message": f"Successfully assigned {assigned_count} assessments.",
+            "errors": errors if errors else None
+        }, status=status.HTTP_201_CREATED)
 
 
 class MyAssignmentsView(generics.ListAPIView):

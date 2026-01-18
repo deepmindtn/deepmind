@@ -8,11 +8,11 @@ User = get_user_model()
 
 
 # ---------- HR creates an assignment ----------
-class AssignRequestSerializer(serializers.ModelSerializer):
-    # incoming (write-only)
-    employee_email = serializers.EmailField(write_only=True)
-    template_code  = serializers.ChoiceField(
-        choices=["BIG_FIVE", "KARASEK", "MASLACH","DISC","JSS","BRS"], write_only=True
+class AssignRequestSerializer(serializers.Serializer):    
+    employee_email = serializers.EmailField()
+        template_codes = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False
     )
 
     # outgoing (read-only from created Assignment)
