@@ -91,9 +91,9 @@ const ASSESSMENT_OPTIONS = [
   },
 ];
 
-const styles = {
+const getStyles = (isMobile, isTablet) => ({
   container: {
-    padding: "5px 14px",
+    padding: isMobile ? "5px 8px" : "5px 14px",
     backgroundColor: COLORS.bgMain,
     minHeight: "100vh",
     fontFamily: "'Inter', system-ui, sans-serif",
@@ -101,11 +101,14 @@ const styles = {
   },
   mainWrapperCard: {
     backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
+    borderRadius: isMobile ? "16px" : "24px",
     border: `1px solid ${COLORS.borderColor}`,
     boxShadow: COLORS.shadowHuge,
     margin: "0 auto",
-    padding: "48px",
+    padding: isMobile ? "20px" : isTablet ? "32px" : "48px",
+    minHeight: "calc(100vh - 40px)",
+    display: "flex",
+    flexDirection: "column"
   },
   card: {
     backgroundColor: COLORS.cardBg,
@@ -117,8 +120,10 @@ const styles = {
   sectionHeader: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: isMobile ? "flex-start" : "center",
     marginBottom: "32px",
+    flexDirection: isMobile ? "column" : "row",
+    gap: isMobile ? "16px" : "0",
   },
   btnPrimary: {
     display: "flex",
@@ -132,6 +137,7 @@ const styles = {
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.2s",
+    justifyContent: "center",
   },
   btnSecondary: {
     display: "flex",
@@ -145,6 +151,7 @@ const styles = {
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.2s",
+    justifyContent: "center",
   },
   btnLight: {
     display: "flex",
@@ -158,6 +165,7 @@ const styles = {
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.2s",
+    justifyContent: "center",
   },
   input: {
     padding: "12px 16px",
@@ -197,7 +205,7 @@ const styles = {
       textTransform: "capitalize",
     };
   },
-};
+});
 
 // -----------------------
 // Icon Mapping
@@ -222,12 +230,23 @@ const DynamicIcon = ({ name, size = 20, color }) => {
 // -----------------------
 // Sub-components
 // -----------------------
-function StatusBadge({ status }) {
+function StatusBadge({ status, styles }) {
   return <span style={styles.badge(status)}>{status}</span>;
 }
 
 function Modal({ open, title, onClose, children, actions }) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (!open) return null;
+
+  const styles = getStyles(isMobile, false);
+
   return (
     <div
       style={{
@@ -238,6 +257,7 @@ function Modal({ open, title, onClose, children, actions }) {
         placeItems: "center",
         zIndex: 1000,
         backdropFilter: "blur(4px)",
+        padding: isMobile ? "16px" : "0"
       }}
       onClick={onClose}
     >
@@ -245,22 +265,28 @@ function Modal({ open, title, onClose, children, actions }) {
         style={{
           ...styles.card,
           width: "100%",
-          maxWidth: "720px",
-          padding: "24px",
+          maxWidth: isMobile ? "100%" : "720px",
+          padding: isMobile ? "20px" : "24px",
           boxShadow: COLORS.shadowLg,
-          maxHeight: "90vh",
+          maxHeight: isMobile ? "calc(100vh - 32px)" : "90vh",
           overflowY: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>{title}</h3>
-          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px", alignItems: "flex-start" }}>
+          <h3 style={{ margin: 0, fontSize: isMobile ? "18px" : "20px", fontWeight: "700", flex: 1 }}>{title}</h3>
+          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", padding: "0", marginLeft: "12px" }}>
             <X size={20} />
           </button>
         </div>
         {children}
-        <div style={{ marginTop: "24px", display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+        <div style={{ 
+          marginTop: "24px", 
+          display: "flex", 
+          gap: "12px", 
+          justifyContent: "flex-end",
+          flexDirection: isMobile ? "column-reverse" : "row"
+        }}>
           {actions}
         </div>
       </div>
@@ -276,9 +302,12 @@ export default function Employees() {
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
+  // --- Responsive States ---
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isTablet, setIsTablet] = useState(window.innerWidth >= 768 && window.innerWidth < 1024);
+
   // --- States ---
-  const [toast, setToast] = useState(null); // { message: "", type: "success" | "error" }
-  
+  const [toast, setToast] = useState(null);
   const [isInviting, setIsInviting] = useState(false);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -293,12 +322,10 @@ export default function Employees() {
   const [detailRow, setDetailRow] = useState(null);
   const [detailAssignments, setDetailAssignments] = useState([]);
 
-  // --- Assign Modal States ---
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignRow, setAssignRow] = useState(null);
   const [assignForm, setAssignForm] = useState({ template_codes: [] });
   
-  // Custom Dropdown States
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState({});
   const triggerRef = useRef(null);
@@ -318,6 +345,18 @@ export default function Employees() {
   const [inviteResult, setInviteResult] = useState(null);
   const [hrReport, setHrReport] = useState(null);
   const [hrReportOpen, setHrReportOpen] = useState(false);
+
+  const styles = useMemo(() => getStyles(isMobile, isTablet), [isMobile, isTablet]);
+
+  // --- Responsive Handler ---
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // --- Toast Timer ---
   useEffect(() => {
@@ -463,9 +502,7 @@ export default function Employees() {
     }
   }
 
-  // --- Assign Assessment Function ---
   async function assignAssessment() {
-    // Validation
     if (!assignForm.template_codes || assignForm.template_codes.length === 0) {
       setToast({ message: "Please select at least one assessment.", type: "error" });
       return;
@@ -477,7 +514,7 @@ export default function Employees() {
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({
           employee_email: assignRow.email,
-          template_codes: assignForm.template_codes, // Sending Array
+          template_codes: assignForm.template_codes,
         }),
       });
 
@@ -486,10 +523,7 @@ export default function Employees() {
         throw new Error(err?.detail || "Failed to assign assessment");
       }
 
-      // Success Toast
       setToast({ message: "Assessments assigned successfully!", type: "success" });
-      
-      // Cleanup
       setAssignOpen(false);
       setAssignRow(null);
       setAssignForm({ template_codes: [] });
@@ -544,15 +578,22 @@ export default function Employees() {
       <div style={styles.mainWrapperCard}>
         {/* Header */}
         <div style={styles.sectionHeader}>
-          <div>
-            <h1 style={{ fontSize: "32px", fontWeight: "800", marginBottom: "8px" }}>Employee Management</h1>
-            <p style={{ color: COLORS.textSecondary, margin: 0, fontSize: "16px" }}>
+          <div style={{ width: isMobile ? "100%" : "auto" }}>
+            <h1 style={{ fontSize: isMobile ? "24px" : "32px", fontWeight: "800", marginBottom: "8px" }}>
+              Employee Management
+            </h1>
+            <p style={{ color: COLORS.textSecondary, margin: 0, fontSize: isMobile ? "14px" : "16px" }}>
               Manage your workforce, track assessments, and generate insights.
             </p>
           </div>
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div style={{ 
+            display: "flex", 
+            gap: "12px",
+            width: isMobile ? "100%" : "auto",
+            flexDirection: isMobile ? "column" : "row"
+          }}>
             <button
-              style={styles.btnSecondary}
+              style={{...styles.btnSecondary, width: isMobile ? "100%" : "auto"}}
               onClick={() => {
                 setCsvFile(null);
                 setImportResult(null);
@@ -562,7 +603,7 @@ export default function Employees() {
               <Upload size={18} /> Import CSV
             </button>
             <button
-              style={styles.btnPrimary}
+              style={{...styles.btnPrimary, width: isMobile ? "100%" : "auto"}}
               onClick={() => {
                 setInvite({ email: "", first_name: "", last_name: "", department_id: null });
                 setInviteResult(null);
@@ -575,7 +616,12 @@ export default function Employees() {
         </div>
 
         {/* Quick Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "32px" }}>
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(3, 1fr)", 
+          gap: "16px", 
+          marginBottom: "32px" 
+        }}>
           <div style={{ ...styles.card, padding: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
               <div style={{ padding: "10px", backgroundColor: COLORS.primaryLight, borderRadius: "12px" }}>
@@ -622,9 +668,20 @@ export default function Employees() {
           />
         </div>
 
-        <div style={{ display: "flex", gap: "12px", marginBottom: "32px", alignItems: "center" }}>
+        <div style={{ 
+          display: "flex", 
+          gap: "12px", 
+          marginBottom: "32px", 
+          alignItems: "center",
+          flexDirection: isMobile ? "column" : "row"
+        }}>
           <select
-            style={{ ...styles.input, width: "auto", padding: "10px 16px", backgroundColor: "#fcfcfd" }}
+            style={{ 
+              ...styles.input, 
+              width: isMobile ? "100%" : "auto", 
+              padding: "10px 16px", 
+              backgroundColor: "#fcfcfd" 
+            }}
             value={dep}
             onChange={(e) => setDep(e.target.value)}
           >
@@ -635,7 +692,12 @@ export default function Employees() {
           </select>
 
           <select
-            style={{ ...styles.input, width: "auto", padding: "10px 16px", backgroundColor: "#fcfcfd" }}
+            style={{ 
+              ...styles.input, 
+              width: isMobile ? "100%" : "auto", 
+              padding: "10px 16px", 
+              backgroundColor: "#fcfcfd" 
+            }}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -644,22 +706,87 @@ export default function Employees() {
             ))}
           </select>
 
-          <button style={styles.btnPrimary} onClick={generateHRReport}>
+          <button 
+            style={{
+              ...styles.btnPrimary,
+              width: isMobile ? "100%" : "auto"
+            }} 
+            onClick={generateHRReport}
+          >
             <FileText size={18} /> Generate Report
           </button>
         </div>
 
         {/* Employee Table */}
         <div style={styles.card}>
-          <div style={{ padding: "20px", borderBottom: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#fcfcfd" }}>
+          <div style={{ 
+            padding: isMobile ? "16px" : "20px", 
+            borderBottom: `1px solid ${COLORS.borderColor}`, 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "10px", 
+            backgroundColor: "#fcfcfd" 
+          }}>
             <Users size={20} color={COLORS.primary} />
-            <span style={{ fontWeight: "700" }}>Employee Directory</span>
+            <span style={{ fontWeight: "700", fontSize: isMobile ? "14px" : "16px" }}>Employee Directory</span>
           </div>
           {loading ? (
             <div style={{ padding: "40px", textAlign: "center", color: COLORS.textSecondary }}>
               Loading employees...
             </div>
+          ) : isMobile ? (
+            // Mobile Card View
+            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {current.map((r) => (
+                <div key={r.id} style={{
+                  ...styles.card,
+                  padding: "16px",
+                  border: `1px solid ${COLORS.borderColor}`
+                }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "12px" }}>
+                    <div style={{ 
+                      width: "40px", 
+                      height: "40px", 
+                      borderRadius: "50%", 
+                      backgroundColor: COLORS.primaryLight, 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      flexShrink: 0 
+                    }}>
+                      <UserIcon size={20} color={COLORS.primary} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: "600", marginBottom: "4px" }}>{r.name}</div>
+                      <div style={{ fontSize: "13px", color: COLORS.textSecondary, marginBottom: "4px", wordBreak: "break-word" }}>{r.email}</div>
+                      <div style={{ fontSize: "13px", color: COLORS.textSecondary, marginBottom: "4px" }}>
+                        <strong>Role:</strong> {r.role}
+                      </div>
+                      <div style={{ fontSize: "13px", color: COLORS.textSecondary, marginBottom: "8px" }}>
+                        <strong>Dept:</strong> {r.department}
+                      </div>
+                      <StatusBadge status={r.status} styles={styles} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => viewDetails(r)}
+                      style={{ ...styles.btnSecondary, padding: "8px 14px", fontSize: "13px", flex: 1 }}
+                    >
+                      <Eye size={14} /> View
+                    </button>
+                    <button
+                      onClick={() => { setAssignRow(r); setAssignOpen(true); }}
+                      style={{ ...styles.btnSecondary, padding: "8px 14px", fontSize: "13px", flex: 1 }}
+                    >
+                      <Send size={14} /> Assess
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
+            // Desktop Table View
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead style={{ backgroundColor: "#fafafa" }}>
@@ -685,7 +812,7 @@ export default function Employees() {
                       </td>
                       <td style={{ padding: "16px 20px", fontSize: "14px" }}>{r.role}</td>
                       <td style={{ padding: "16px 20px", fontSize: "14px" }}>{r.department}</td>
-                      <td style={{ padding: "16px 20px" }}><StatusBadge status={r.status} /></td>
+                      <td style={{ padding: "16px 20px" }}><StatusBadge status={r.status} styles={styles} /></td>
                       <td style={{ padding: "16px 20px" }}>
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button
@@ -795,9 +922,9 @@ export default function Employees() {
             <div style={{ display: "grid", gap: "12px" }}>
               {detailAssignments.map((a) => (
                 <div key={a.id} style={{ ...styles.card, padding: "16px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                     <h5 style={{ margin: 0, fontSize: "14px", fontWeight: "600" }}>{a.template_name}</h5>
-                    <StatusBadge status={a.status} />
+                    <StatusBadge status={a.status} styles={styles} />
                   </div>
                 </div>
               ))}
@@ -806,7 +933,7 @@ export default function Employees() {
         )}
       </Modal>
 
-      {/* NEW: Custom Multi-Select Assign Modal */}
+      {/* Assign Modal */}
       <Modal
         open={assignOpen}
         title="Send Assessment"
@@ -829,11 +956,9 @@ export default function Employees() {
           </div>
         )}
         
-        {/* CUSTOM DROPDOWN UI */}
         <div style={{ position: "relative", marginBottom: "40px" }}>
           <label style={styles.label}>Select Assessment Templates</label>
           
-          {/* Trigger Box */}
           <div
             ref={triggerRef}
             onClick={handleToggleDropdown}
@@ -854,19 +979,16 @@ export default function Employees() {
             <ChevronDown size={16} color={COLORS.textSecondary} />
           </div>
 
-          {/* Dropdown Menu */}
           {isDropdownOpen && (
             <>
-              {/* Invisible backdrop to close when clicking outside */}
               <div 
                 style={{ position: "fixed", inset: 0, zIndex: 9998 }} 
                 onClick={() => setIsDropdownOpen(false)} 
               />
 
-              {/* The List - Now uses dropdownStyle (position: fixed) */}
               <div
                 style={{
-                  ...dropdownStyle, // Applies top/left/width/fixed calculated earlier
+                  ...dropdownStyle,
                   overflowY: "auto",
                   backgroundColor: "white",
                   border: `1px solid ${COLORS.borderColor}`,
@@ -922,7 +1044,6 @@ export default function Employees() {
             </>
           )}
           
-          {/* Helper Text */}
           <div style={{ marginTop: "10px", fontSize: "12px", color: COLORS.textSecondary }}>
              {assignForm.template_codes?.length || 0} selected.
           </div>
@@ -969,7 +1090,7 @@ export default function Employees() {
                   placeholder="email@company.com"
                 />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px" }}>
                 <div>
                   <label style={styles.label}>First Name</label>
                   <input
@@ -999,7 +1120,14 @@ export default function Employees() {
                     No departments found. Go to "Departments" page to create one.
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px", maxHeight: "200px", overflowY: "auto", padding: "4px" }}>
+                  <div style={{ 
+                    display: "grid", 
+                    gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(140px, 1fr))", 
+                    gap: "10px", 
+                    maxHeight: "200px", 
+                    overflowY: "auto", 
+                    padding: "4px" 
+                  }}>
                     {availableDepts.map((dept) => {
                       const isSelected = invite.department_id === dept.id;
                       return (
@@ -1064,7 +1192,7 @@ export default function Employees() {
 
             <div style={{ ...styles.card, padding: "16px", backgroundColor: COLORS.bgMain }}>
               <label style={{ ...styles.label, fontSize: "12px", color: COLORS.textSecondary, textTransform: "uppercase" }}>Invitation Link (Backup)</label>
-              <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+              <div style={{ display: "flex", gap: "8px", marginTop: "8px", flexDirection: isMobile ? "column" : "row" }}>
                 <input
                   type="text"
                   style={{ ...styles.input, fontFamily: "monospace", fontSize: "12px", flex: 1 }}
@@ -1072,7 +1200,7 @@ export default function Employees() {
                   readOnly
                 />
                 <button
-                  style={{ ...styles.btnPrimary, padding: "10px 16px" }}
+                  style={{ ...styles.btnPrimary, padding: "10px 16px", whiteSpace: "nowrap" }}
                   onClick={() => {
                     navigator.clipboard.writeText(inviteResult.invite_link);
                     setToast({ message: "Link copied!", type: "success" });
@@ -1107,20 +1235,30 @@ export default function Employees() {
           </button>
         }
       >
-        <div style={{ whiteSpace: "pre-wrap", fontSize: "14px", lineHeight: "1.6", padding: "16px", backgroundColor: COLORS.bgMain, borderRadius: "12px", maxHeight: "400px", overflowY: "auto" }}>
+        <div style={{ 
+          whiteSpace: "pre-wrap", 
+          fontSize: "14px", 
+          lineHeight: "1.6", 
+          padding: "16px", 
+          backgroundColor: COLORS.bgMain, 
+          borderRadius: "12px", 
+          maxHeight: isMobile ? "60vh" : "400px", 
+          overflowY: "auto" 
+        }}>
           {hrReport}
         </div>
       </Modal>
 
-      {/* FLASH MESSAGE / TOAST COMPONENT */}
+      {/* Toast */}
       {toast && (
         <div
           style={{
             position: "fixed",
-            bottom: "32px",
-            right: "32px",
-            zIndex: 9999, // Ensure it sits on top of modals
-            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5", // Red or Green bg
+            bottom: isMobile ? "16px" : "32px",
+            right: isMobile ? "16px" : "32px",
+            left: isMobile ? "16px" : "auto",
+            zIndex: 9999,
+            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5",
             border: `1px solid ${toast.type === "error" ? "#ef4444" : "#10b981"}`,
             borderRadius: "12px",
             padding: "16px 20px",
@@ -1128,11 +1266,10 @@ export default function Employees() {
             display: "flex",
             alignItems: "center",
             gap: "12px",
-            minWidth: "300px",
+            minWidth: isMobile ? "auto" : "300px",
             animation: "fadeIn 0.3s ease-out", 
           }}
         >
-          {/* Icon based on type */}
           <div
             style={{
               backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5",
@@ -1148,7 +1285,6 @@ export default function Employees() {
             )}
           </div>
 
-          {/* Message Content */}
           <div style={{ flex: 1 }}>
             <h4
               style={{
@@ -1171,7 +1307,6 @@ export default function Employees() {
             </p>
           </div>
 
-          {/* Close Button */}
           <button
             onClick={() => setToast(null)}
             style={{

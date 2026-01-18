@@ -95,6 +95,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
+    whiteSpace: "nowrap",
   }),
   tag: (tone) => {
     const tones = {
@@ -117,12 +118,255 @@ const styles = {
   },
 };
 
+const responsiveStyles = `
+  @media (max-width: 1280px) {
+    .assessment-library-grid {
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)) !important;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .assessment-library-main-wrapper {
+      padding: 32px 24px !important;
+    }
+    .assessment-library-header-wrapper {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 24px !important;
+    }
+    .assessment-library-search-wrapper {
+      max-width: 100% !important;
+    }
+    .assessment-library-filters-stats {
+      flex-direction: column !important;
+      gap: 16px !important;
+    }
+    .assessment-library-stats-bar {
+      min-width: 100% !important;
+    }
+    .assessment-library-grid {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .assessment-library-container {
+      padding: 5px 10px !important;
+    }
+    .assessment-library-main-wrapper {
+      padding: 24px 16px !important;
+      border-radius: 20px !important;
+    }
+    .assessment-library-header-wrapper {
+      padding-bottom: 32px !important;
+      margin-bottom: 32px !important;
+    }
+    .assessment-library-header-title-wrapper {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+    .assessment-library-header h1 {
+      font-size: 28px !important;
+    }
+    .assessment-library-header p {
+      font-size: 15px !important;
+    }
+    .assessment-library-filters-wrapper {
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding-bottom: 8px !important;
+          flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    }
+    .assessment-library-filters-wrapper::-webkit-scrollbar {
+      height: 4px !important;
+    }
+    .assessment-library-filters-wrapper::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 4px !important;
+    }
+    .assessment-library-filters-wrapper::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 4px !important;
+    }
+    .assessment-library-pill {
+      padding: 8px 16px !important;
+      font-size: 13px !important;
+      flex-shrink: 0 !important;
+    }
+    .assessment-library-grid {
+      grid-template-columns: 1fr !important;
+      gap: 20px !important;
+    }
+    .assessment-library-card {
+      padding: 24px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .assessment-library-container {
+      padding: 5px 8px !important;
+    }
+    .assessment-library-main-wrapper {
+      padding: 20px 12px !important;
+      border-radius: 16px !important;
+    }
+    .assessment-library-header-wrapper {
+      padding-bottom: 24px !important;
+      margin-bottom: 24px !important;
+    }
+    .assessment-library-header-icon {
+      padding: 6px !important;
+    }
+    .assessment-library-header-icon svg {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    .assessment-library-header h1 {
+      font-size: 24px !important;
+    }
+    .assessment-library-header p {
+      font-size: 14px !important;
+    }
+    .assessment-library-search-input {
+      padding: 12px 16px 12px 44px !important;
+      font-size: 14px !important;
+    }
+    .assessment-library-search-icon {
+      left: 14px !important;
+    }
+    .assessment-library-filters-stats {
+      margin-bottom: 32px !important;
+    }
+    .assessment-library-filters-wrapper {
+      padding-bottom: 8px !important;
+    }
+    .assessment-library-filters-wrapper::-webkit-scrollbar {
+      height: 3px !important;
+    }
+    .assessment-library-pill {
+      padding: 7px 14px !important;
+      font-size: 12px !important;
+      flex-shrink: 0 !important;
+    }
+    .assessment-library-stats-bar {
+      padding: 3px !important;
+      border-radius: 12px !important;
+    }
+    .assessment-library-stat-badge {
+      padding: 10px !important;
+    }
+    .assessment-library-stat-value {
+      font-size: 18px !important;
+    }
+    .assessment-library-stat-label {
+      font-size: 10px !important;
+    }
+    .assessment-library-grid {
+      gap: 16px !important;
+    }
+    .assessment-library-card {
+      padding: 20px !important;
+    }
+    .assessment-library-icon-box {
+      width: 44px !important;
+      height: 44px !important;
+      margin-bottom: 16px !important;
+    }
+    .assessment-library-icon-box svg {
+      width: 22px !important;
+      height: 22px !important;
+    }
+    .assessment-library-card-category {
+      font-size: 12px !important;
+    }
+    .assessment-library-card-title {
+      font-size: 18px !important;
+      margin-bottom: 10px !important;
+    }
+    .assessment-library-card-description {
+      font-size: 13px !important;
+      margin-bottom: 16px !important;
+    }
+    .assessment-library-card-footer {
+      padding-top: 16px !important;
+      margin-top: 8px !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      align-items: flex-start !important;
+    }
+    .assessment-library-card-meta {
+      gap: 12px !important;
+      font-size: 12px !important;
+    }
+    .assessment-library-card-meta svg {
+      width: 12px !important;
+      height: 12px !important;
+    }
+    .assessment-library-btn-take-test {
+      width: 100% !important;
+      justify-content: center !important;
+      padding: 10px 20px !important;
+      font-size: 14px !important;
+    }
+    .assessment-library-tag {
+      font-size: 10px !important;
+      padding: 3px 8px !important;
+    }
+    .assessment-library-empty-state {
+      padding: 60px 20px !important;
+    }
+    .assessment-library-empty-state svg {
+      width: 40px !important;
+      height: 40px !important;
+      margin-bottom: 12px !important;
+    }
+    .assessment-library-empty-state h3 {
+      font-size: 18px !important;
+    }
+    .assessment-library-empty-state p {
+      font-size: 14px !important;
+    }
+  }
+
+  .assessment-hover-card:hover { 
+    transform: translateY(-8px); 
+    border-color: ${COLORS.primary} !important; 
+    box-shadow: ${COLORS.shadowHuge} !important; 
+  }
+  .primary-btn-emerald { 
+    background: ${COLORS.primary}; 
+    color: white; 
+    border: none; 
+    padding: 8px 16px; 
+    border-radius: 8px; 
+    font-weight: 700; 
+    font-size: 13px; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    cursor: pointer; 
+    transition: 0.2s; 
+  }
+  .primary-btn-emerald:hover { 
+    background: ${COLORS.primaryDark}; 
+  }
+  .search-input:focus { 
+    border-color: ${COLORS.primary} !important; 
+    box-shadow: 0 0 0 4px ${COLORS.primaryLight} !important; 
+    outline: none; 
+  }
+`;
+
 // -----------------------
 // Sub-Components
 // -----------------------
 
 const StatBadge = ({ value, label, color }) => (
   <div
+    className="assessment-library-stat-badge"
     style={{
       textAlign: "center",
       flex: 1,
@@ -130,10 +374,11 @@ const StatBadge = ({ value, label, color }) => (
       borderRight: `1px solid ${COLORS.borderColor}`,
     }}
   >
-    <div style={{ fontSize: "20px", fontWeight: "800", color: color }}>
+    <div className="assessment-library-stat-value" style={{ fontSize: "20px", fontWeight: "800", color: color }}>
       {value}
     </div>
     <div
+      className="assessment-library-stat-label"
       style={{
         fontSize: "11px",
         fontWeight: "700",
@@ -155,7 +400,7 @@ const AssessmentCard = ({
   category,
   icon: Icon,
 }) => (
-  <div className="assessment-hover-card" style={styles.assessmentCard}>
+  <div className="assessment-hover-card assessment-library-card" style={styles.assessmentCard}>
     <div
       style={{
         display: "flex",
@@ -163,12 +408,12 @@ const AssessmentCard = ({
         alignItems: "flex-start",
       }}
     >
-      <div style={styles.iconBox(COLORS.primaryLight)}>
+      <div className="assessment-library-icon-box" style={styles.iconBox(COLORS.primaryLight)}>
         <Icon size={26} color={COLORS.primary} />
       </div>
-      <div style={{ display: "flex", gap: "6px" }}>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
         {tags?.map((tag, idx) => (
-          <span key={idx} style={styles.tag(tag.tone)}>
+          <span key={idx} className="assessment-library-tag" style={styles.tag(tag.tone)}>
             {tag.label}
           </span>
         ))}
@@ -177,6 +422,7 @@ const AssessmentCard = ({
 
     <div style={{ flex: 1 }}>
       <div
+        className="assessment-library-card-category"
         style={{
           fontSize: "13px",
           fontWeight: "700",
@@ -187,6 +433,7 @@ const AssessmentCard = ({
         {category}
       </div>
       <h3
+        className="assessment-library-card-title"
         style={{
           fontSize: "20px",
           fontWeight: "800",
@@ -198,6 +445,7 @@ const AssessmentCard = ({
         {name}
       </h3>
       <p
+        className="assessment-library-card-description"
         style={{
           fontSize: "14px",
           color: COLORS.textSecondary,
@@ -210,6 +458,7 @@ const AssessmentCard = ({
     </div>
 
     <div
+      className="assessment-library-card-footer"
       style={{
         borderTop: `1px solid ${COLORS.borderColor}`,
         paddingTop: "20px",
@@ -219,7 +468,7 @@ const AssessmentCard = ({
         alignItems: "center",
       }}
     >
-      <div style={{ display: "flex", gap: "16px" }}>
+      <div className="assessment-library-card-meta" style={{ display: "flex", gap: "16px" }}>
         <div
           style={{
             display: "flex",
@@ -245,7 +494,7 @@ const AssessmentCard = ({
           <Users size={14} /> {participants.split(" ")[0]}
         </div>
       </div>
-      <button className="primary-btn-emerald">
+      <button className="primary-btn-emerald assessment-library-btn-take-test">
         Take Test <ChevronRight size={14} />
       </button>
     </div>
@@ -436,17 +685,13 @@ const AssessmentPage = () => {
   });
 
   return (
-    <div style={styles.container}>
-      <style>{`
-                .assessment-hover-card:hover { transform: translateY(-8px); border-color: ${COLORS.primary} !important; box-shadow: ${COLORS.shadowHuge} !important; }
-                .primary-btn-emerald { background: ${COLORS.primary}; color: white; border: none; padding: 8px 16px; borderRadius: 8px; fontWeight: 700; fontSize: 13px; display: flex; alignItems: center; gap: 6px; cursor: pointer; transition: 0.2s; }
-                .primary-btn-emerald:hover { background: ${COLORS.primaryDark}; }
-                .search-input:focus { border-color: ${COLORS.primary} !important; box-shadow: 0 0 0 4px ${COLORS.primaryLight} !important; outline: none; }
-            `}</style>
+    <div className="assessment-library-container" style={styles.container}>
+      <style>{responsiveStyles}</style>
 
-      <div style={styles.mainWrapperCard}>
+      <div className="assessment-library-main-wrapper" style={styles.mainWrapperCard}>
         {/* Header Area */}
         <div
+          className="assessment-library-header-wrapper"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -456,8 +701,9 @@ const AssessmentPage = () => {
             paddingBottom: "40px",
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div className="assessment-library-header" style={{ flex: 1 }}>
             <div
+              className="assessment-library-header-title-wrapper"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -466,6 +712,7 @@ const AssessmentPage = () => {
               }}
             >
               <div
+                className="assessment-library-header-icon"
                 style={{
                   padding: "8px",
                   backgroundColor: COLORS.primaryLight,
@@ -498,10 +745,11 @@ const AssessmentPage = () => {
             </p>
           </div>
 
-          <div style={styles.searchWrapper}>
+          <div className="assessment-library-search-wrapper" style={styles.searchWrapper}>
             <Search
               size={18}
               color={COLORS.textMuted}
+              className="assessment-library-search-icon"
               style={{
                 position: "absolute",
                 left: "16px",
@@ -510,7 +758,7 @@ const AssessmentPage = () => {
               }}
             />
             <input
-              className="search-input"
+              className="search-input assessment-library-search-input"
               style={{
                 width: "100%",
                 padding: "14px 16px 14px 48px",
@@ -528,6 +776,7 @@ const AssessmentPage = () => {
 
         {/* Stats & Filters */}
         <div
+          className="assessment-library-filters-stats"
           style={{
             display: "flex",
             gap: "24px",
@@ -536,11 +785,13 @@ const AssessmentPage = () => {
           }}
         >
           <div
+            className="assessment-library-filters-wrapper"
             style={{ display: "flex", gap: "8px", flex: 1, overflowX: "auto" }}
           >
             {categories.map((cat) => (
               <button
                 key={cat}
+                className="assessment-library-pill"
                 style={styles.pill(selectedCategory === cat)}
                 onClick={() => setSelectedCategory(cat)}
               >
@@ -551,6 +802,7 @@ const AssessmentPage = () => {
           </div>
 
           <div
+            className="assessment-library-stats-bar"
             style={{
               display: "flex",
               backgroundColor: "#f1f5f9",
@@ -572,6 +824,7 @@ const AssessmentPage = () => {
         {/* Grid */}
         {filtered.length > 0 ? (
           <div
+            className="assessment-library-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
@@ -584,6 +837,7 @@ const AssessmentPage = () => {
           </div>
         ) : (
           <div
+            className="assessment-library-empty-state"
             style={{
               textAlign: "center",
               padding: "80px 0",
