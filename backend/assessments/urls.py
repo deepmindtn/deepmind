@@ -1,6 +1,6 @@
 # assessments/urls.py
 from django.urls import path
-from .views import AssignAssessmentView, GenerateHRReportView, MyAssignmentsView, AssignmentDetailView, SubmitAnswersView,UploadReportPDFView,AdminAssignmentsListView,GenerateBigFiveReportView,GenerateKarasekReportView,GenerateMaslachReportView,GenerateDiscReportView,GenerateJssReportView,GenerateBRSReportView,GenerateCDRISC10ReportView,GenerateWSESReportView,GenerateGCOSReportView,GenerateRIBSReportView,GenerateCAQReportView,GenerateISEReportView,AICandidateMatchView
+from .views import AssignAssessmentView, GenerateHRReportView, MyAssignmentsView, AssignmentDetailView, SubmitAnswersView,UploadReportPDFView,AdminAssignmentsListView,GenerateBigFiveReportView,GenerateKarasekReportView,GenerateMaslachReportView,GenerateDiscReportView,GenerateJssReportView,GenerateBRSReportView,GenerateCDRISC10ReportView,GenerateWSESReportView,GenerateGCOSReportView,GenerateRIBSReportView,GenerateCAQReportView,GenerateISEReportView,AICandidateMatchView,AssignCandidateAssessmentView
 
 urlpatterns = [
     path("assessments/assign/", AssignAssessmentView.as_view(), name="assessments-assign"),
@@ -24,7 +24,6 @@ urlpatterns = [
     path("caq/report/<int:assignment_id>/", GenerateCAQReportView.as_view(), name="caq-report"),
     path("ise/report/<int:assignment_id>/", GenerateISEReportView.as_view(), name="ise-report"),
     path("recruitment/match/", AICandidateMatchView.as_view(), name="ai-candidate-match"),
-
-
+    path("assessments/assign-candidate/", AssignCandidateAssessmentView.as_view(), name="assign-candidate"),
 
 ]

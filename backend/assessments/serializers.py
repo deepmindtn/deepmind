@@ -10,7 +10,7 @@ User = get_user_model()
 # ---------- HR creates an assignment ----------
 class AssignRequestSerializer(serializers.Serializer):    
     employee_email = serializers.EmailField()
-        template_codes = serializers.ListField(
+    template_codes = serializers.ListField(
         child=serializers.CharField(),
         allow_empty=False
     )
