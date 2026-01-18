@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Plus,
   Upload,
@@ -22,11 +22,13 @@ import {
   Image, Key, Lock, Map, Mic, Music, Package, PieChart, Play, 
   Power, Printer, Radio, Save, Scissors, ShoppingBag, 
   ShoppingCart, Smile, Star, Sun, Tag, Terminal, Umbrella, 
-  Video, Voicemail, Wifi, Zap, Wrench, Download
+  Video, Voicemail, Wifi, Zap, Wrench, Download,
+  ChevronDown, 
+  Check       
 } from "lucide-react";
 
 // -----------------------
-// Theme Constants (from Recruitment)
+// Theme Constants
 // -----------------------
 const COLORS = {
   primary: "#10b981",
@@ -50,6 +52,44 @@ const COLORS = {
   shadowLg: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
   shadowHuge: "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
 };
+
+// -----------------------
+// Assessment Options Data
+// -----------------------
+const ASSESSMENT_OPTIONS = [
+  {
+    group: "Personality & Behavior",
+    items: [
+      { code: "BIG_FIVE", label: "🧠 Big Five Personality Traits" },
+      { code: "DISC", label: "💼 DISC Personality Assessment" },
+    ],
+  },
+  {
+    group: "Work Stress & Burnout",
+    items: [
+      { code: "KARASEK", label: "⚖️ Karasek Job Demand-Control" },
+      { code: "MASLACH", label: "🔥 Maslach Burnout Inventory" },
+      { code: "JSS", label: "😊 Job Satisfaction Survey (JSS)" },
+    ],
+  },
+  {
+    group: "Resilience & Self-Efficacy",
+    items: [
+      { code: "BRS", label: "💪 Brief Resilience Scale (BRS)" },
+      { code: "CDRISC", label: "🛡️ Connor-Davidson Resilience (CD-RISC 10)" },
+      { code: "WSES", label: "✨ Work Self-Efficacy Scale (WSES)" },
+    ],
+  },
+  {
+    group: "Motivation & Creativity",
+    items: [
+      { code: "GCOS", label: "🎯 General Causality Orientations (GCOS)" },
+      { code: "RIBS", label: "💡 Runco Ideational Behavior Scale (RIBS)" },
+      { code: "CAQ", label: "🎨 Creative Achievement Questionnaire (CAQ)" },
+      { code: "ISE", label: "🚀 Innovation Self-Efficacy Scale (ISE)" },
+    ],
+  },
+];
 
 const styles = {
   container: {
@@ -236,6 +276,9 @@ export default function Employees() {
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
+  // --- States ---
+  const [toast, setToast] = useState(null); // { message: "", type: "success" | "error" }
+  
   const [isInviting, setIsInviting] = useState(false);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -246,14 +289,19 @@ export default function Employees() {
   const pageSize = 6;
 
   const [availableDepts, setAvailableDepts] = useState([]);
-
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
   const [detailAssignments, setDetailAssignments] = useState([]);
 
+  // --- Assign Modal States ---
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignRow, setAssignRow] = useState(null);
-  const [assignForm, setAssignForm] = useState({ template_code: "BIG_FIVE" });
+  const [assignForm, setAssignForm] = useState({ template_codes: [] });
+  
+  // Custom Dropdown States
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState({});
+  const triggerRef = useRef(null);
 
   const [importOpen, setImportOpen] = useState(false);
   const [csvFile, setCsvFile] = useState(null);
@@ -271,7 +319,42 @@ export default function Employees() {
   const [hrReport, setHrReport] = useState(null);
   const [hrReportOpen, setHrReportOpen] = useState(false);
 
-  // Fetch Users
+  // --- Toast Timer ---
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // --- Dropdown Logic ---
+  const handleToggleDropdown = () => {
+    if (!isDropdownOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: "fixed",
+        top: `${rect.bottom + 5}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        maxHeight: "300px",
+        zIndex: 9999,
+      });
+    }
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const toggleAssessment = (code) => {
+    setAssignForm((prev) => {
+      const currentCodes = prev.template_codes || [];
+      if (currentCodes.includes(code)) {
+        return { ...prev, template_codes: currentCodes.filter((c) => c !== code) };
+      } else {
+        return { ...prev, template_codes: [...currentCodes, code] };
+      }
+    });
+  };
+
+  // --- Data Fetching ---
   useEffect(() => {
     let ignore = false;
     async function run() {
@@ -304,7 +387,6 @@ export default function Employees() {
     return () => { ignore = true; };
   }, []);
 
-  // Fetch Departments
   useEffect(() => {
     async function fetchDepts() {
       try {
@@ -331,13 +413,13 @@ export default function Employees() {
       setDetailAssignments(data);
       setDetailOpen(true);
     } catch (e) {
-      alert(e.message);
+      setToast({ message: e.message, type: "error" });
     }
   }
 
   async function handleImportCSV() {
     if (!csvFile) {
-      alert("Please select a CSV file first.");
+      setToast({ message: "Please select a CSV file first.", type: "error" });
       return;
     }
     setImporting(true);
@@ -354,7 +436,7 @@ export default function Employees() {
       if (!res.ok) throw new Error(data.error || "Failed to import CSV");
       setImportResult(data);
     } catch (e) {
-      alert(e.message);
+      setToast({ message: e.message, type: "error" });
     } finally {
       setImporting(false);
     }
@@ -377,29 +459,42 @@ export default function Employees() {
       setHrReport(data.report);
       setHrReportOpen(true);
     } catch (e) {
-      alert("Failed to generate report.");
+      setToast({ message: "Failed to generate report.", type: "error" });
     }
   }
 
+  // --- Assign Assessment Function ---
   async function assignAssessment() {
+    // Validation
+    if (!assignForm.template_codes || assignForm.template_codes.length === 0) {
+      setToast({ message: "Please select at least one assessment.", type: "error" });
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/assessments/assign/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({
           employee_email: assignRow.email,
-          template_code: assignForm.template_code,
+          template_codes: assignForm.template_codes, // Sending Array
         }),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.detail || "Failed to assign assessment");
       }
-      alert("Assessment assigned!");
+
+      // Success Toast
+      setToast({ message: "Assessments assigned successfully!", type: "success" });
+      
+      // Cleanup
       setAssignOpen(false);
       setAssignRow(null);
+      setAssignForm({ template_codes: [] });
     } catch (e) {
-      alert(e.message || "Could not assign assessment");
+      setToast({ message: e.message || "Could not assign assessment", type: "error" });
     }
   }
 
@@ -418,7 +513,7 @@ export default function Employees() {
       const data = await res.json();
       setInviteResult(data);
     } catch (e) {
-      alert(e.message);
+      setToast({ message: e.message, type: "error" });
     } finally {
       setIsInviting(false);
     }
@@ -711,7 +806,7 @@ export default function Employees() {
         )}
       </Modal>
 
-      {/* Send Assessment Modal */}
+      {/* NEW: Custom Multi-Select Assign Modal */}
       <Modal
         open={assignOpen}
         title="Send Assessment"
@@ -733,34 +828,104 @@ export default function Employees() {
             </div>
           </div>
         )}
-        <div>
-          <label style={styles.label}>Select Assessment Template</label>
-          <select
-            style={styles.input}
-            value={assignForm.template_code}
-            onChange={(e) => setAssignForm({ template_code: e.target.value })}
+        
+        {/* CUSTOM DROPDOWN UI */}
+        <div style={{ position: "relative", marginBottom: "40px" }}>
+          <label style={styles.label}>Select Assessment Templates</label>
+          
+          {/* Trigger Box */}
+          <div
+            ref={triggerRef}
+            onClick={handleToggleDropdown}
+            style={{
+              ...styles.input,
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              backgroundColor: "#fff",
+            }}
           >
-            <optgroup label="Personality & Behavior">
-              <option value="BIG_FIVE">🧠 Big Five Personality Traits</option>
-              <option value="DISC">💼 DISC Personality Assessment</option>
-            </optgroup>
-            <optgroup label="Work Stress & Burnout">
-              <option value="KARASEK">⚖️ Karasek Job Demand-Control</option>
-              <option value="MASLACH">🔥 Maslach Burnout Inventory</option>
-              <option value="JSS">😊 Job Satisfaction Survey (JSS)</option>
-            </optgroup>
-            <optgroup label="Resilience & Self-Efficacy">
-              <option value="BRS">💪 Brief Resilience Scale (BRS)</option>
-              <option value="CDRISC">🛡️ Connor-Davidson Resilience (CD-RISC 10)</option>
-              <option value="WSES">✨ Work Self-Efficacy Scale (WSES)</option>
-            </optgroup>
-            <optgroup label="Motivation & Creativity">
-              <option value="GCOS">🎯 General Causality Orientations (GCOS)</option>
-              <option value="RIBS">💡 Runco Ideational Behavior Scale (RIBS)</option>
-              <option value="CAQ">🎨 Creative Achievement Questionnaire (CAQ)</option>
-              <option value="ISE">🚀 Innovation Self-Efficacy Scale (ISE)</option>
-            </optgroup>
-          </select>
+            <span>
+              {assignForm.template_codes && assignForm.template_codes.length > 0
+                ? `${assignForm.template_codes.length} Assessment(s) Selected`
+                : "Select assessments..."}
+            </span>
+            <ChevronDown size={16} color={COLORS.textSecondary} />
+          </div>
+
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <>
+              {/* Invisible backdrop to close when clicking outside */}
+              <div 
+                style={{ position: "fixed", inset: 0, zIndex: 9998 }} 
+                onClick={() => setIsDropdownOpen(false)} 
+              />
+
+              {/* The List - Now uses dropdownStyle (position: fixed) */}
+              <div
+                style={{
+                  ...dropdownStyle, // Applies top/left/width/fixed calculated earlier
+                  overflowY: "auto",
+                  backgroundColor: "white",
+                  border: `1px solid ${COLORS.borderColor}`,
+                  borderRadius: "10px",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                }}
+              >
+                {ASSESSMENT_OPTIONS.map((group) => (
+                  <div key={group.group}>
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        backgroundColor: "#f9fafb",
+                        fontWeight: "bold",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        borderBottom: "1px solid #f3f4f6",
+                        borderTop: "1px solid #f3f4f6"
+                      }}
+                    >
+                      {group.group}
+                    </div>
+                    {group.items.map((item) => {
+                      const isSelected = assignForm.template_codes.includes(item.code);
+                      return (
+                        <div
+                          key={item.code}
+                          onClick={() => toggleAssessment(item.code)}
+                          style={{
+                            padding: "10px 12px",
+                            cursor: "pointer",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            backgroundColor: isSelected ? "#eef2ff" : "white",
+                            transition: "background-color 0.1s"
+                          }}
+                        >
+                          <span style={{ fontSize: "14px", color: isSelected ? COLORS.blue : COLORS.textPrimary }}>
+                            {item.label}
+                          </span>
+                          {isSelected && (
+                            <div style={{ color: COLORS.blue }}>
+                              <Check size={18} strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          
+          {/* Helper Text */}
+          <div style={{ marginTop: "10px", fontSize: "12px", color: COLORS.textSecondary }}>
+             {assignForm.template_codes?.length || 0} selected.
+          </div>
         </div>
       </Modal>
 
@@ -910,7 +1075,7 @@ export default function Employees() {
                   style={{ ...styles.btnPrimary, padding: "10px 16px" }}
                   onClick={() => {
                     navigator.clipboard.writeText(inviteResult.invite_link);
-                    alert("Link copied!");
+                    setToast({ message: "Link copied!", type: "success" });
                   }}
                 >
                   Copy
@@ -946,6 +1111,81 @@ export default function Employees() {
           {hrReport}
         </div>
       </Modal>
+
+      {/* FLASH MESSAGE / TOAST COMPONENT */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "32px",
+            right: "32px",
+            zIndex: 9999, // Ensure it sits on top of modals
+            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5", // Red or Green bg
+            border: `1px solid ${toast.type === "error" ? "#ef4444" : "#10b981"}`,
+            borderRadius: "12px",
+            padding: "16px 20px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            minWidth: "300px",
+            animation: "fadeIn 0.3s ease-out", 
+          }}
+        >
+          {/* Icon based on type */}
+          <div
+            style={{
+              backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5",
+              padding: "8px",
+              borderRadius: "50%",
+              display: "flex",
+            }}
+          >
+            {toast.type === "error" ? (
+              <AlertTriangle size={20} color="#dc2626" />
+            ) : (
+              <CheckCircle size={20} color="#059669" />
+            )}
+          </div>
+
+          {/* Message Content */}
+          <div style={{ flex: 1 }}>
+            <h4
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: "14px",
+                fontWeight: "700",
+                color: toast.type === "error" ? "#991b1b" : "#065f46",
+              }}
+            >
+              {toast.type === "error" ? "Error" : "Success"}
+            </h4>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "13px",
+                color: toast.type === "error" ? "#b91c1c" : "#047857",
+              }}
+            >
+              {toast.message}
+            </p>
+          </div>
+
+          {/* Close Button */}
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              padding: "4px",
+              opacity: 0.6,
+            }}
+          >
+            <X size={16} color={toast.type === "error" ? "#991b1b" : "#065f46"} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
