@@ -112,6 +112,135 @@ const styles = {
   },
 };
 
+// Add responsive styles
+const responsiveStyles = `
+  @media (max-width: 1280px) {
+    .dashboard-content-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .dashboard-main-wrapper {
+      padding: 32px 24px !important;
+    }
+    .dashboard-stats-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .dashboard-metrics-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-container {
+      padding: 5px 10px !important;
+    }
+    .dashboard-main-wrapper {
+      padding: 24px 16px !important;
+      border-radius: 20px !important;
+    }
+    .dashboard-header-title {
+      font-size: 24px !important;
+    }
+    .dashboard-header-subtitle {
+      font-size: 14px !important;
+    }
+    .dashboard-stats-grid {
+      grid-template-columns: 1fr !important;
+      gap: 16px !important;
+    }
+    .dashboard-tab-nav {
+      width: 100% !important;
+    }
+    .dashboard-tab-btn {
+      flex: 1;
+      padding: 10px 16px !important;
+      font-size: 13px !important;
+      text-align: center;
+    }
+    .dashboard-completion-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .dashboard-chart-card {
+      padding: 20px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .dashboard-container {
+      padding: 5px 8px !important;
+    }
+    .dashboard-main-wrapper {
+      padding: 20px 12px !important;
+      border-radius: 16px !important;
+    }
+    .dashboard-header {
+      margin-bottom: 24px !important;
+    }
+    .dashboard-header-title {
+      font-size: 20px !important;
+    }
+    .dashboard-header-subtitle {
+      font-size: 13px !important;
+    }
+    .dashboard-header-icon-wrapper {
+      padding: 8px !important;
+    }
+    .dashboard-header-icon-wrapper svg {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    .dashboard-icon-box {
+      width: 40px !important;
+      height: 40px !important;
+    }
+    .dashboard-icon-box svg {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    .dashboard-stat-value {
+      font-size: 24px !important;
+    }
+    .dashboard-stat-label {
+      font-size: 13px !important;
+    }
+    .dashboard-completion-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .dashboard-completion-item {
+      padding: 12px !important;
+    }
+    .dashboard-completion-label {
+      font-size: 11px !important;
+    }
+    .dashboard-completion-value {
+      font-size: 18px !important;
+    }
+    .dashboard-tab-nav {
+      flex-direction: column;
+      padding: 4px !important;
+    }
+    .dashboard-tab-btn {
+      width: 100%;
+      padding: 8px 12px !important;
+      font-size: 12px !important;
+    }
+    .dashboard-chart-card {
+      padding: 16px !important;
+    }
+    .dashboard-chart-title {
+      font-size: 16px !important;
+      margin-bottom: 12px !important;
+    }
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-5px);
+    border-color: ${COLORS.primary} !important;
+  }
+`;
+
 // -----------------------
 // Helper Functions (Restored)
 // -----------------------
@@ -186,13 +315,14 @@ const PremiumStatCard = ({ label, value, icon, color, bg, detail }) => (
         alignItems: "flex-start",
       }}
     >
-      <div style={styles.iconBox(bg)}>
+      <div className="dashboard-icon-box" style={styles.iconBox(bg)}>
         {React.cloneElement(icon, { color: color, size: 24 })}
       </div>
       <TrendingUp size={16} color={COLORS.primary} />
     </div>
     <div>
       <div
+        className="dashboard-stat-value"
         style={{
           fontSize: "28px",
           fontWeight: "800",
@@ -202,6 +332,7 @@ const PremiumStatCard = ({ label, value, icon, color, bg, detail }) => (
         {value}
       </div>
       <div
+        className="dashboard-stat-label"
         style={{
           fontSize: "14px",
           fontWeight: "600",
@@ -437,16 +568,18 @@ const Dashboard = () => {
 
   if (loading)
     return (
-      <div style={styles.container}>
-        <div style={styles.mainWrapperCard}>Loading Analytics...</div>
+      <div className="dashboard-container" style={styles.container}>
+        <div className="dashboard-main-wrapper" style={styles.mainWrapperCard}>
+          Loading Analytics...
+        </div>
       </div>
     );
 
   return (
-    <div style={styles.container}>
-      <style>{`.hover-lift:hover { transform: translateY(-5px); border-color: ${COLORS.primary} !important; }`}</style>
+    <div className="dashboard-container" style={styles.container}>
+      <style>{responsiveStyles}</style>
 
-      <div style={styles.mainWrapperCard}>
+      <div className="dashboard-main-wrapper" style={styles.mainWrapperCard}>
         <div style={styles.header}>
           <div
             style={{
@@ -457,6 +590,7 @@ const Dashboard = () => {
             }}
           >
             <div
+              className="dashboard-header-icon-wrapper"
               style={{
                 padding: "10px",
                 backgroundColor: COLORS.primaryLight,
@@ -465,24 +599,26 @@ const Dashboard = () => {
             >
               <BarChart2 size={24} color={COLORS.primary} />
             </div>
-            <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
+            <h1 className="dashboard-header-title" style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
               Analytical Dashboard
             </h1>
           </div>
-          <p style={{ color: COLORS.textSecondary, fontSize: "16px" }}>
+          <p className="dashboard-header-subtitle" style={{ color: COLORS.textSecondary, fontSize: "16px" }}>
             Comprehensive overview of organization health and assessment
             performance.
           </p>
         </div>
 
-        <div style={styles.tabNav}>
+        <div className="dashboard-tab-nav" style={styles.tabNav}>
           <button
+            className="dashboard-tab-btn"
             style={styles.tabBtn(activeTab === "Overview")}
             onClick={() => setActiveTab("Overview")}
           >
             Overview
           </button>
           <button
+            className="dashboard-tab-btn"
             style={styles.tabBtn(activeTab === "Metrics")}
             onClick={() => setActiveTab("Metrics")}
           >
@@ -495,6 +631,7 @@ const Dashboard = () => {
             style={{ display: "flex", flexDirection: "column", gap: "32px" }}
           >
             <div
+              className="dashboard-stats-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
@@ -536,17 +673,19 @@ const Dashboard = () => {
             </div>
 
             <div
+              className="dashboard-content-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1.5fr 1fr",
                 gap: "32px",
               }}
             >
-              <div style={styles.chartCard}>
-                <h3 style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
+              <div className="dashboard-chart-card" style={styles.chartCard}>
+                <h3 className="dashboard-chart-title" style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
                   Completion Rates
                 </h3>
                 <div
+                  className="dashboard-completion-grid"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(3, 1fr)",
@@ -557,6 +696,7 @@ const Dashboard = () => {
                     ([key, val]) => (
                       <div
                         key={key}
+                        className="dashboard-completion-item"
                         style={{
                           padding: "16px",
                           background: "#f8fafc",
@@ -565,6 +705,7 @@ const Dashboard = () => {
                         }}
                       >
                         <div
+                          className="dashboard-completion-label"
                           style={{
                             fontSize: "12px",
                             color: COLORS.textMuted,
@@ -574,6 +715,7 @@ const Dashboard = () => {
                           {key}
                         </div>
                         <div
+                          className="dashboard-completion-value"
                           style={{
                             fontSize: "20px",
                             fontWeight: "800",
@@ -586,6 +728,7 @@ const Dashboard = () => {
                     )
                   )}
                   <div
+                    className="dashboard-completion-item"
                     style={{
                       padding: "16px",
                       background: COLORS.primaryLight,
@@ -594,6 +737,7 @@ const Dashboard = () => {
                     }}
                   >
                     <div
+                      className="dashboard-completion-label"
                       style={{
                         fontSize: "12px",
                         color: COLORS.primaryDark,
@@ -603,6 +747,7 @@ const Dashboard = () => {
                       BRS AVG
                     </div>
                     <div
+                      className="dashboard-completion-value"
                       style={{
                         fontSize: "20px",
                         fontWeight: "800",
@@ -615,8 +760,8 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div style={styles.chartCard}>
-                <h3 style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
+              <div className="dashboard-chart-card" style={styles.chartCard}>
+                <h3 className="dashboard-chart-title" style={{ margin: "0 0 20px 0", fontSize: "18px" }}>
                   Recent Activity
                 </h3>
                 <ActivityTimelineItem
@@ -639,14 +784,15 @@ const Dashboard = () => {
           </div>
         ) : (
           <div
+            className="dashboard-metrics-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: "32px",
             }}
           >
-            <div style={styles.chartCard}>
-              <h4 style={{ margin: "0 0 15px 0" }}>
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>
                 Big Five (OCEAN) Averages
               </h4>
               <Chart
@@ -661,8 +807,8 @@ const Dashboard = () => {
                 height={300}
               />
             </div>
-            <div style={styles.chartCard}>
-              <h4 style={{ margin: "0 0 15px 0" }}>Maslach Burnout Averages</h4>
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Maslach Burnout Averages</h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -676,8 +822,8 @@ const Dashboard = () => {
                 height={300}
               />
             </div>
-            <div style={styles.chartCard}>
-              <h4 style={{ margin: "0 0 15px 0" }}>Karasek Strain Factors</h4>
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Karasek Strain Factors</h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -698,8 +844,8 @@ const Dashboard = () => {
                 height={300}
               />
             </div>
-            <div style={styles.chartCard}>
-              <h4 style={{ margin: "0 0 15px 0" }}>Karasek Quadrant</h4>
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Karasek Quadrant</h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -710,8 +856,8 @@ const Dashboard = () => {
                 height={300}
               />
             </div>
-            <div style={styles.chartCard}>
-              <h4 style={{ margin: "0 0 15px 0" }}>DISC Personality</h4>
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>DISC Personality</h4>
               <Chart
                 options={{
                   ...commonOptions,
@@ -723,8 +869,8 @@ const Dashboard = () => {
                 height={300}
               />
             </div>
-            <div style={styles.chartCard}>
-              <h4 style={{ margin: "0 0 15px 0" }}>Job Satisfaction (JSS)</h4>
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4 className="dashboard-chart-title" style={{ margin: "0 0 15px 0" }}>Job Satisfaction (JSS)</h4>
               <Chart
                 options={{
                   ...commonOptions,
