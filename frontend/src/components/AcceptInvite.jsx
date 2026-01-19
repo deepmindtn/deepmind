@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Heart, ShieldCheck, UserPlus, AlertCircle } from "lucide-react";
+import { ShieldCheck, AlertCircle } from "lucide-react";
 
 // -----------------------
 // Theme Constants (Emerald System)
@@ -75,33 +75,52 @@ const styles = {
     gap: "10px",
     marginTop: "10px",
     transition: "transform 0.2s, background-color 0.2s",
-  }
+  },
 };
+
+// -----------------------
+// Helper: UUID Validation
+// -----------------------
+function isValidUUID(uuid) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+}
 
 export default function AcceptInvite() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  const [token, setToken] = useState("");
   const [form, setForm] = useState({ password: "", confirm: "", first_name: "", last_name: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const API_BASE = "http://localhost:8080";
 
+  // -----------------------
+  // Extract token once and trim it
+  // -----------------------
   useEffect(() => {
-    if (!token) setError("Missing invite token. Please check your email link.");
-  }, [token]);
+    const t = params.get("token") || params.get("id");
+    if (t) setToken(t.trim());
+    else setError("Missing invite token. Please check your email link.");
+  }, [params]);
 
+  // -----------------------
+  // Submit Invite
+  // -----------------------
   async function acceptInvite(e) {
     e.preventDefault();
     setError("");
 
-    if (!token) return setError("Missing invite token.");
+    if (!token || !isValidUUID(token)) {
+      return setError("Invalid or missing invite token. Please check your email link.");
+    }
+
     if (form.password !== form.confirm) return setError("Passwords do not match.");
     if (form.password.length < 8) return setError("Password must be at least 8 characters.");
 
     setSubmitting(true);
     try {
+      console.log("Posting token:", token); // Debugging line
       const res = await fetch(`${API_BASE}/api/invites/accept/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,9 +131,11 @@ export default function AcceptInvite() {
           last_name: form.last_name || undefined,
         }),
       });
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.detail || "Invalid or already used invite token.");
+        const err = await res.text();
+        console.error("Invite accept error:", err);
+        throw new Error(err);
       }
 
       navigate("/login?msg=activated");
@@ -130,20 +151,35 @@ export default function AcceptInvite() {
       <div style={styles.card}>
         {/* Logo Section */}
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div style={{ 
-            width: "56px", height: "56px", background: `linear-gradient(135deg, ${COLORS.primary}, #14b8a6)`,
-            borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 16px", boxShadow: "0 10px 20px -5px rgba(16, 185, 129, 0.3)"
-          }}>
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              background: `linear-gradient(135deg, ${COLORS.primary}, #14b8a6)`,
+              borderRadius: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+              boxShadow: "0 10px 20px -5px rgba(16, 185, 129, 0.3)",
+            }}
+          >
             <img
-                src="/icon_sidebar.png"
-                alt="DeepMind logo"
-                width={28}
-                height={28}
-                style={{ objectFit: "contain" }}
-              ></img>
+              src="/icon_sidebar.png"
+              alt="DeepMind logo"
+              width={28}
+              height={28}
+              style={{ objectFit: "contain" }}
+            />
           </div>
-          <h1 style={{ fontSize: "28px", fontWeight: "800", color: COLORS.textPrimary, margin: "0 0 8px 0" }}>
+          <h1
+            style={{
+              fontSize: "28px",
+              fontWeight: "800",
+              color: COLORS.textPrimary,
+              margin: "0 0 8px 0",
+            }}
+          >
             Join DeepMind
           </h1>
           <p style={{ color: COLORS.textSecondary, margin: 0, fontSize: "15px" }}>
@@ -198,11 +234,19 @@ export default function AcceptInvite() {
           </div>
 
           {error && (
-            <div style={{ 
-              color: COLORS.red, background: "rgba(239, 68, 68, 0.1)", 
-              border: `1px solid ${COLORS.red}`, padding: "12px", 
-              borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", fontSize: "14px"
-            }}>
+            <div
+              style={{
+                color: COLORS.red,
+                background: "rgba(239, 68, 68, 0.1)",
+                border: `1px solid ${COLORS.red}`,
+                padding: "12px",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                fontSize: "14px",
+              }}
+            >
               <AlertCircle size={18} /> {error}
             </div>
           )}
@@ -213,17 +257,16 @@ export default function AcceptInvite() {
             style={{
               ...styles.button,
               opacity: submitting ? 0.7 : 1,
-              transform: submitting ? "scale(0.98)" : "scale(1)"
+              transform: submitting ? "scale(0.98)" : "scale(1)",
             }}
           >
-            {submitting ? "Activating..." : (
-              <><ShieldCheck size={20} /> Activate Account</>
-            )}
+            {submitting ? "Activating..." : <><ShieldCheck size={20} /> Activate Account</>}
           </button>
         </form>
 
         <p style={{ textAlign: "center", marginTop: "24px", fontSize: "14px", color: COLORS.textPrimary }}>
-          Already have an account? <span 
+          Already have an account?{" "}
+          <span
             onClick={() => navigate("/login")}
             style={{ color: COLORS.primary, fontWeight: "700", cursor: "pointer" }}
           >
