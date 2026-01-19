@@ -75,7 +75,7 @@ class InviteCreateView(generics.CreateAPIView):
 
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         # ✅ FIXED: Use .token (Secure UUID) instead of .id (PK)
-        invite_link = f"{origin}/accept-invite?id={invite.id}"
+        invite_link = f"{origin}/accept-invite?token={invite.id}" 
         
         email_sent = False
         email_error_msg = None
