@@ -42,6 +42,9 @@ import ISETest from "./pages/Assessement/IseTest";
 import RecruitmentMatch from "./pages/RecruitmentMatch";
 import AssessmentDescription from "./components/AssessmentDescription";
 import Departments from "./pages/Departments";
+import ProductivityTools from "./components/ProductivitytoolsComponents/ProductivityTools";
+import EisenhowerMatrix from "./components/ProductivitytoolsComponents/EisenhowerMatrix";
+import PomodoroTimer from "./components/ProductivitytoolsComponents/Promodorotechnik";
 
 // Temporary stubs
 const Analytics = () => <h1>Mental Health Analytics Page</h1>;
@@ -97,6 +100,39 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <Departments />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/productivity-tools"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <ProductivityTools />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/productivity/eisenhower"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <EisenhowerMatrix />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/productivity/pomodoro"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <PomodoroTimer />
               </LayoutComponent>
             </ProtectedRoute>
           }
