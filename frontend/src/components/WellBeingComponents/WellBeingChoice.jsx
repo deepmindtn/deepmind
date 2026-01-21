@@ -40,7 +40,6 @@ const styles = {
     border: `1px solid ${COLORS.borderColor}`,
     boxShadow: COLORS.shadowHuge,
     width: "100%",
-    maxWidth: "1200px",
     margin: "0 auto", 
     overflow: "hidden",
     fontFamily: "'Inter', system-ui, sans-serif",
