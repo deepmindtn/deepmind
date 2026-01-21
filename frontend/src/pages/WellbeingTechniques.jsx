@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { ArrowLeft } from "lucide-react";
 import "./WellbeingPage.css"; 
 
 import WellBeingChoice from "../components/WellBeingComponents/WellBeingChoice";
@@ -14,21 +13,21 @@ const WellBeingPage = () => {
   const handleBack = () => setMode("");
 
   return (
-    <div className="wellbeing-page">
+    <div className="wellbeing-page-container">
+      {/* 1. Selection Screen */}
       {!mode && <WellBeingChoice onSelect={setMode} />}
 
+      {/* 2. Detail Screens */}
       {mode && (
-        <>
-          <button className="back-btn" onClick={handleBack}>
-            <ArrowLeft className="back-icon" />
-            Back
-          </button>
-
-          {mode === "mindfulness" && <Mindfulness />}
-          {mode === "physical" && <Physical />}
-          {mode === "emotional" && <Emotional />}
-          {mode === "daily" && <DailyChallenges />}
-        </>
+        <div className="detail-view-wrapper">
+          {/* We pass handleBack so the button INSIDE Mindfulness works */}
+          {mode === "mindfulness" && <Mindfulness onBack={handleBack} />}
+          
+          {/* Repeat for other components as you build them */}
+          {mode === "physical" && <Physical onBack={handleBack} />}
+          {mode === "emotional" && <Emotional onBack={handleBack} />}
+          {mode === "daily" && <DailyChallenges onBack={handleBack} />}
+        </div>
       )}
     </div>
   );
