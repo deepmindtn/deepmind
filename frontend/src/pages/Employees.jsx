@@ -663,43 +663,67 @@ export default function Employees() {
   }
 
   async function assignAssessment() {
+    console.log("🚀 assignAssessment triggered");
+  
     if (!assignForm.template_codes || assignForm.template_codes.length === 0) {
+      console.warn("❌ No assessments selected");
       setToast({
         message: "Please select at least one assessment.",
         type: "error",
       });
       return;
     }
-
+  
+    if (!assignRow) {
+      console.error("❌ assignRow is null");
+      return;
+    }
+  
+    const payload = {
+      employee_email: assignRow.email,
+      template_codes: assignForm.template_codes,
+    };
+  
+    console.log("📤 Sending payload:", payload);
+  
     try {
       const res = await fetch(`${API_BASE}/api/assessments/assign/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({
-          employee_email: assignRow.email,
-          template_codes: assignForm.template_codes,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader,
+        },
+        body: JSON.stringify(payload),
       });
-
+  
+      console.log("📡 Response status:", res.status);
+  
+      const data = await res.json().catch(() => null);
+      console.log("📥 Response body:", data);
+  
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.detail || "Failed to assign assessment");
+        throw new Error(data?.detail || "Failed to assign assessment");
       }
-
+  
       setToast({
         message: "Assessments assigned successfully!",
         type: "success",
       });
+  
+      console.log("✅ Assignment success");
+  
       setAssignOpen(false);
       setAssignRow(null);
       setAssignForm({ template_codes: [] });
     } catch (e) {
+      console.error("🔥 Assignment error:", e);
       setToast({
         message: e.message || "Could not assign assessment",
         type: "error",
       });
     }
   }
+  
 
   async function createInvite() {
     setIsInviting(true);
