@@ -8,54 +8,60 @@ User = get_user_model()
 
 
 # ---------- HR creates an assignment ----------
-class AssignRequestSerializer(serializers.Serializer):    
+class AssignRequestSerializer(serializers.Serializer):
     employee_email = serializers.EmailField()
+
     template_codes = serializers.ListField(
         child=serializers.CharField(),
         allow_empty=False
     )
 
-    # outgoing (read-only from created Assignment)
-    id            = serializers.IntegerField(read_only=True)
-    template_name = serializers.CharField(source="template.name", read_only=True)
-    status        = serializers.CharField(read_only=True)
-    assigned_at   = serializers.DateTimeField(read_only=True)
-
-    class Meta:
-        model  = Assignment
-        fields = [
-            "id",
-            "employee_email",   # in
-            "template_code",    # in
-            "template_name",    # out
-            "status",           # out
-            "assigned_at",      # out
-        ]
-
     def create(self, validated_data):
-        hr = self.context["request"].user
-        # If you have roles on the user, keep this check
+        request = self.context["request"]
+        hr = request.user
+
+        # Optional role check
         if hasattr(User, "Roles") and getattr(hr, "role", None) != getattr(User.Roles, "HR", None):
             raise serializers.ValidationError("Only HR can assign assessments.")
 
-        employee_email = validated_data.pop("employee_email")
-        template_code  = validated_data.pop("template_code")
+        employee_email = validated_data["employee_email"]
+        template_codes = validated_data["template_codes"]
 
+        # --- get employee ---
         try:
             employee = User.objects.get(email=employee_email)
         except User.DoesNotExist:
-            raise serializers.ValidationError({"employee_email": "Employee not found."})
+            raise serializers.ValidationError({
+                "employee_email": "Employee not found."
+            })
 
-        try:
-            template = AssessmentTemplate.objects.get(code=template_code)
-        except AssessmentTemplate.DoesNotExist:
-            raise serializers.ValidationError({"template_code": "Template not found. Seed templates first."})
+        created = []
+        errors = []
 
-        return Assignment.objects.create(
-            employee=employee,      # adjust to your FK name (employee/assignee/user)
-            template=template,
-            assigned_by=hr,         # adjust if your model uses another field name
-        )
+        for code in template_codes:
+            try:
+                template = AssessmentTemplate.objects.get(code=code)
+
+                assignment, created_flag = Assignment.objects.get_or_create(
+                    employee=employee,
+                    template=template,
+                    defaults={"assigned_by": hr},
+                )
+
+                if created_flag:
+                    created.append(assignment)
+                else:
+                    errors.append(
+                        f"Assessment '{code}' already assigned to this employee."
+                    )
+
+            except AssessmentTemplate.DoesNotExist:
+                errors.append(f"Template code '{code}' not found in database.")
+
+        return {
+            "created": created,
+            "errors": errors
+        }
 
 
 # ---------- Lists shown to the employee ----------
