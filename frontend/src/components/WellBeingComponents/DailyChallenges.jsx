@@ -9,16 +9,16 @@ import {
   Minimize, 
   ArrowLeft,
   Sparkles,
-  CalendarCheck
+  CalendarCheck,
+  Circle
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // -----------------------
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary: "#6366f1", // Indigo/Violet for Focus
-  primaryLight: "#e0e7ff",
-  primaryDark: "#4338ca",
+  primary: "#6366f1", // Indigo
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
@@ -32,21 +32,19 @@ const SUGGESTIONS = [
   "💧 Drink 8 glasses of water",
   "🚶‍♂️ Take a 15-minute walk",
   "📵 No screen time for 1 hour",
-  "🥗 Eat a healthy green meal",
-  "📖 Read 10 pages of a book",
-  "🛌 Sleep by 11:00 PM",
-  "🧘‍♀️ 5 minutes of deep breathing"
+  "🥗 Eat a healthy meal",
+  "📖 Read 10 pages",
+  "🧘‍♀️ 5 minutes of breathing"
 ];
 
 const styles = {
   mainWrapperCard: (isZen) => ({
-    backgroundColor: isZen ? "#111827" : COLORS.cardBg, // Dark blue-black for Zen
+    backgroundColor: isZen ? "#0f172a" : COLORS.cardBg,
     borderRadius: isZen ? "0" : "24px",
     border: isZen ? "none" : `1px solid ${COLORS.borderColor}`,
     boxShadow: isZen ? "none" : COLORS.shadowHuge,
     width: "100%",
-    maxWidth: isZen ? "none" : "",
-    margin: isZen ? "0" : "0 auto",
+    margin: "0 auto",
     overflow: "hidden",
     fontFamily: "'Inter', system-ui, sans-serif",
     display: "flex",
@@ -56,143 +54,63 @@ const styles = {
     transition: "all 0.5s ease",
   }),
   heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "32px 48px",
+    background: `linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.cardBg} 100%)`,
+    padding: "48px",
     borderBottom: `1px solid ${COLORS.borderColor}`,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  heroLeftContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: "20px",
-  },
   heroIconBox: {
-    width: "64px",
-    height: "64px",
-    borderRadius: "18px",
+    width: "72px",
+    height: "72px",
+    borderRadius: "20px",
     backgroundColor: COLORS.primary,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    boxShadow: "0 10px 20px -5px rgba(99, 102, 241, 0.4)",
+    boxShadow: `0 10px 25px -5px ${COLORS.primary}60`,
+    color: "#fff",
   },
   contentBody: (isZen) => ({
     flex: 1,
     display: "flex",
     flexDirection: "column",
-    padding: "40px",
+    padding: isZen ? "60px 0" : "32px",
     position: "relative",
-    backgroundImage: isZen 
-      ? `linear-gradient(rgba(17, 24, 39, 0.8), rgba(17, 24, 39, 0.8)), url('https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&q=80&w=2000')` 
-      : "none",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
+    backgroundColor: isZen ? "transparent" : COLORS.bgMain,
     overflowY: "auto",
   }),
-  splitLayout: {
+  layoutContainer: (isZen) => ({
     display: "flex",
-    gap: "40px",
+    gap: "32px",
     height: "100%",
-    width: "100%",
-    maxWidth: "1100px",
+    maxWidth: isZen ? "800px" : "1200px",
     margin: "0 auto",
-  },
+    width: "100%",
+    flexDirection: "row",
+    transition: "max-width 0.5s ease",
+  }),
   mainListCard: (isZen) => ({
     flex: 2,
-    backgroundColor: isZen ? "rgba(255,255,255,0.05)" : "#fff",
+    backgroundColor: isZen ? "rgba(255,255,255,0.05)" : COLORS.cardBg,
     borderRadius: "24px",
-    padding: "32px",
+    padding: isZen ? "48px" : "32px",
     display: "flex",
     flexDirection: "column",
     border: isZen ? "1px solid rgba(255,255,255,0.1)" : `1px solid ${COLORS.borderColor}`,
-    boxShadow: isZen ? "none" : "0 4px 20px rgba(0,0,0,0.03)",
-    backdropFilter: isZen ? "blur(10px)" : "none",
-    transition: "all 0.5s ease",
+    boxShadow: isZen ? "none" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+    backdropFilter: isZen ? "blur(15px)" : "none",
     height: "100%",
-    overflowY: "auto",
+    transition: "all 0.5s ease",
   }),
-  sidebar: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "24px",
-  },
-  inputGroup: (isZen) => ({
-    display: "flex",
-    gap: "12px",
+  sidebarCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "20px",
+    padding: "24px",
+    border: `1px solid ${COLORS.borderColor}`,
     marginBottom: "24px",
-    background: isZen ? "rgba(255,255,255,0.1)" : "#f9fafb",
-    padding: "8px",
-    borderRadius: "16px",
-    border: `1px solid ${isZen ? "transparent" : "#e5e7eb"}`,
-  }),
-  inputField: (isZen) => ({
-    flex: 1,
-    border: "none",
-    background: "transparent",
-    padding: "12px 16px",
-    fontSize: "16px",
-    outline: "none",
-    color: isZen ? "#fff" : COLORS.textPrimary,
-    fontWeight: "500",
-  }),
-  addBtn: {
-    background: COLORS.primary,
-    color: "white",
-    border: "none",
-    borderRadius: "12px",
-    width: "48px",
-    height: "48px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    transition: "transform 0.2s",
-  },
-  taskItem: (done, isZen) => ({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "16px",
-    marginBottom: "12px",
-    borderRadius: "16px",
-    background: isZen 
-      ? (done ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.05)") 
-      : (done ? "#f5f3ff" : "#fff"),
-    border: isZen 
-      ? "1px solid rgba(255,255,255,0.1)" 
-      : (done ? `1px solid ${COLORS.primary}40` : "1px solid #f3f4f6"),
-    transition: "all 0.3s ease",
-    opacity: done ? 0.8 : 1,
-    boxShadow: isZen ? "none" : "0 2px 5px rgba(0,0,0,0.02)",
-  }),
-  progressBarContainer: {
-    height: "8px",
-    width: "100%",
-    backgroundColor: "#e0e7ff",
-    borderRadius: "10px",
-    marginBottom: "32px",
-    overflow: "hidden",
-  },
-  suggestionBtn: {
-    width: "100%",
-    textAlign: "left",
-    padding: "14px",
-    borderRadius: "12px",
-    background: "#fff",
-    border: "1px solid #e5e7eb",
-    marginBottom: "10px",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: COLORS.textPrimary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    transition: "all 0.2s",
   }
 };
 
@@ -202,32 +120,57 @@ const animationStyles = `
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    color: #374151;
+    color: var(--text-secondary);
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   }
   .integrated-back-btn:hover {
     border-color: ${COLORS.primary};
     color: ${COLORS.primary};
     transform: translateX(-3px);
   }
-  .task-text-done {
-    text-decoration: line-through;
-    color: ${COLORS.textMuted};
+  .suggestion-btn {
+    width: 100%;
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-main);
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
   }
-  @media (max-width: 900px) {
-    .challenges-split { flex-direction: column !important; }
-    .challenges-sidebar { width: 100% !important; order: 1; }
+  .suggestion-btn:hover {
+    border-color: ${COLORS.primary};
+    background: ${COLORS.primary}10;
+  }
+  .task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .task-item:hover {
+    transform: scale(1.01);
   }
 `;
 
 const DailyChallenges = ({ onBack }) => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([
     { text: "Drink a glass of water first thing", done: true },
     { text: "Write down 3 goals for today", done: false },
@@ -254,7 +197,7 @@ const DailyChallenges = ({ onBack }) => {
 
   const addTask = (text = input) => {
     if (!text.trim()) return;
-    setTasks([...tasks, { text: text, done: false }]);
+    setTasks([{ text: text, done: false }, ...tasks]);
     setInput("");
   };
 
@@ -268,73 +211,71 @@ const DailyChallenges = ({ onBack }) => {
 
   const progress = tasks.length > 0 ? (tasks.filter(t => t.done).length / tasks.length) * 100 : 0;
 
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigate(-1);
+  };
+
   return (
-    <div ref={containerRef} className="wb-main-wrapper" style={styles.mainWrapperCard(isZen)}>
+    <div ref={containerRef} style={styles.mainWrapperCard(isZen)}>
       <style>{animationStyles}</style>
 
-      {/* Floating Zen Controls */}
-      <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', gap: '12px', zIndex: 101 }}>
+      {/* Zen Controls */}
+      <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 101 }}>
         <button 
           onClick={toggleFullscreen}
-          style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '12px', borderRadius: '14px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
+          style={{ background: isZen ? 'rgba(255,255,255,0.1)' : COLORS.cardBg, border: `1px solid ${isZen ? 'rgba(255,255,255,0.2)' : COLORS.borderColor}`, color: isZen ? '#fff' : COLORS.textPrimary, padding: '10px', borderRadius: '12px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
         >
           {isZen ? <Minimize size={20} /> : <Maximize size={20} />}
         </button>
       </div>
 
-      {/* Header */}
       {!isZen && (
-        <div className="wb-hero" style={styles.heroSection}>
-          <div style={styles.heroLeftContent}>
-            <button className="integrated-back-btn" onClick={onBack}>
-               <ArrowLeft size={16} />
-               <span>Exit to Menu</span>
+        <div style={styles.heroSection}>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <button className="integrated-back-btn" onClick={handleBack}>
+              <ArrowLeft size={16} />
+              <span>Exit</span>
             </button>
-
             <div style={styles.heroIconBox}>
-              <Target size={32} color="white" strokeWidth={2.5} />
+              <Target size={36} strokeWidth={2.5} />
             </div>
-            
             <div>
-              <h1 style={{ fontSize: "28px", fontWeight: "800", color: COLORS.textPrimary, margin: "0" }}>
-                Daily Challenges
-              </h1>
-              <p style={{ fontSize: "14px", color: COLORS.textSecondary, margin: "2px 0 0 0" }}>
-                Build habits and track your small wins.
-              </p>
+              <h1 style={{ fontSize: "32px", fontWeight: "800", color: COLORS.textPrimary, margin: "0 0 4px 0" }}>Daily Challenges</h1>
+              <p style={{ fontSize: "16px", color: COLORS.textSecondary, margin: "0" }}>Build habits and track your small wins.</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Content Body */}
       <div style={styles.contentBody(isZen)}>
-        
-        <div className="challenges-split" style={styles.splitLayout}>
+        <div style={styles.layoutContainer(isZen)}>
           
-          {/* LEFT: Main List */}
           <div style={styles.mainListCard(isZen)}>
-            
-            {/* Progress Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: isZen ? '#ccc' : COLORS.textSecondary, fontSize: '13px', fontWeight: '600' }}>
-              <span>Your Progress</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <div style={styles.progressBarContainer}>
-              <div style={{ height: '100%', width: `${progress}%`, background: COLORS.primary, transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+            {/* Progress Header */}
+            <div style={{ marginBottom: '32px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: isZen ? '#fff' : COLORS.textPrimary, fontSize: '14px', fontWeight: '800' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={16} color={COLORS.primary} /> Productivity Score
+                </span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <div style={{ height: "10px", width: "100%", backgroundColor: isZen ? "rgba(255,255,255,0.1)" : "var(--border-color)", borderRadius: "10px", overflow: "hidden" }}>
+                <div style={{ height: '100%', width: `${progress}%`, background: COLORS.primary, transition: 'width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: `0 0 15px ${COLORS.primary}60` }} />
+              </div>
             </div>
 
-            {/* Input */}
-            <div style={styles.inputGroup(isZen)}>
+            {/* Input Group */}
+            <div style={{ display: "flex", gap: "12px", marginBottom: "32px", background: isZen ? "rgba(255,255,255,0.05)" : "var(--bg-main)", padding: "10px", borderRadius: "18px", border: `1px solid ${isZen ? "rgba(255,255,255,0.1)" : COLORS.borderColor}` }}>
               <input 
                 type="text" 
-                placeholder="Add a new challenge..." 
+                placeholder="What's your next challenge?" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addTask()}
-                style={styles.inputField(isZen)}
+                style={{ flex: 1, border: "none", background: "transparent", padding: "10px 15px", fontSize: "16px", outline: "none", color: isZen ? "#fff" : COLORS.textPrimary, fontWeight: "600" }}
               />
-              <button style={styles.addBtn} onClick={() => addTask()}>
+              <button onClick={() => addTask()} style={{ background: COLORS.primary, color: "white", border: "none", borderRadius: "12px", width: "48px", height: "48px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Plus size={24} />
               </button>
             </div>
@@ -342,71 +283,58 @@ const DailyChallenges = ({ onBack }) => {
             {/* List */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {tasks.length === 0 && (
-                 <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMuted }}>
-                    <CalendarCheck size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
-                    <p>No challenges yet. Add one or pick from the list!</p>
+                 <div style={{ textAlign: 'center', padding: '60px 0', color: COLORS.textMuted }}>
+                    <CalendarCheck size={56} style={{ opacity: 0.2, marginBottom: '20px' }} />
+                    <p style={{ fontWeight: '600' }}>No active challenges. Add one to start your streak!</p>
                  </div>
               )}
               {tasks.map((task, i) => (
-                <div key={i} style={styles.taskItem(task.done, isZen)}>
+                <div key={i} className="task-item" style={{ 
+                  background: task.done ? (isZen ? 'rgba(99, 102, 241, 0.15)' : `${COLORS.primary}08`) : (isZen ? 'rgba(255,255,255,0.03)' : 'transparent'),
+                  border: `1px solid ${task.done ? `${COLORS.primary}30` : (isZen ? 'rgba(255,255,255,0.1)' : COLORS.borderColor)}`
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, cursor: 'pointer' }} onClick={() => toggleTask(i)}>
-                    <div style={{ 
-                      width: '24px', height: '24px', borderRadius: '50%', 
-                      border: task.done ? `2px solid ${COLORS.primary}` : `2px solid #d1d5db`,
-                      background: task.done ? COLORS.primary : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.2s'
-                    }}>
-                      {task.done && <CheckCircle2 size={16} color="white" />}
+                    <div style={{ transition: 'all 0.2s' }}>
+                      {task.done ? <CheckCircle2 size={24} color={COLORS.primary} fill={`${COLORS.primary}20`} /> : <Circle size={24} color={isZen ? 'rgba(255,255,255,0.3)' : '#cbd5e1'} />}
                     </div>
                     <span style={{ 
-                      fontSize: '16px', 
-                      color: isZen ? (task.done ? '#6b7280' : '#fff') : (task.done ? '#9ca3af' : COLORS.textPrimary),
+                      fontSize: '17px', 
+                      fontWeight: '600',
+                      color: isZen ? (task.done ? '#64748b' : '#fff') : (task.done ? COLORS.textMuted : COLORS.textPrimary),
                       textDecoration: task.done ? 'line-through' : 'none',
-                      transition: 'all 0.2s'
                     }}>
                       {task.text}
                     </span>
                   </div>
-                  <button 
-                    onClick={() => removeTask(i)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', color: isZen ? '#6b7280' : '#9ca3af', opacity: 0.6 }}
-                  >
-                    <Trash2 size={18} />
+                  <button onClick={() => removeTask(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', color: '#ef4444', opacity: 0.7 }}>
+                    <Trash2 size={20} />
                   </button>
                 </div>
               ))}
             </div>
-
           </div>
 
-          {/* RIGHT: Suggestions (Hidden in Zen) */}
           {!isZen && (
-            <div className="challenges-sidebar" style={styles.sidebar}>
-              <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '16px', border: '1px solid #fcd34d', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', marginBottom: '8px' }}>
-                  <Trophy size={20} />
-                  <span style={{ fontWeight: '700' }}>Daily Goal</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '340px' }}>
+              <div style={{ ...styles.sidebarCard, background: '#fffbeb', borderColor: '#fef3c7' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', marginBottom: '12px' }}>
+                  <Trophy size={22} />
+                  <span style={{ fontWeight: '800', fontSize: '12px', textTransform: 'uppercase' }}>Daily Achievement</span>
                 </div>
-                <p style={{ fontSize: '13px', color: '#b45309', margin: 0, lineHeight: '1.5' }}>
-                  Completing small tasks releases dopamine. Try to finish at least 3 tasks today!
+                <p style={{ fontSize: '14px', color: '#b45309', margin: 0, lineHeight: '1.6', fontWeight: '500' }}>
+                  Small wins lead to big changes. Complete 3 tasks today to earn a focus badge!
                 </p>
               </div>
 
-              <h3 style={{ fontSize: "14px", color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "1px", marginTop: '10px' }}>
-                Quick Add Suggestions
-              </h3>
-              
-              {SUGGESTIONS.map((sug, idx) => (
-                <button 
-                  key={idx} 
-                  style={styles.suggestionBtn}
-                  onClick={() => addTask(sug)}
-                >
-                  {sug}
-                  <Plus size={16} color={COLORS.primary} />
-                </button>
-              ))}
+              <div style={styles.sidebarCard}>
+                <h3 style={{ fontSize: "12px", color: COLORS.textMuted, fontWeight: "800", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "20px" }}>Quick Start Ideas</h3>
+                {SUGGESTIONS.map((sug, idx) => (
+                  <button key={idx} className="suggestion-btn" onClick={() => addTask(sug)}>
+                    {sug}
+                    <Plus size={16} />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

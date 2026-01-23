@@ -3,12 +3,11 @@ import {
   Zap,
   Clock,
   Layers,
-  ArrowLeft,
   Maximize,
   Minimize,
-  ChevronRight,
+  ArrowRight,
   Target,
-  Rocket,
+  BarChart // Visual replacement for 'Type' icon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -16,9 +15,9 @@ import { useNavigate } from "react-router-dom";
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary: "#06b6d4", // Cyan for Productivity/Tech
-  primaryLight: "#ecfeff",
-  primaryDark: "#0891b2",
+  primary: "var(--primary)",
+  primaryLight: "var(--primary-light)",
+  primaryDark: "var(--primary-dark)",
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
@@ -26,16 +25,21 @@ const COLORS = {
   textMuted: "var(--text-muted)",
   borderColor: "var(--border-color)",
   shadowHuge: "var(--shadow-huge)",
+  // Tool specific colors mapped to variables
+  purple: "var(--purple)",
+  purpleLight: "var(--purple-light)",
+  orange: "var(--orange)",
+  orangeLight: "var(--orange-light)",
 };
 
 const styles = {
+  // ROOT ELEMENT - Dynamic to handle Zen Mode vs Standard Mode
   mainWrapperCard: (isZen) => ({
-    backgroundColor: isZen ? "#0f172a" : COLORS.cardBg,
+    backgroundColor: isZen ? "#0f172a" : COLORS.cardBg, // Dark navy if Zen, else variable
     borderRadius: isZen ? "0" : "24px",
     border: isZen ? "none" : `1px solid ${COLORS.borderColor}`,
     boxShadow: isZen ? "none" : COLORS.shadowHuge,
     width: "100%",
-    maxWidth: isZen ? "none" : "",
     margin: isZen ? "0" : "0 auto",
     overflow: "hidden",
     fontFamily: "'Inter', system-ui, sans-serif",
@@ -45,105 +49,122 @@ const styles = {
     position: "relative",
     transition: "all 0.5s ease",
   }),
+  // HERO SECTION - Matches Reference
   heroSection: {
     background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "32px 48px",
+    padding: "48px",
     borderBottom: `1px solid ${COLORS.borderColor}`,
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  heroLeftContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: "20px",
+    gap: "24px",
+    textAlign: "left",
   },
   heroIconBox: {
-    width: "64px",
-    height: "64px",
-    borderRadius: "18px",
+    width: "72px",
+    height: "72px",
+    borderRadius: "20px",
     backgroundColor: COLORS.primary,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    boxShadow: "0 10px 20px -5px rgba(6, 182, 212, 0.4)",
+    boxShadow: "0 10px 25px -5px rgba(6, 182, 212, 0.4)", // Adjusted shadow color for productivity theme
   },
+  // GRID LAYOUT
   contentBody: {
     flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "40px",
     overflowY: "auto",
+    padding: "40px",
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
     gap: "24px",
+    maxWidth: "1200px",
+    margin: "0 auto",
     width: "100%",
-    maxWidth: "900px",
   },
+  // CARD STYLING - Matches Reference
   toolCard: {
-    backgroundColor: "#fff",
-    borderRadius: "24px",
-    padding: "32px",
+    backgroundColor: COLORS.bgMain,
     border: `1px solid ${COLORS.borderColor}`,
+    borderRadius: "20px",
+    padding: "32px",
     cursor: "pointer",
-    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    display: "flex",
-    flexDirection: "column",
-    textAlign: "left",
+    transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
     position: "relative",
     overflow: "hidden",
+    textAlign: "left",
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
   },
-  cardIconBox: (color) => ({
+  iconWrapper: (bg, color) => ({
     width: "48px",
     height: "48px",
-    borderRadius: "12px",
-    backgroundColor: `${color}15`,
-    color: color,
+    borderRadius: "14px",
+    backgroundColor: bg,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    color: color,
     marginBottom: "20px",
   }),
+  cardTitle: {
+    fontSize: "20px",
+    fontWeight: "800",
+    color: COLORS.textPrimary,
+    marginBottom: "8px",
+  },
+  cardDesc: {
+    fontSize: "14px",
+    color: COLORS.textSecondary,
+    lineHeight: "1.6",
+    marginBottom: "24px",
+    flex: 1,
+  },
+  cardFooter: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    fontSize: "12px",
+    fontWeight: "700",
+    color: COLORS.textMuted,
+    marginTop: "auto",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
 };
 
 const animationStyles = `
-  .integrated-back-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    color: #374151;
-    font-weight: 700;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .integrated-back-btn:hover {
-    border-color: ${COLORS.primary};
-    color: ${COLORS.primary};
-    transform: translateX(-3px);
-  }
   .tool-card-hover:hover {
     transform: translateY(-8px);
     border-color: ${COLORS.primary};
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1);
   }
-  .tool-card-hover:hover .arrow-icon {
-    transform: translateX(5px);
+  .tool-card-hover:hover .action-arrow {
+    transform: translateX(4px);
     color: ${COLORS.primary};
+  }
+  .action-arrow {
+    transition: transform 0.2s, color 0.2s;
+  }
+  
+  /* Scrollbar refinement for the content body */
+  .content-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .content-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .content-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 10px;
   }
 `;
 
-const ProductivityTools = ({ onBack }) => {
-    const navigate = useNavigate();
+const ProductivityTools = () => {
+  const navigate = useNavigate();
   const [isZen, setIsZen] = useState(false);
   const containerRef = useRef(null);
 
@@ -171,20 +192,24 @@ const ProductivityTools = ({ onBack }) => {
   const tools = [
     {
       id: "eisenhower",
-      title: "Matrice d'Eisenhower",
+      title: "Eisenhower Matrix",
       desc: "Distinguish between urgent and important tasks to master your daily priorities.",
-      icon: <Layers size={24} />,
-      color: "#6366f1",
-      tag: "Prioritization",
+      icon: <Layers size={24} strokeWidth={2.5} />,
+      color: COLORS.purple,
+      bg: COLORS.purpleLight,
+      time: "Strategy",
+      type: "Prioritize",
       path: "/productivity/eisenhower",
     },
     {
       id: "pomodoro",
       title: "Pomodoro Technique",
       desc: "Deep work sessions paired with tactical breaks to maintain high mental clarity.",
-      icon: <Clock size={24} />,
-      color: "#ef4444",
-      tag: "Focus Timer",
+      icon: <Clock size={24} strokeWidth={2.5} />,
+      color: COLORS.orange,
+      bg: COLORS.orangeLight,
+      time: "25 Min",
+      type: "Focus",
       path: "/productivity/pomodoro",
     },
   ];
@@ -197,7 +222,7 @@ const ProductivityTools = ({ onBack }) => {
     >
       <style>{animationStyles}</style>
 
-      {/* Floating Controls */}
+      {/* Zen Mode Toggle - Floating (Kept separate from layout flow) */}
       <div
         style={{
           position: "absolute",
@@ -211,99 +236,57 @@ const ProductivityTools = ({ onBack }) => {
         <button
           onClick={toggleFullscreen}
           style={{
-            background: "rgba(0,0,0,0.5)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            color: "#fff",
-            padding: "12px",
-            borderRadius: "14px",
+            background: isZen ? "rgba(255,255,255,0.1)" : COLORS.bgMain,
+            border: isZen ? "1px solid rgba(255,255,255,0.2)" : `1px solid ${COLORS.borderColor}`,
+            color: isZen ? "#fff" : COLORS.textSecondary,
+            padding: "10px",
+            borderRadius: "12px",
             cursor: "pointer",
             backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: isZen ? "none" : "0 2px 5px rgba(0,0,0,0.05)"
           }}
         >
           {isZen ? <Minimize size={20} /> : <Maximize size={20} />}
         </button>
       </div>
 
-      {/* Header */}
+      {/* Header - Styled like Reference */}
       {!isZen && (
         <div className="wb-hero" style={styles.heroSection}>
-          <div style={styles.heroLeftContent}>
-            <button className="integrated-back-btn" onClick={onBack}>
-              <ArrowLeft size={16} />
-              <span>Exit to Menu</span>
-            </button>
-
-            <div style={styles.heroIconBox}>
-              <Zap size={32} color="white" strokeWidth={2.5} />
-            </div>
-
-            <div>
-              <h1
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "800",
-                  color: COLORS.textPrimary,
-                  margin: "0",
-                }}
-              >
-                Productivity Lab
-              </h1>
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: COLORS.textSecondary,
-                  margin: "2px 0 0 0",
-                }}
-              >
-                Science-backed frameworks to optimize your workflow.
-              </p>
-            </div>
+          <div style={styles.heroIconBox}>
+            <Zap size={36} color="white" strokeWidth={2.5} />
+          </div>
+          <div>
+            <h1
+              style={{
+                fontSize: "32px",
+                fontWeight: "800",
+                color: COLORS.textPrimary,
+                margin: "0 0 8px 0",
+              }}
+            >
+              Productivity Lab
+            </h1>
+            <p
+              style={{
+                fontSize: "16px",
+                color: COLORS.textSecondary,
+                margin: "0",
+                maxWidth: "600px",
+                lineHeight: "1.6",
+              }}
+            >
+              Science-backed frameworks to optimize your workflow and maximize output.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Main Grid */}
-      <div style={styles.contentBody}>
-        {!isZen && (
-          <div style={{ textAlign: "center", marginBottom: "48px" }}>
-            <span
-              style={{
-                backgroundColor: COLORS.primaryLight,
-                color: COLORS.primaryDark,
-                padding: "6px 16px",
-                borderRadius: "20px",
-                fontSize: "12px",
-                fontWeight: "800",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}
-            >
-              Work Smarter, Not Harder
-            </span>
-            <h2
-              style={{
-                fontSize: "36px",
-                fontWeight: "800",
-                color: COLORS.textPrimary,
-                marginTop: "16px",
-                marginBottom: "12px",
-              }}
-            >
-              Select Your Strategy
-            </h2>
-            <p
-              style={{
-                color: COLORS.textSecondary,
-                maxWidth: "500px",
-                margin: "0 auto",
-              }}
-            >
-              Choose a tool to help you organize tasks or maintain focus
-              throughout your session.
-            </p>
-          </div>
-        )}
-
+      {/* Main Grid Content */}
+      <div className="content-scroll" style={styles.contentBody}>
         <div style={styles.grid}>
           {tools.map((tool) => (
             <button
@@ -312,104 +295,40 @@ const ProductivityTools = ({ onBack }) => {
               style={styles.toolCard}
               onClick={() => navigate(tool.path)}
             >
+              {/* Card Header: Icon + Arrow */}
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
+                  width: "100%",
                 }}
               >
-                <div style={styles.cardIconBox(tool.color)}>{tool.icon}</div>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: "800",
-                    color: COLORS.textMuted,
-                    textTransform: "uppercase",
-                    padding: "4px 8px",
-                    border: "1px solid #eee",
-                    borderRadius: "6px",
-                  }}
-                >
-                  {tool.tag}
-                </span>
+                <div style={styles.iconWrapper(tool.bg, tool.color)}>
+                  {tool.icon}
+                </div>
+                <ArrowRight
+                  className="action-arrow"
+                  size={20}
+                  color={COLORS.textMuted}
+                />
               </div>
 
-              <h3
-                style={{
-                  fontSize: "20px",
-                  fontWeight: "700",
-                  color: COLORS.textPrimary,
-                  marginBottom: "12px",
-                }}
-              >
-                {tool.title}
-              </h3>
+              {/* Card Body: Title + Desc */}
+              <h3 style={styles.cardTitle}>{tool.title}</h3>
+              <p style={styles.cardDesc}>{tool.desc}</p>
 
-              <p
-                style={{
-                  fontSize: "15px",
-                  color: COLORS.textSecondary,
-                  lineHeight: "1.6",
-                  marginBottom: "24px",
-                  flex: 1,
-                }}
-              >
-                {tool.desc}
-              </p>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontWeight: "700",
-                  color: COLORS.textMuted,
-                  fontSize: "14px",
-                }}
-              >
-                Open Tool{" "}
-                <ChevronRight
-                  size={18}
-                  className="arrow-icon"
-                  style={{ transition: "transform 0.2s" }}
-                />
+              {/* Card Footer: Metadata */}
+              <div style={styles.cardFooter}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Target size={14} /> {tool.type}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Clock size={14} /> {tool.time}
+                </div>
               </div>
             </button>
           ))}
         </div>
-
-        {!isZen && (
-          <div
-            style={{
-              marginTop: "60px",
-              display: "flex",
-              gap: "32px",
-              color: COLORS.textMuted,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
-              }}
-            >
-              <Target size={18} color={COLORS.primary} /> Prioritize Effectively
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
-              }}
-            >
-              <Rocket size={18} color={COLORS.primary} /> Boost Daily Output
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

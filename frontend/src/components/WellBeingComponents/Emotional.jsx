@@ -10,16 +10,15 @@ import {
   VolumeX, 
   ArrowLeft,
   RefreshCw,
-  BookOpen
+  Quote
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // -----------------------
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary: "#ec4899", // Pink/Rose for Emotion
-  primaryLight: "#fce7f3", 
-  primaryDark: "#be185d",
+  primary: "#ec4899", // Rose
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
@@ -53,8 +52,7 @@ const styles = {
     border: isZen ? "none" : `1px solid ${COLORS.borderColor}`,
     boxShadow: isZen ? "none" : COLORS.shadowHuge,
     width: "100%",
-    maxWidth: isZen ? "none" : "",
-    margin: isZen ? "0" : "0 auto",
+    margin: "0 auto",
     overflow: "hidden",
     fontFamily: "'Inter', system-ui, sans-serif",
     display: "flex",
@@ -63,117 +61,79 @@ const styles = {
     position: "relative",
     transition: "all 0.5s ease",
   }),
+  // FIX: Using alpha transparency (10%) instead of a light color to avoid the "white wash"
   heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "32px 48px",
+    background: `linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.cardBg} 100%)`,
+    padding: "48px",
     borderBottom: `1px solid ${COLORS.borderColor}`,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  heroLeftContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: "20px",
-  },
   heroIconBox: {
-    width: "64px",
-    height: "64px",
-    borderRadius: "18px",
+    width: "72px",
+    height: "72px",
+    borderRadius: "20px",
     backgroundColor: COLORS.primary,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    boxShadow: "0 10px 20px -5px rgba(236, 72, 153, 0.4)",
+    boxShadow: `0 10px 25px -5px ${COLORS.primary}60`,
+    color: "#fff",
   },
   contentBody: (isZen) => ({
     flex: 1,
     display: "flex",
     flexDirection: "column",
-    padding: isZen ? "60px 20% 40px 20%" : "40px", // Centered writing column in Zen
+    padding: isZen ? "60px 0" : "32px",
     position: "relative",
-    backgroundImage: isZen 
-      ? `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1499750310159-577503763d23?auto=format&fit=crop&q=80&w=2000')` // Soft paper/desk background
-      : "none",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
+    backgroundColor: isZen ? "transparent" : COLORS.bgMain,
     overflowY: "auto",
-    transition: "all 0.5s ease",
   }),
-  splitLayout: {
+  layoutContainer: (isZen) => ({
     display: "flex",
-    gap: "40px",
+    gap: "32px",
     height: "100%",
-    width: "100%",
-    maxWidth: "1100px",
+    maxWidth: isZen ? "800px" : "1200px",
     margin: "0 auto",
-  },
+    width: "100%",
+    flexDirection: "row",
+    transition: "max-width 0.5s ease",
+  }),
   editorCard: (isZen) => ({
     flex: 2,
-    backgroundColor: isZen ? "rgba(255,255,255,0.05)" : "#fff",
+    backgroundColor: isZen ? "rgba(255,255,255,0.05)" : COLORS.cardBg,
     borderRadius: "24px",
-    padding: "32px",
+    padding: isZen ? "48px" : "32px",
     display: "flex",
     flexDirection: "column",
-    border: isZen ? "none" : `1px solid ${COLORS.borderColor}`,
-    boxShadow: isZen ? "none" : "0 4px 20px rgba(0,0,0,0.03)",
-    backdropFilter: isZen ? "blur(10px)" : "none",
-    transition: "all 0.5s ease",
+    border: isZen ? "1px solid rgba(255,255,255,0.1)" : `1px solid ${COLORS.borderColor}`,
+    boxShadow: isZen ? "none" : "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+    backdropFilter: isZen ? "blur(15px)" : "none",
     height: "100%",
+    transition: "all 0.5s ease",
   }),
-  sidebar: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "24px",
-  },
   textArea: (isZen) => ({
     width: "100%",
     flex: 1,
     border: "none",
     resize: "none",
     outline: "none",
-    fontSize: isZen ? "20px" : "16px",
+    fontSize: isZen ? "20px" : "17px",
     lineHeight: "1.8",
     color: isZen ? "#eee" : COLORS.textPrimary,
     background: "transparent",
-    fontFamily: "'Georgia', serif", // Serif font for writing feels better
-    marginTop: "20px",
+    fontFamily: "'Georgia', 'Times New Roman', serif",
+    marginTop: "24px",
   }),
-  promptCard: {
-    background: COLORS.primaryLight,
-    padding: "20px",
-    borderRadius: "16px",
-    border: `1px solid ${COLORS.primary}40`,
-  },
-  moodBtn: (isSelected) => ({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "12px",
-    borderRadius: "12px",
-    border: isSelected ? `2px solid ${COLORS.primary}` : "1px solid #e5e7eb",
-    background: isSelected ? "#fff0f7" : "#fff",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    flex: 1,
-  }),
-  controlBtn: (isZen) => ({
-    padding: "10px 20px",
-    borderRadius: "12px",
-    border: `1px solid ${isZen ? "rgba(255,255,255,0.3)" : COLORS.borderColor}`,
-    backgroundColor: isZen ? "rgba(0,0,0,0.5)" : "#fff",
-    color: isZen ? "#fff" : COLORS.textPrimary,
-    fontWeight: "600",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "14px",
-    transition: "all 0.2s",
-  })
+  sidebarCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "20px",
+    padding: "24px",
+    border: `1px solid ${COLORS.borderColor}`,
+    marginBottom: "24px",
+  }
 };
 
 const animationStyles = `
@@ -182,28 +142,57 @@ const animationStyles = `
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    color: #374151;
+    color: var(--text-secondary);
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   }
   .integrated-back-btn:hover {
     border-color: ${COLORS.primary};
     color: ${COLORS.primary};
     transform: translateX(-3px);
   }
-  @media (max-width: 900px) {
-    .emotional-split { flex-direction: column !important; }
-    .emotional-sidebar { width: 100% !important; order: -1; }
+  .mood-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-main);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1;
+    min-width: 65px;
+  }
+  .mood-btn:hover {
+    border-color: ${COLORS.primary};
+    background: ${COLORS.primary}10;
+  }
+  .mood-btn.selected {
+    border-color: ${COLORS.primary};
+    background: ${COLORS.primary}15;
+    box-shadow: 0 0 0 2px ${COLORS.primary}20;
+  }
+  .action-btn {
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
   }
 `;
 
 const Emotional = ({ onBack }) => {
+  const navigate = useNavigate();
   const [note, setNote] = useState("");
   const [selectedMood, setSelectedMood] = useState(null);
   const [promptIdx, setPromptIdx] = useState(0);
@@ -211,7 +200,6 @@ const Emotional = ({ onBack }) => {
   const [isMuted, setIsMuted] = useState(true);
   
   const containerRef = useRef(null);
-  // Soft piano/rain ambient sound
   const audioRef = useRef(new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"));
 
   const toggleFullscreen = () => {
@@ -232,172 +220,143 @@ const Emotional = ({ onBack }) => {
 
   useEffect(() => {
     audioRef.current.loop = true;
-    audioRef.current.volume = 0.3;
+    audioRef.current.volume = 0.2;
     if (isZen && !isMuted) audioRef.current.play().catch(() => {});
     else audioRef.current.pause();
-  }, [isZen, isMuted]); // Play audio primarily in Zen mode or if manually unmuted
+  }, [isZen, isMuted]);
 
   const handleSave = () => {
     if (!note.trim()) return;
-    alert("Entry saved to your local storage! (Simulation)");
+    alert("Entry saved!");
     setNote("");
     setSelectedMood(null);
   };
 
-  const nextPrompt = () => {
-    setPromptIdx((prev) => (prev + 1) % PROMPTS.length);
+  const nextPrompt = () => setPromptIdx((prev) => (prev + 1) % PROMPTS.length);
+
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigate(-1);
   };
 
   return (
-    <div ref={containerRef} className="wb-main-wrapper" style={styles.mainWrapperCard(isZen)}>
+    <div ref={containerRef} style={styles.mainWrapperCard(isZen)}>
       <style>{animationStyles}</style>
 
       {/* Floating Zen Controls */}
       <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', gap: '12px', zIndex: 101 }}>
         <button 
           onClick={() => setIsMuted(!isMuted)}
-          style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '12px', borderRadius: '14px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
+          style={{ background: isZen ? 'rgba(255,255,255,0.1)' : COLORS.cardBg, border: `1px solid ${isZen ? 'rgba(255,255,255,0.2)' : COLORS.borderColor}`, color: isZen ? '#fff' : COLORS.textPrimary, padding: '10px', borderRadius: '12px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
         >
           {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
         </button>
         <button 
           onClick={toggleFullscreen}
-          style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '12px', borderRadius: '14px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
+          style={{ background: isZen ? 'rgba(255,255,255,0.1)' : COLORS.cardBg, border: `1px solid ${isZen ? 'rgba(255,255,255,0.2)' : COLORS.borderColor}`, color: isZen ? '#fff' : COLORS.textPrimary, padding: '10px', borderRadius: '12px', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
         >
           {isZen ? <Minimize size={20} /> : <Maximize size={20} />}
         </button>
       </div>
 
-      {/* Header */}
+      {/* Hero Header */}
       {!isZen && (
-        <div className="wb-hero" style={styles.heroSection}>
-          <div style={styles.heroLeftContent}>
-            <button className="integrated-back-btn" onClick={onBack}>
-               <ArrowLeft size={16} />
-               <span>Exit to Menu</span>
+        <div style={styles.heroSection}>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <button className="integrated-back-btn" onClick={handleBack}>
+              <ArrowLeft size={16} />
+              <span>Exit</span>
             </button>
-
             <div style={styles.heroIconBox}>
-              <Heart size={32} color="white" strokeWidth={2.5} />
+              <Heart size={36} strokeWidth={2.5} />
             </div>
-            
             <div>
-              <h1 style={{ fontSize: "28px", fontWeight: "800", color: COLORS.textPrimary, margin: "0" }}>
-                Emotional Journal
-              </h1>
-              <p style={{ fontSize: "14px", color: COLORS.textSecondary, margin: "2px 0 0 0" }}>
-                Reflect on your day and track your feelings.
-              </p>
+              <h1 style={{ fontSize: "32px", fontWeight: "800", color: COLORS.textPrimary, margin: "0 0 4px 0" }}>Emotional Journal</h1>
+              <p style={{ fontSize: "16px", color: COLORS.textSecondary, margin: "0" }}>Reflect on your day and track your feelings.</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Content Body */}
+      {/* Main Content Body */}
       <div style={styles.contentBody(isZen)}>
-        
-        <div className="emotional-split" style={styles.splitLayout}>
+        <div style={styles.layoutContainer(isZen)}>
           
-          {/* LEFT: Editor Area */}
           <div style={styles.editorCard(isZen)}>
-            {/* Prompt Display in Editor */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
-              <PenTool size={20} color={isZen ? "#fff" : COLORS.primary} style={{ marginTop: '4px' }}/>
-              <div>
-                 <p style={{ 
-                   fontSize: '12px', 
-                   textTransform: 'uppercase', 
-                   letterSpacing: '1px', 
-                   color: isZen ? 'rgba(255,255,255,0.6)' : COLORS.textMuted,
-                   marginBottom: '4px' 
-                 }}>
-                   Daily Prompt
-                 </p>
-                 <h3 style={{ 
-                   fontSize: '18px', 
-                   fontWeight: '600', 
-                   color: isZen ? '#fff' : COLORS.textPrimary, 
-                   margin: 0 
-                 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ color: COLORS.primary, background: `${COLORS.primary}15`, padding: '10px', borderRadius: '12px' }}>
+                <PenTool size={22} />
+              </div>
+              <div style={{ flex: 1 }}>
+                 <p style={{ fontSize: '11px', fontWeight: '800', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Daily Prompt</p>
+                 <h3 style={{ fontSize: '19px', fontWeight: '700', color: isZen ? '#fff' : COLORS.textPrimary, margin: 0, lineHeight: '1.4' }}>
                    {PROMPTS[promptIdx]}
                  </h3>
               </div>
               {!isZen && (
-                <button onClick={nextPrompt} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: 'auto' }}>
-                  <RefreshCw size={18} color={COLORS.textMuted} />
+                <button onClick={nextPrompt} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted }}>
+                  <RefreshCw size={18} />
                 </button>
               )}
             </div>
 
-            <hr style={{ border: '0', borderBottom: `1px solid ${isZen ? 'rgba(255,255,255,0.1)' : '#eee'}` }} />
+            <div style={{ height: '1px', background: isZen ? 'rgba(255,255,255,0.1)' : COLORS.borderColor }} />
 
             <textarea
-              placeholder="Start writing your thoughts here..."
+              placeholder="How are you feeling today?"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               style={styles.textArea(isZen)}
             />
 
-            {/* Footer Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '20px', borderTop: `1px solid ${isZen ? 'rgba(255,255,255,0.1)' : '#eee'}` }}>
-               <div style={{ fontSize: '12px', color: isZen ? 'rgba(255,255,255,0.5)' : COLORS.textMuted, display: 'flex', alignItems: 'center' }}>
-                 {note.split(" ").filter(w => w).length} words
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${isZen ? 'rgba(255,255,255,0.1)' : COLORS.borderColor}` }}>
+               <div style={{ fontSize: '13px', color: COLORS.textMuted, fontWeight: '600' }}>
+                 {note.split(/\s+/).filter(w => w).length} words
                </div>
-               <div style={{ display: 'flex', gap: '10px' }}>
-                  <button style={styles.controlBtn(isZen)} onClick={() => setNote("")}>
-                    <Trash2 size={16} />
-                    Clear
+               <div style={{ display: 'flex', gap: '12px' }}>
+                  <button className="action-btn" style={{ background: 'none', border: `1px solid ${COLORS.borderColor}`, color: COLORS.textSecondary }} onClick={() => setNote("")}>
+                    <Trash2 size={16} /> Clear
                   </button>
-                  <button 
-                    style={{ ...styles.controlBtn(isZen), backgroundColor: isZen ? COLORS.primary : COLORS.primary, color: 'white', border: 'none' }} 
-                    onClick={handleSave}
-                  >
-                    <Save size={16} />
-                    Save Entry
+                  <button className="action-btn" style={{ background: COLORS.primary, border: 'none', color: 'white', boxShadow: `0 4px 12px ${COLORS.primary}40` }} onClick={handleSave}>
+                    <Save size={16} /> Save Entry
                   </button>
                </div>
             </div>
           </div>
 
-          {/* RIGHT: Sidebar (Moods) - Hides in Zen Mode */}
           {!isZen && (
-            <div className="emotional-sidebar" style={styles.sidebar}>
-              
-              {/* Mood Selector */}
-              <div style={{ background: '#fff', borderRadius: '24px', padding: '24px', border: `1px solid ${COLORS.borderColor}` }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: COLORS.textPrimary, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '320px' }}>
+              <div style={styles.sidebarCard}>
+                <h4 style={{ margin: '0 0 20px 0', fontSize: '14px', fontWeight: '800', color: COLORS.textPrimary, display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
                   <Heart size={18} fill={COLORS.primary} color={COLORS.primary} />
-                  How are you feeling?
+                  Current Mood
                 </h4>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                    {MOODS.map((m) => (
                      <button 
                         key={m.label}
-                        style={styles.moodBtn(selectedMood === m.label)}
+                        className={`mood-btn ${selectedMood === m.label ? 'selected' : ''}`}
                         onClick={() => setSelectedMood(m.label)}
                      >
-                       <span style={{ fontSize: '24px' }}>{m.icon}</span>
-                       <span style={{ fontSize: '11px', marginTop: '4px', fontWeight: '600', color: COLORS.textSecondary }}>{m.label}</span>
+                       <span style={{ fontSize: '26px' }}>{m.icon}</span>
+                       <span style={{ fontSize: '11px', marginTop: '6px', fontWeight: '700', color: COLORS.textSecondary }}>{m.label}</span>
                      </button>
                    ))}
                 </div>
               </div>
 
-              {/* Inspiration Card */}
-              <div style={styles.promptCard}>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: COLORS.primaryDark }}>
-                   <BookOpen size={18} />
-                   <span style={{ fontWeight: '700', fontSize: '14px' }}>Quote of the day</span>
+              <div style={{ ...styles.sidebarCard, background: `${COLORS.primary}10`, borderColor: `${COLORS.primary}20` }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', color: COLORS.primary }}>
+                   <Quote size={20} fill={COLORS.primary} />
+                   <span style={{ fontWeight: '800', fontSize: '12px', textTransform: 'uppercase' }}>Inspiration</span>
                  </div>
-                 <p style={{ fontStyle: 'italic', color: COLORS.textPrimary, fontSize: '14px', lineHeight: '1.6' }}>
+                 <p style={{ fontStyle: 'italic', color: COLORS.textPrimary, fontSize: '15px', lineHeight: '1.6', margin: 0 }}>
                    "Your emotions are the slaves to your thoughts, and you are the slave to your emotions."
                  </p>
-                 <p style={{ fontSize: '12px', color: COLORS.textSecondary, marginTop: '8px', textAlign: 'right' }}>— Elizabeth Gilbert</p>
+                 <p style={{ fontSize: '12px', color: COLORS.textMuted, marginTop: '12px', textAlign: 'right', fontWeight: '700' }}>— Elizabeth Gilbert</p>
               </div>
-
             </div>
           )}
-
         </div>
       </div>
     </div>
