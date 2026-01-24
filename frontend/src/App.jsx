@@ -45,6 +45,7 @@ import Departments from "./pages/Departments";
 import ProductivityTools from "./components/ProductivitytoolsComponents/ProductivityTools";
 import EisenhowerMatrix from "./components/ProductivitytoolsComponents/EisenhowerMatrix";
 import PomodoroTimer from "./components/ProductivitytoolsComponents/Promodorotechnik";
+import TakeAssessment from "./pages/Assessement/TakeAssessment";
 
 // Temporary stubs
 const Analytics = () => <h1>Mental Health Analytics Page</h1>;
@@ -60,6 +61,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
+        <Route path="/take-assessment/:token" element={<TakeAssessment />} />
 
         {/* ------- Protected Routes with Layout ------- */}
         <Route

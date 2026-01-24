@@ -596,3 +596,28 @@ class AssignmentAdminListSerializer(serializers.ModelSerializer):
             "ai_report",     # <-- optional narrative (if provided)
             "report_pdf",    # <-- optional file path/url if you store PDFs
         ]
+
+# assessments/serializers.py (update these at the bottom)
+
+from rest_framework import serializers
+from .models import CandidateAssignment, AssessmentTemplate
+from accounts.models import Recruitee
+
+class AssessmentTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentTemplate
+        fields = ['id', 'code', 'name']
+
+class RecruiteeBasicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recruitee
+        fields = ['email', 'first_name', 'last_name', 'position']
+        
+class CandidateAssignmentSerializer(serializers.ModelSerializer):
+    template = AssessmentTemplateSerializer(read_only=True)
+    recruitee = RecruiteeBasicSerializer(read_only=True)
+    
+    class Meta:
+        model = CandidateAssignment
+        fields = ['id', 'token', 'recruitee', 'template', 'status', 'assigned_at', 'completed_at']
+        read_only_fields = ['id', 'token', 'assigned_at']

@@ -1082,18 +1082,30 @@ class AICandidateMatchView(APIView):
             "summary": f"Similarity-based AI match score: {score} ({fit})."
         })
 
+from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+from django.conf import settings
+from django.db import transaction
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from accounts.models import Recruitee
+from assessments.models import AssessmentTemplate, CandidateAssignment
+
 class AssignCandidateAssessmentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # CHANGED: Now accepts a list of emails
+        # --- 🔍 DEBUG: WHERE IS THE DATA GOING? ---
+        print(f"🛑 SERVER WRITING TO DB: {settings.DATABASES['default']['NAME']}")
+        # ------------------------------------------
+
         candidate_emails = request.data.get("candidate_emails", []) 
-        template_codes = request.data.get("template_codes", []) # Array of strings
+        template_codes = request.data.get("template_codes", [])
 
         if not candidate_emails or not template_codes:
             return Response({"detail": "Candidate emails and templates are required."}, status=400)
 
-        # Ensure it's a list even if frontend sends a single string by mistake
         if isinstance(candidate_emails, str):
             candidate_emails = [candidate_emails]
 
@@ -1101,46 +1113,79 @@ class AssignCandidateAssessmentView(APIView):
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         errors = []
 
-        for email in candidate_emails:
-            try:
-                recruitee = get_object_or_404(Recruitee, email=email)
-                
+        # Start a transaction to ensure data integrity
+        with transaction.atomic():
+            for email in candidate_emails:
+                # 1. FIND RECRUITEE (Don't use get_object_or_404 in a loop!)
+                try:
+                    recruitee = Recruitee.objects.get(email=email)
+                except Recruitee.DoesNotExist:
+                    errors.append(f"Skipped {email}: Recruitee not found.")
+                    continue
+
                 for code in template_codes:
                     try:
                         template = AssessmentTemplate.objects.get(code=code)
-                        
-                        # Create the assignment
+
+                        # 2. CREATE ASSIGNMENT
                         assignment, created = CandidateAssignment.objects.get_or_create(
                             recruitee=recruitee,
                             template=template
                         )
                         
-                        # Only send email if a new assignment was created or if you want to resend
-                        # Here we send it regardless to ensure they get the link
-                        
-                        # Generate the unique link
+                        # Verify the token exists
+                        print(f"✅ Created Assignment for {email}: {assignment.token}")
+
+                        # 3. GENERATE LINK
                         link = f"{origin}/take-assessment/{assignment.token}"
-                        
-                        print(f"Sending {code} assessment to {email}...")
+
+                        # 4. SEND EMAIL
+                        print(f"📨 Sending {code} to {email}...")
                         send_mail(
                             subject=f"Assessment Invitation: {template.name}",
                             message=f"Hi {recruitee.first_name},\n\nPlease complete your {template.name} assessment using the link below:\n\n{link}\n\nGood luck!",
                             from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[email],
-                            fail_silently=True, 
+                            fail_silently=False, # Set to False so we see errors in logs!
                         )
                         assigned_count += 1
 
                     except AssessmentTemplate.DoesNotExist:
-                        print(f"Template {code} not found.")
-                        continue
-            
-            except Exception as e:
-                errors.append(f"Error for {email}: {str(e)}")
-                continue
+                        errors.append(f"Template code '{code}' invalid.")
+                    except Exception as e:
+                        errors.append(f"Failed sending to {email}: {str(e)}")
 
         return Response({
-            "message": f"Successfully processed assignments.",
-            "sent_count": assigned_count,
-            "errors": errors
+            "message": f"Processed {assigned_count} assignments.",
+            "errors": errors,
+            "db_used": str(settings.DATABASES['default']['NAME']) # Check this in the response!
         })
+    
+# assessments/views.py
+from rest_framework import generics
+from rest_framework.permissions import AllowAny
+from .models import CandidateAssignment
+from .serializers import CandidateAssignmentSerializer
+
+# assessments/views.py
+class CandidateAssignmentDetailView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    lookup_field = 'token'
+    queryset = CandidateAssignment.objects.all()
+    serializer_class = CandidateAssignmentSerializer
+
+    # Add this debug method
+    def get_object(self):
+        token_from_url = self.kwargs.get("token")
+        print(f"🔍 Looking for token: {token_from_url}")
+        
+        try:
+            obj = CandidateAssignment.objects.get(token=token_from_url)
+            print(f"✅ Found Object: {obj}")
+            return obj
+        except CandidateAssignment.DoesNotExist:
+            print(f"❌ Database Search Failed for token: {token_from_url}")
+            # Let's see what IS in the database
+            all_tokens = CandidateAssignment.objects.values_list('token', flat=True)
+            print(f"📋 Tokens actually in DB: {list(all_tokens)}")
+            raise

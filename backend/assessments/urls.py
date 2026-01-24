@@ -1,6 +1,14 @@
 # assessments/urls.py
 from django.urls import path
-from .views import AssignAssessmentView, GenerateHRReportView, MyAssignmentsView, AssignmentDetailView, SubmitAnswersView,UploadReportPDFView,AdminAssignmentsListView,GenerateBigFiveReportView,GenerateKarasekReportView,GenerateMaslachReportView,GenerateDiscReportView,GenerateJssReportView,GenerateBRSReportView,GenerateCDRISC10ReportView,GenerateWSESReportView,GenerateGCOSReportView,GenerateRIBSReportView,GenerateCAQReportView,GenerateISEReportView,AICandidateMatchView,AssignCandidateAssessmentView
+from .views import AssignAssessmentView, GenerateHRReportView, MyAssignmentsView, AssignmentDetailView, SubmitAnswersView,UploadReportPDFView,AdminAssignmentsListView,GenerateBigFiveReportView,GenerateKarasekReportView,GenerateMaslachReportView,GenerateDiscReportView,GenerateJssReportView,GenerateBRSReportView,GenerateCDRISC10ReportView,GenerateWSESReportView,GenerateGCOSReportView,GenerateRIBSReportView,GenerateCAQReportView,GenerateISEReportView,AICandidateMatchView,AssignCandidateAssessmentView, CandidateAssignmentDetailView
+from django.http import JsonResponse
+
+def test_candidate_view(request, token):
+    return JsonResponse({
+        "message": "Token received!",
+        "token": str(token),
+        "type": type(token).__name__
+    })
 
 urlpatterns = [
     path("assessments/assign/", AssignAssessmentView.as_view(), name="assessments-assign"),
@@ -10,6 +18,10 @@ urlpatterns = [
     path("assessments/<int:pk>/upload-pdf/", UploadReportPDFView.as_view(), name="assessments-upload-pdf"),
     path("assessments/admin/", AdminAssignmentsListView.as_view(), name="assessments-admin"),
     path("assessments/admin/", AdminAssignmentsListView.as_view(), name="assessments-admin"),
+
+    path("assessments/candidate/test/<uuid:token>/", test_candidate_view, name="test-candidate"),
+    path("assessments/candidate/<uuid:token>/", CandidateAssignmentDetailView.as_view(), name="candidate-assignment-detail"),
+
     path("hr/report/", GenerateHRReportView.as_view()),
     path("assessments/<int:assignment_id>/generate-report/", GenerateBigFiveReportView.as_view(), name="generate-report"),
     path("karasek/report/<int:assignment_id>/", GenerateKarasekReportView.as_view(), name="karasek-report"),
