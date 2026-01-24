@@ -3,8 +3,9 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import "./App.css";
-import WellbeingTechniques from "./pages/WellbeingTechniques";
+
 // Public pages
+import WellbeingTechniques from "./pages/WellbeingTechniques";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import SignUpPage from "./components/SignUpPage";
@@ -22,7 +23,7 @@ import Scheduling from "./pages/Scheduling";
 import SendAssessment from "./pages/Assessement/AssessementPage";
 import MyAssessments from "./pages/MyAssessments";
 
-// Assessment runners (opened via ?assignment=ID)
+// Assessment runners
 import BigFiveTest from "./pages/Assessement/BigFiveTest";
 import KarasekTest from "./pages/Assessement/KarasekTest";
 import MaslachTest from "./pages/Assessement/MaslachTest";
@@ -30,8 +31,7 @@ import DiscTest from "./pages/Assessement/DiscTest";
 import JssTest from "./pages/Assessement/JssTest";
 import BrsTest from "./pages/Assessement/BrsTest";
 
-// 🧩 New Assessments
-
+// New Assessments
 import ReportPage from "./pages/ReportPage";
 import CDRISCTest from "./pages/Assessement/CdriskTest";
 import WSESTest from "./pages/Assessement/WsesTest";
@@ -55,13 +55,13 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* ------- Public ------- */}
+        {/* ------- Public Routes ------- */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
 
-        {/* ------- Protected with layout ------- */}
+        {/* ------- Protected Routes with Layout ------- */}
         <Route
           path="/dashboard"
           element={
@@ -82,7 +82,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/assesement-description"
           element={
@@ -93,7 +92,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/departments"
           element={
@@ -104,7 +102,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/productivity-tools"
           element={
@@ -115,7 +112,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/productivity/eisenhower"
           element={
@@ -126,7 +122,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/productivity/pomodoro"
           element={
@@ -137,7 +132,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/profile"
           element={
@@ -148,7 +142,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/report/:id"
           element={
@@ -159,7 +152,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/employees"
           element={
@@ -170,7 +162,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/analytics"
           element={
@@ -181,7 +172,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/assessments"
           element={
@@ -192,8 +182,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* 👇 Employee’s personal list */}
         <Route
           path="/my-assessments"
           element={
@@ -204,7 +192,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/wellbeing-techniques"
           element={
@@ -215,7 +202,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/interventions"
           element={
@@ -226,7 +212,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/scheduling"
           element={
@@ -237,7 +222,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/reports"
           element={
@@ -249,7 +233,7 @@ function App() {
           }
         />
 
-        {/* ------- Assessment runners (also protected) ------- */}
+        {/* ------- Assessment runners ------- */}
         <Route
           path="/big-five"
           element={
@@ -260,7 +244,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/disc"
           element={
@@ -271,7 +254,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/brs"
           element={
@@ -282,7 +264,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/jss"
           element={
@@ -293,7 +274,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/karasek"
           element={
@@ -304,7 +284,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/maslach"
           element={
@@ -316,7 +295,7 @@ function App() {
           }
         />
 
-        {/* ------- 🔥 New Resilience, Motivation & Innovation Assessments ------- */}
+        {/* New Assessments */}
         <Route
           path="/cdrisc"
           element={
@@ -327,7 +306,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/wses"
           element={
@@ -338,7 +316,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/gcos"
           element={
@@ -349,7 +326,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/ribs"
           element={
@@ -360,7 +336,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/caq"
           element={
@@ -371,7 +346,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/ise"
           element={
