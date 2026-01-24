@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import "react-toastify/dist/ReactToastify.css";
 import "./AuthPages.css";
 
+// ✅ correct import path (relative to src/)
+import { apiFetch } from "../utils/apiFetch";
+
 function LoginPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -20,32 +23,39 @@ function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
 
-  // Use env var if provided, else default to localhost:8080
   const API_BASE = "http://localhost:8080";
 
   const handleInputChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const isValidEmail = (email) => /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/i.test(email);
+  const isValidEmail = (email) =>
+    /^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/i.test(email);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     const { email, password } = formData;
 
     if (!email || !password) {
-      toast.error(t("login.emailPasswordRequired"), { position: "top-right", theme: "colored" });
+      toast.error(t("login.emailPasswordRequired"), {
+        position: "top-right",
+        theme: "colored",
+      });
       return;
     }
 
     if (!isValidEmail(email)) {
-      toast.error(t("login.invalidEmail"), { position: "top-right", theme: "colored" });
+      toast.error(t("login.invalidEmail"), {
+        position: "top-right",
+        theme: "colored",
+      });
       return;
     }
 
     setIsSubmitting(true);
+
     try {
-      // 1) Login
+      // 1️⃣ LOGIN
       const res = await fetch(`${API_BASE}/api/auth/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,32 +68,39 @@ function LoginPage() {
       }
 
       const tokens = await res.json(); // { access, refresh }
+
+      // ✅ store ONLY real auth data
       localStorage.setItem("access", tokens.access);
       localStorage.setItem("refresh", tokens.refresh);
-      localStorage.setItem("authenticated", "true");
 
-      // 2) Fetch user profile
-      let role = "EMPLOYEE"; // fallback
+      // 2️⃣ FETCH USER PROFILE (protected)
+      let role = "EMPLOYEE";
+
       try {
-        const meRes = await fetch(`${API_BASE}/api/auth/me/`, {
-          headers: { Authorization: `Bearer ${tokens.access}` },
-        });
+        const meRes = await apiFetch(`${API_BASE}/api/auth/me/`);
         if (meRes.ok) {
           const me = await meRes.json();
           localStorage.setItem("me", JSON.stringify(me));
           role = me.role || "EMPLOYEE";
         }
       } catch {
-        // ignore
+        // apiFetch already logs out if token is invalid
       }
 
-      toast.success(t("login.success"), { position: "top-right", theme: "colored" });
+      toast.success(t("login.success"), {
+        position: "top-right",
+        theme: "colored",
+      });
 
-      // 3) Redirect based on role
+      // 3️⃣ REDIRECT
       if (role === "HR") navigate("/dashboard");
       else navigate("/my-assessments");
+
     } catch (error) {
-      toast.error(error.message || t("login.genericError"), { position: "top-right", theme: "colored" });
+      toast.error(error.message || t("login.genericError"), {
+        position: "top-right",
+        theme: "colored",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -92,6 +109,7 @@ function LoginPage() {
   return (
     <div className="auth-container">
       <ToastContainer />
+
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">
@@ -117,7 +135,12 @@ function LoginPage() {
                 id="email"
                 autoComplete="email"
               />
-              <label className={`floating-label${formData.email ? " filled" : ""}`} htmlFor="email">
+              <label
+                className={`floating-label${
+                  formData.email ? " filled" : ""
+                }`}
+                htmlFor="email"
+              >
                 {t("login.email")}
               </label>
             </div>
@@ -139,21 +162,38 @@ function LoginPage() {
                 autoComplete="current-password"
                 minLength={8}
               />
-              <label className={`floating-label${formData.password ? " filled" : ""}`} htmlFor="password">
+              <label
+                className={`floating-label${
+                  formData.password ? " filled" : ""
+                }`}
+                htmlFor="password"
+              >
                 {t("login.password")}
               </label>
               <button
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
                 className="password-toggle"
-                aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                aria-label={
+                  showPassword
+                    ? t("login.hidePassword")
+                    : t("login.showPassword")
+                }
               >
-                {showPassword ? <Eye className="eye-icon" /> : <EyeOff className="eye-icon" />}
+                {showPassword ? (
+                  <Eye className="eye-icon" />
+                ) : (
+                  <EyeOff className="eye-icon" />
+                )}
               </button>
             </div>
           </div>
 
-          <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
+          <button
+            type="submit"
+            className="auth-submit-btn"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? t("login.signingIn") : t("login.signIn")}
           </button>
         </form>
@@ -171,7 +211,11 @@ function LoginPage() {
           </p>
         </div>
 
-        <button onClick={() => navigate("/")} className="back-home-btn" type="button">
+        <button
+          onClick={() => navigate("/")}
+          className="back-home-btn"
+          type="button"
+        >
           ← {t("login.backHome")}
         </button>
       </div>
