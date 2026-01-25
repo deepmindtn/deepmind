@@ -1349,3 +1349,48 @@ class SubmitAnswersView(APIView):
         except Exception as e:
             print(f"❌ SUBMIT ERROR: {str(e)}")
             return Response({"detail": str(e)}, status=500)
+        
+# assessments/views.py
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.permissions import AllowAny
+from .models import CandidateAssignment
+from .serializers import CandidateAssignmentSerializer
+
+class CandidateAssignmentByTokenView(RetrieveAPIView):
+    serializer_class = CandidateAssignmentSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "token"
+
+    def get_queryset(self):
+        return CandidateAssignment.objects.select_related(
+            "template",
+            "recruitee"
+        )
+    
+# assessments/views.py
+from rest_framework.generics import RetrieveAPIView, ListAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .models import CandidateAssignment
+from .serializers import CandidateAssignmentSerializer
+
+class CandidateAssignmentByTokenView(RetrieveAPIView):
+    serializer_class = CandidateAssignmentSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "token"
+
+    def get_queryset(self):
+        return CandidateAssignment.objects.select_related(
+            "template",
+            "recruitee"
+        )
+
+# NEW VIEW: Get all assignments for a specific candidate
+class CandidateAssignmentsListView(ListAPIView):
+    serializer_class = CandidateAssignmentSerializer
+    permission_classes = [IsAuthenticated]  # Only authenticated users (admins) can view
+    
+    def get_queryset(self):
+        candidate_id = self.kwargs.get('candidate_id')
+        return CandidateAssignment.objects.filter(
+            recruitee_id=candidate_id
+        ).select_related('template', 'recruitee').order_by('-assigned_at')
