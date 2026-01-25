@@ -14,6 +14,7 @@ import AcceptInvite from "./components/AcceptInvite";
 // Layout / auth guard
 import ProtectedRoute from "./components/ProtectedRoute";
 import LayoutComponent from "./components/LayoutModel/LayoutComponent";
+import CandidateLayout from "./components/LayoutModel/CandidateLayout";
 
 // Dashboard & pages
 import Dashboard from "./pages/dashboard/Dashboard";
@@ -61,7 +62,27 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
-        <Route path="/take-assessment/:token" element={<TakeAssessment />} />
+
+        {/* -------- Candidate Flow -------- */}
+        {/* All assessments must be listed here to use CandidateLayout */}
+        <Route element={<CandidateLayout />}>
+          {/* Entry point that redirects based on token */}
+          <Route path="/take-assessment/:token" element={<TakeAssessment />} />
+
+          {/* Individual Test Routes */}
+          <Route path="/candidate/big-five" element={<BigFiveTest />} />
+          <Route path="/candidate/disc" element={<DiscTest />} />
+          <Route path="/candidate/karasek" element={<KarasekTest />} />
+          <Route path="/candidate/maslach" element={<MaslachTest />} />
+          <Route path="/candidate/jss" element={<JssTest />} />
+          <Route path="/candidate/brs" element={<BrsTest />} />
+          <Route path="/candidate/cdrisc" element={<CDRISCTest />} />
+          <Route path="/candidate/wses" element={<WSESTest />} />
+          <Route path="/candidate/gcos" element={<GCOSTest />} />
+          <Route path="/candidate/ribs" element={<RIBSTest />} />
+          <Route path="/candidate/caq" element={<CAQTest />} />
+          <Route path="/candidate/ise" element={<ISETest />} />
+        </Route>
 
         {/* ------- Protected Routes with Layout ------- */}
         <Route
@@ -235,7 +256,7 @@ function App() {
           }
         />
 
-        {/* ------- Assessment runners ------- */}
+        {/* ------- Assessment runners (Employee View) ------- */}
         <Route
           path="/big-five"
           element={
@@ -297,7 +318,7 @@ function App() {
           }
         />
 
-        {/* New Assessments */}
+        {/* New Assessments (Employee View) */}
         <Route
           path="/cdrisc"
           element={

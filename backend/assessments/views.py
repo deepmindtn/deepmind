@@ -8,6 +8,7 @@ from django.conf import settings
 from accounts.models import Recruitee
 from .models import Assignment, AssessmentTemplate ,CandidateAssignment
 from rest_framework import permissions
+from rest_framework.parsers import MultiPartParser
 
 from .serializers import (
     AssignRequestSerializer,
@@ -97,11 +98,11 @@ class AssignmentDetailView(generics.RetrieveAPIView):
         return Assignment.objects.filter(employee=self.request.user)
 
 
-class SubmitAnswersView(generics.GenericAPIView):
+""" class SubmitAnswersView(generics.GenericAPIView):
     
-    """
+    
     Employee: POST /api/assessments/<id>/submit/  { "answers": {...} }
-    """
+    
     serializer_class = SubmitAnswersSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -112,9 +113,9 @@ class SubmitAnswersView(generics.GenericAPIView):
         s = self.get_serializer(data=request.data, context={"assignment": assignment})
         s.is_valid(raise_exception=True)
         a = s.save()
-        return Response(AssignmentDetailSerializer(a).data, status=status.HTTP_200_OK)
+        return Response(AssignmentDetailSerializer(a).data, status=status.HTTP_200_OK) """
 # assessments/views.py
-from rest_framework import generics, permissions
+""" from rest_framework import generics, permissions
 from rest_framework.parsers import MultiPartParser
 from django.shortcuts import get_object_or_404
 from .models import Assignment
@@ -126,7 +127,7 @@ class SubmitAnswersView(generics.CreateAPIView):
 
     def get_serializer_context(self):
         a = get_object_or_404(Assignment, pk=self.kwargs["pk"], employee=self.request.user)
-        return {"assignment": a, **super().get_serializer_context()}
+        return {"assignment": a, **super().get_serializer_context()} """
 
 class AssignmentDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -220,11 +221,11 @@ class AdminAssignmentsListView(generics.ListAPIView):
 
 
 # ---------- Submit answers ----------
-class SubmitAnswersView(generics.CreateAPIView):
-    """
+""" class SubmitAnswersView(generics.CreateAPIView):
+    
     POST answers (and optional metrics/ai_report). Marks assignment as COMPLETED.
     Uses serializer validation to block double submit.
-    """
+    
     serializer_class = SubmitAnswersSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -236,7 +237,7 @@ class SubmitAnswersView(generics.CreateAPIView):
         if assignment.employee != self.request.user and not IsHR().has_permission(self.request, self):
             raise ValidationError("Not allowed to submit for this assignment.")
         ctx["assignment"] = assignment
-        return ctx
+        return ctx """
 
 # ---------- (Optional) upload PDF if you post the generated PDF back ----------
 class UploadPDFView(generics.UpdateAPIView):
@@ -502,71 +503,152 @@ class GenerateMaslachReportView(APIView):
         result = chain.run(prompt)
         return Response({"report": result})
     
+import os
+import logging
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from django.shortcuts import get_object_or_404
+
+# Imports for Auth and Models
+from accounts.authentication import CandidateTokenAuthentication
+from accounts.models import Recruitee
+from .models import Assignment, CandidateAssignment
+
+# AI Imports (Keeping your existing setup)
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain.chains import RetrievalQA
+
+logger = logging.getLogger(__name__)
+
 class GenerateDiscReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    # ✅ FIX 1: Allow Candidate Token Auth + Session Auth
+    authentication_classes = [CandidateTokenAuthentication]
+    # ✅ FIX 2: AllowAny because Candidates are technically "Anonymous" to Django permissions
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
-        try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
-            return Response({"error": "Invalid or unauthorized assignment."}, status=404)
+        assignment = None
+        user_name = "Unknown"
+        template_code = "DISC" # Default fallback
 
-        # Try to take metrics from request body first
+        # ---------------------------------------------------------------
+        # 🔍 PHASE 1: Resolve User & Assignment (Hybrid Logic)
+        # ---------------------------------------------------------------
+        try:
+            # CASE A: CANDIDATE (Authenticated via Token)
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(
+                    id=assignment_id, 
+                    recruitee=request.user
+                )
+                user_name = str(assignment.recruitee)
+                # If CandidateAssignment has a template link, use it, else default
+                if hasattr(assignment, 'template') and assignment.template:
+                    template_code = assignment.template.code
+            
+            # CASE B: EMPLOYEE (Authenticated via Login/Session)
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.select_related("employee", "template").get(
+                    id=assignment_id, 
+                    employee=request.user
+                )
+                user_name = str(assignment.employee)
+                template_code = assignment.template.code
+            
+            # CASE C: UNAUTHORIZED
+            else:
+                 return Response({"error": "Authentication required."}, status=401)
+
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
+            return Response({"error": "Invalid or unauthorized assignment."}, status=404)
+        except Exception as e:
+            print(f"❌ DB/AUTH ERROR: {str(e)}")
+            return Response({"error": f"Server Error during lookup: {str(e)}"}, status=500)
+
+        # ---------------------------------------------------------------
+        # 📊 PHASE 2: Prepare Metrics
+        # ---------------------------------------------------------------
+        # Try to take metrics from request body first (Real-time submission)
         metrics = request.data.get("metrics")
+        
+        # Fallback to stored metrics if not in body
         if not metrics:
-            # fallback to assignment.metrics
-            metrics = assignment.metrics
+            if hasattr(assignment, 'metrics'): 
+                metrics = assignment.metrics
+            elif hasattr(assignment, 'result_data') and assignment.result_data:
+                metrics = assignment.result_data.get('metrics')
 
         if not metrics:
             return Response({"error": "No DISC metrics provided or stored."}, status=400)
 
         assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
+            "employee": user_name,
+            "template": template_code,
             "status": assignment.status,
             "score": metrics,
         }
 
-        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "discindex")
-        vectorstore = FAISS.load_local(
-            index_path,
-            OpenAIEmbeddings(
-                api_key="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"
-            ),
-            allow_dangerous_deserialization=True,
-        )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.5,
-            api_key="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",
-        )
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        print(f"📝 Generating Report for: {user_name} | Data: {assessment_data}")
 
-        print("DISC assessment data:", assessment_data)
+        # ---------------------------------------------------------------
+        # 🤖 PHASE 3: AI Generation (Wrapped to catch AI-specific errors)
+        # ---------------------------------------------------------------
+        try:
+            index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "discindex")
+            
+            # Check if vector store exists to avoid crashing
+            if not os.path.exists(index_path):
+                print(f"⚠️ Warning: Vector store not found at {index_path}")
+                # Optional: return a dummy report if FAISS is missing to keep flow working
+                # return Response({"report": "AI Knowledge Base missing. Proceeding without AI insights."})
 
-        prompt = f"""
-        You are a workplace psychologist. Based on the following DISC assessment results, write a professional decision-support report for the employee.
+            vectorstore = FAISS.load_local(
+                index_path,
+                OpenAIEmbeddings(
+                    api_key="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"
+                ),
+                allow_dangerous_deserialization=True,
+            )
+            retriever = vectorstore.as_retriever()
+            llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.5,
+                api_key="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",
+            )
+            chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        Assessment Data:
-        {assessment_data}
+            prompt = f"""
+            You are a workplace psychologist. Based on the following DISC assessment results, write a professional decision-support report for the employee.
 
-        Guidelines:
-        - Begin with a short overview of the employee’s dominant DISC traits (Dominance, Influence, Steadiness, Conscientiousness).
-        - Explain the implications of their profile for workplace behavior, communication, and teamwork.
-        - Highlight strengths (3–4 points).
-        - Highlight potential challenges or blind spots (2–3 points).
-        - Provide 3–5 practical recommendations for personal development and better collaboration at work.
-        - Ground insights in recognized DISC theory and the uploaded reference PDFs.
-        - Use a supportive, professional, and constructive tone.
-        - Do not use markdown or bullet symbols, write in structured paragraphs.
-        - End the report with exactly 3 clear, actionable suggestions.
-        """
+            Assessment Data:
+            {assessment_data}
 
-        result = chain.run(prompt)
-        return Response({"report": result})
+            Guidelines:
+            - Begin with a short overview of the employee’s dominant DISC traits (Dominance, Influence, Steadiness, Conscientiousness).
+            - Explain the implications of their profile for workplace behavior, communication, and teamwork.
+            - Highlight strengths (3–4 points).
+            - Highlight potential challenges or blind spots (2–3 points).
+            - Provide 3–5 practical recommendations for personal development and better collaboration at work.
+            - Ground insights in recognized DISC theory and the uploaded reference PDFs.
+            - Use a supportive, professional, and constructive tone.
+            - Do not use markdown or bullet symbols, write in structured paragraphs.
+            - End the report with exactly 3 clear, actionable suggestions.
+            """
+
+            result = chain.run(prompt)
+            return Response({"report": result})
+
+        except Exception as e:
+            # This catches ONLY AI/LangChain errors
+            print(f"❌ AI GENERATION ERROR: {str(e)}")
+            # Return a generic success so the frontend doesn't break, or return the error if you prefer
+            return Response({
+                "report": "Unable to generate detailed AI report at this time. Please proceed with the standard results.",
+                "debug_error": str(e)
+            }, status=200) # Status 200 allows the frontend flow to finish even if AI fails
     
 
 class GenerateJssReportView(APIView):
@@ -1088,18 +1170,21 @@ from django.conf import settings
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import permissions, status
+from rest_framework import permissions, status, generics
 from accounts.models import Recruitee
-from assessments.models import AssessmentTemplate, CandidateAssignment
+from .models import AssessmentTemplate, CandidateAssignment
+from .serializers import CandidateAssignmentSerializer
 
+# Import candidate authentication
+from accounts.authentication import CandidateTokenAuthentication
+
+# --------------------------
+# Assign Candidate Assessments (HR) ✅
+# --------------------------
 class AssignCandidateAssessmentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]  # HR JWT auth
 
     def post(self, request):
-        # --- 🔍 DEBUG: WHERE IS THE DATA GOING? ---
-        print(f"🛑 SERVER WRITING TO DB: {settings.DATABASES['default']['NAME']}")
-        # ------------------------------------------
-
         candidate_emails = request.data.get("candidate_emails", []) 
         template_codes = request.data.get("template_codes", [])
 
@@ -1113,10 +1198,8 @@ class AssignCandidateAssessmentView(APIView):
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         errors = []
 
-        # Start a transaction to ensure data integrity
         with transaction.atomic():
             for email in candidate_emails:
-                # 1. FIND RECRUITEE (Don't use get_object_or_404 in a loop!)
                 try:
                     recruitee = Recruitee.objects.get(email=email)
                 except Recruitee.DoesNotExist:
@@ -1126,27 +1209,18 @@ class AssignCandidateAssessmentView(APIView):
                 for code in template_codes:
                     try:
                         template = AssessmentTemplate.objects.get(code=code)
-
-                        # 2. CREATE ASSIGNMENT
                         assignment, created = CandidateAssignment.objects.get_or_create(
                             recruitee=recruitee,
                             template=template
                         )
-                        
-                        # Verify the token exists
-                        print(f"✅ Created Assignment for {email}: {assignment.token}")
-
-                        # 3. GENERATE LINK
                         link = f"{origin}/take-assessment/{assignment.token}"
 
-                        # 4. SEND EMAIL
-                        print(f"📨 Sending {code} to {email}...")
                         send_mail(
                             subject=f"Assessment Invitation: {template.name}",
-                            message=f"Hi {recruitee.first_name},\n\nPlease complete your {template.name} assessment using the link below:\n\n{link}\n\nGood luck!",
+                            message=f"Hi {recruitee.first_name},\n\nPlease complete your {template.name} assessment using the link below:\n\n{link}",
                             from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[email],
-                            fail_silently=False, # Set to False so we see errors in logs!
+                            fail_silently=False,
                         )
                         assigned_count += 1
 
@@ -1158,34 +1232,120 @@ class AssignCandidateAssessmentView(APIView):
         return Response({
             "message": f"Processed {assigned_count} assignments.",
             "errors": errors,
-            "db_used": str(settings.DATABASES['default']['NAME']) # Check this in the response!
         })
-    
-# assessments/views.py
-from rest_framework import generics
-from rest_framework.permissions import AllowAny
+
+
+from rest_framework import generics, permissions
 from .models import CandidateAssignment
 from .serializers import CandidateAssignmentSerializer
 
-# assessments/views.py
+# CORRECT IMPORT: Import from accounts, not local .authentication
+from accounts.authentication import CandidateTokenAuthentication 
+
 class CandidateAssignmentDetailView(generics.RetrieveAPIView):
-    permission_classes = [AllowAny]
     lookup_field = 'token'
     queryset = CandidateAssignment.objects.all()
     serializer_class = CandidateAssignmentSerializer
+    authentication_classes = [CandidateTokenAuthentication]
+    permission_classes = [permissions.AllowAny]
 
-    # Add this debug method
     def get_object(self):
         token_from_url = self.kwargs.get("token")
-        print(f"🔍 Looking for token: {token_from_url}")
         
+        # Add safety check for 'undefined' string hitting the backend
+        if token_from_url == "undefined":
+             raise CandidateAssignment.DoesNotExist
+             
         try:
-            obj = CandidateAssignment.objects.get(token=token_from_url)
-            print(f"✅ Found Object: {obj}")
-            return obj
+            return CandidateAssignment.objects.get(token=token_from_url)
         except CandidateAssignment.DoesNotExist:
-            print(f"❌ Database Search Failed for token: {token_from_url}")
-            # Let's see what IS in the database
-            all_tokens = CandidateAssignment.objects.values_list('token', flat=True)
-            print(f"📋 Tokens actually in DB: {list(all_tokens)}")
             raise
+
+
+# assessments/views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+
+# ✅ Import Auth & Models
+from accounts.authentication import CandidateTokenAuthentication
+from accounts.models import Recruitee
+from .models import Assignment, CandidateAssignment
+
+class SubmitAnswersView(APIView):
+    """
+    Hybrid Submit View: 
+    - Handles Employees (Session Auth -> Assignment Model)
+    - Handles Candidates (Token Auth -> CandidateAssignment Model)
+    """
+    # 1. Allow Candidate Token
+    authentication_classes = [CandidateTokenAuthentication]
+    # 2. AllowAny (we check user type manually inside)
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, pk):
+        assignment = None
+        
+        # -------------------------------------------------------
+        # 🔍 STEP 1: Find the Assignment (Candidate vs Employee)
+        # -------------------------------------------------------
+        try:
+            # Case A: Candidate
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(id=pk, recruitee=request.user)
+            
+            # Case B: Employee (HR/User)
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.get(id=pk, employee=request.user)
+            
+            # Case C: Unauthorized
+            else:
+                return Response({"detail": "Authentication credentials were not provided."}, status=401)
+                
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
+            return Response({"detail": "Assessment not found or access denied."}, status=404)
+
+        # -------------------------------------------------------
+        # 💾 STEP 2: Save the Data
+        # -------------------------------------------------------
+        try:
+            # Check if already done (optional)
+            if assignment.status == "COMPLETED" and not request.data.get("overwrite"):
+                return Response({"detail": "Assessment already submitted."}, status=400)
+
+            # Extract data from Frontend
+            answers = request.data.get("answers", {})
+            metrics = request.data.get("metrics", {})
+            ai_report = request.data.get("ai_report", "")
+
+            # Update Status
+            assignment.status = "COMPLETED"
+
+            # Prepare Result Data
+            # (Adjust 'result_data' to match your actual Model field name, e.g., 'answers', 'score', etc.)
+            result_payload = {
+                "answers": answers,
+                "metrics": metrics,
+                "ai_report": ai_report,
+                "submitted_at": str(timezone.now())
+            }
+
+            # Save to JSONField if it exists
+            if hasattr(assignment, 'result_data'):
+                assignment.result_data = result_payload
+            
+            # Fallback: specific fields if your model uses them
+            if hasattr(assignment, 'metrics') and metrics:
+                assignment.metrics = metrics
+            
+            assignment.save()
+
+            print(f"✅ SUBMIT SUCCESS: Assessment {pk} for {request.user}")
+            return Response({"status": "COMPLETED", "detail": "Submission successful."})
+
+        except Exception as e:
+            print(f"❌ SUBMIT ERROR: {str(e)}")
+            return Response({"detail": str(e)}, status=500)

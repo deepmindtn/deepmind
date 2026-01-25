@@ -23,7 +23,6 @@ INSTALLED_APPS = [
     "assessments",
 ]
 
-
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -50,6 +49,7 @@ TEMPLATES = [{
 }]
 
 WSGI_APPLICATION = "core.wsgi.application"
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -80,33 +80,37 @@ AUTH_USER_MODEL = "accounts.User"
 
 # ---- DRF + JWT
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",   # HR / Employees
+        "accounts.authentication.CandidateTokenAuthentication",        # Candidates
+    ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
 }
 
-from datetime import timedelta
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# ---- CORS (adjust for your frontend origin)
+# ---- CORS
 CORS_ALLOW_ALL_ORIGINS = True
 
-# ---- Email Configuration (SMTP)
-# OLD LINE (Delete or Comment out):
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Allow custom candidate header
+from corsheaders.defaults import default_headers
 
-# NEW LINE (Use your custom backend):
-EMAIL_BACKEND = "core.email_ssl.UnverifiedEmailBackend"  # <--- CHANGED
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-candidate-token",
+]
+
+# ---- Email Configuration (SMTP)
+EMAIL_BACKEND = "core.email_ssl.UnverifiedEmailBackend"
 
 EMAIL_HOST = os.environ.get("MAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
 EMAIL_HOST_USER = os.environ.get("MAIL_USERNAME")
 EMAIL_HOST_PASSWORD = os.environ.get("MAIL_PASSWORD")
 DEFAULT_FROM_EMAIL = os.environ.get("MAIL_FROM_ADDRESS")
-
-# Keep these settings
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
