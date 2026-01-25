@@ -18,6 +18,8 @@ import {
   ChevronDown,
   Check,
   Mail,
+  Eye,
+  Clock,
 } from "lucide-react";
 
 // -----------------------
@@ -185,6 +187,7 @@ const styles = {
       invited: { bg: "#eff6ff", text: "#3b82f6" },
       pending: { bg: "#fffbeb", text: "#d97706" },
       interview: { bg: "#fef3c7", text: "#d97706" },
+      completed: { bg: "#ecfdf5", text: "#059669" },
       default: { bg: "#f3f4f6", text: "#6b7280" },
     };
     const style = colors[status?.toLowerCase()] || colors.default;
@@ -234,7 +237,7 @@ const Modal = ({ open, title, onClose, children, actions }) => {
           maxWidth: "600px",
           padding: "24px",
           boxShadow: COLORS.shadowLg,
-          overflow: "visible", // Allow dropdown to flow out
+          overflow: "visible",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -285,7 +288,7 @@ export default function RecruitmentMatch() {
   const [candidates, setCandidates] = useState([]);
   const [q, setQ] = useState("");
 
-  // Selection States (NEW)
+  // Selection States
   const [selectedIds, setSelectedIds] = useState([]);
 
   // CRUD States
@@ -307,10 +310,16 @@ export default function RecruitmentMatch() {
 
   // Assign Assessment States
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignRow, setAssignRow] = useState(null); // If null, means Bulk Mode
+  const [assignRow, setAssignRow] = useState(null);
   const [selectedCodes, setSelectedCodes] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [sendingAssessment, setSendingAssessment] = useState(false);
+
+  // View Assignments States
+  const [viewAssignmentsOpen, setViewAssignmentsOpen] = useState(false);
+  const [viewAssignmentsCandidate, setViewAssignmentsCandidate] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
 
   // AI Matcher States
   const [files, setFiles] = useState([]);
@@ -379,7 +388,7 @@ export default function RecruitmentMatch() {
 
   const openBulkAssignModal = () => {
     if (selectedIds.length === 0) return;
-    setAssignRow(null); // Null means bulk mode
+    setAssignRow(null);
     setSelectedCodes([]);
     setAssignOpen(true);
   };
@@ -432,7 +441,7 @@ export default function RecruitmentMatch() {
       if (!res.ok) throw new Error("Delete failed");
 
       setCandidates(candidates.filter((c) => c.id !== deleteId));
-      setSelectedIds(selectedIds.filter((id) => id !== deleteId)); // Remove from selection
+      setSelectedIds(selectedIds.filter((id) => id !== deleteId));
       setDeleteOpen(false);
       setToast({ message: "Candidate removed.", type: "success" });
     } catch (e) {
@@ -484,13 +493,10 @@ export default function RecruitmentMatch() {
 
     setSendingAssessment(true);
     try {
-      // Prepare List of Emails
       let targetEmails = [];
       if (assignRow) {
-        // Single Mode
         targetEmails = [assignRow.email];
       } else {
-        // Bulk Mode
         targetEmails = candidates
           .filter((c) => selectedIds.includes(c.id))
           .map((c) => c.email);
@@ -500,7 +506,7 @@ export default function RecruitmentMatch() {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({
-          candidate_emails: targetEmails, // CHANGED: now sending array
+          candidate_emails: targetEmails,
           template_codes: selectedCodes,
         }),
       });
@@ -518,12 +524,37 @@ export default function RecruitmentMatch() {
       setSelectedCodes([]);
 
       if (!assignRow) {
-        setSelectedIds([]); // Clear selection after bulk send
+        setSelectedIds([]);
       }
     } catch (e) {
       setToast({ message: "Error sending assessments.", type: "error" });
     } finally {
       setSendingAssessment(false);
+    }
+  };
+
+  // --- View Assignments Logic ---
+  const handleViewAssignments = async (candidate) => {
+    setViewAssignmentsCandidate(candidate);
+    setViewAssignmentsOpen(true);
+    setLoadingAssignments(true);
+    
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/candidates/${candidate.id}/assignments/`,
+        { headers: authHeader }
+      );
+      
+      if (!res.ok) throw new Error("Failed to fetch assignments");
+      
+      const data = await res.json();
+      setAssignments(data);
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to load assignments", type: "error" });
+      setAssignments([]);
+    } finally {
+      setLoadingAssignments(false);
     }
   };
 
@@ -583,7 +614,6 @@ export default function RecruitmentMatch() {
 
       <div style={styles.mainWrapperCard}>
         {/* Header */}
-        {/* Header */}
         <div
           style={{
             ...styles.sectionHeader,
@@ -593,7 +623,6 @@ export default function RecruitmentMatch() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {/* Icon Badge */}
             <div
               style={{
                 padding: "10px",
@@ -754,6 +783,18 @@ export default function RecruitmentMatch() {
                     </td>
                     <td style={{ padding: "16px 20px" }}>
                       <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => handleViewAssignments(c)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            cursor: "pointer",
+                            color: COLORS.purple,
+                          }}
+                          title="View Assignments"
+                        >
+                          <Eye size={16} />
+                        </button>
                         <button
                           onClick={() => {
                             setAssignRow(c);
@@ -1227,7 +1268,7 @@ export default function RecruitmentMatch() {
         </div>
       </Modal>
 
-      {/* Assign Modal (UPDATED FOR BULK) */}
+      {/* Assign Modal */}
       <Modal
         open={assignOpen}
         title={
@@ -1280,7 +1321,6 @@ export default function RecruitmentMatch() {
 
         <label style={styles.label}>Select Assessments</label>
 
-        {/* Custom Multi-Select Dropdown */}
         <div style={{ position: "relative", marginBottom: "120px" }}>
           <div
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -1370,6 +1410,144 @@ export default function RecruitmentMatch() {
             </>
           )}
         </div>
+      </Modal>
+
+      {/* View Assignments Modal */}
+      <Modal
+        open={viewAssignmentsOpen}
+        title="Assessment Assignments"
+        onClose={() => setViewAssignmentsOpen(false)}
+        actions={
+          <button
+            style={{
+              ...styles.btnPrimary,
+              backgroundColor: COLORS.textMuted,
+            }}
+            onClick={() => setViewAssignmentsOpen(false)}
+          >
+            Close
+          </button>
+        }
+      >
+        {viewAssignmentsCandidate && (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 16,
+              backgroundColor: "#f8fafc",
+              borderRadius: 12,
+              border: `1px solid ${COLORS.borderColor}`,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  padding: 10,
+                  backgroundColor: COLORS.primaryLight,
+                  borderRadius: 10,
+                }}
+              >
+                <Users size={20} color={COLORS.primary} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>
+                  {viewAssignmentsCandidate.name}
+                </div>
+                <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                  {viewAssignmentsCandidate.email}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loadingAssignments ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 40,
+            }}
+          >
+            <Loader2 className="spin" size={32} color={COLORS.primary} />
+          </div>
+        ) : assignments.length === 0 ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: 40,
+              color: COLORS.textSecondary,
+            }}
+          >
+            <FileText
+              size={40}
+              color={COLORS.textMuted}
+              style={{ marginBottom: 12 }}
+            />
+            <p style={{ margin: 0 }}>No assessments assigned yet.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {assignments.map((assignment) => (
+              <div
+                key={assignment.id}
+                style={{
+                  padding: 16,
+                  backgroundColor: "#fff",
+                  border: `1px solid ${COLORS.borderColor}`,
+                  borderRadius: 12,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      marginBottom: 4,
+                      fontSize: 14,
+                    }}
+                  >
+                    {assignment.template.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: COLORS.textSecondary,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Clock size={12} />
+                    Assigned{" "}
+                    {new Date(assignment.assigned_at).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      }
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span
+                    style={{
+                      ...styles.badge(assignment.status.toLowerCase()),
+                      fontSize: 11,
+                      padding: "6px 12px",
+                    }}
+                  >
+                    {assignment.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
 
       {/* TOAST NOTIFICATION */}
