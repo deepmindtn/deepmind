@@ -1,162 +1,115 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import "./BigFiveTest.css"; // re-use styles
-import { Download, RotateCcw, ArrowRight, ArrowLeft, AlertTriangle } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
+import {
+  Activity,
+  ArrowRight,
+  ArrowLeft,
+  Download,
+  RotateCcw,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  FileText
+} from "lucide-react";
 
-/* ---------- PDF helpers ---------- */
-async function capturePDFBlob() {
-  const html2canvasMod = await import("html2canvas");
-  const jspdfMod = await import("jspdf");
-  const html2canvas = html2canvasMod.default || html2canvasMod;
-  const jsPDFClass = jspdfMod.jsPDF || jspdfMod.default;
+// -----------------------
+// 1. DATA & CONFIG
+// -----------------------
 
-  const el = document.getElementById("results-root");
-  if (!el) return null;
-
-  el.classList.add("b5-pdf-bg");
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    windowWidth: el.scrollWidth,
-  });
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDFClass({ unit: "pt", format: "a4", orientation: "portrait" });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  let heightLeft = imgHeight;
-  let position = 0;
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-  heightLeft -= pageHeight;
-
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-    heightLeft -= pageHeight;
-  }
-
-  el.classList.remove("b5-pdf-bg");
-  return pdf.output("blob");
-}
-
-async function downloadResultsAsPDF(filename = `karasek-results-${new Date().toISOString().slice(0,10)}.pdf`) {
-  const blob = await capturePDFBlob();
-  if (!blob) return null;
-  // trigger download
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-  return blob;
-}
-
-/* ---------- i18n ---------- */
-const i18n = {
-  fr: {
-    appTitle: "Questionnaire Karasek (Demande–Contrôle–Soutien)",
-    start: "Commencer",
-    next: "Suivant",
-    back: "Retour",
-    submit: "Envoyer mes réponses",
-    restart: "Recommencer",
-    download: "Télécharger le PDF",
-    progress: "Progression",
-    resultTitle: "Résultats Karasek",
-    overview: "Aperçu des dimensions",
-    scale4: ["Pas du tout d'accord","Plutôt pas d'accord","Plutôt d'accord","Tout à fait d'accord"],
-    dims: { D: "Demandes psychologiques", C: "Contrôle (Latitude décisionnelle)", S: "Soutien social (global)" },
-    subs: { DA: "Autorité décisionnelle", SD: "Latitude/Utilisation des compétences", SS: "Soutien du supérieur", SC: "Soutien des collègues" },
-    quadrant: { lowStrain: "Faible contrainte", highStrain: "Forte contrainte", active: "Actif", passive: "Passif" },
-  },
-  en: {
-    appTitle: "Karasek Questionnaire (Demand–Control–Support)",
-    start: "Start",
-    next: "Next",
-    back: "Back",
-    submit: "Submit my answers",
-    restart: "Retake",
-    download: "Download PDF",
-    progress: "Progress",
-    resultTitle: "Karasek Results",
-    overview: "Dimension Overview",
-    scale4: ["Strongly Disagree","Disagree","Agree","Strongly Agree"],
-    dims: { D: "Psychological Demands", C: "Control (Decision Latitude)", S: "Social Support (overall)" },
-    subs: { DA: "Decision Authority", SD: "Skill Discretion", SS: "Supervisor Support", SC: "Coworker Support" },
-    quadrant: { lowStrain: "Low strain", highStrain: "High strain", active: "Active", passive: "Passive" },
-  },
+const COLORS = {
+  primary: "var(--primary)",
+  primaryLight: "var(--primary-light)",
+  primaryDark: "var(--primary-dark)",
+  bgMain: "var(--bg-main)",
+  cardBg: "var(--card-bg)",
+  textPrimary: "var(--text-primary)",
+  textSecondary: "var(--text-secondary)",
+  textMuted: "var(--text-muted)",
+  borderColor: "var(--border-color)",
+  shadowHuge: "var(--shadow-huge)",
+  purple: "var(--purple)",
+  purpleLight: "var(--purple-light)",
+  orange: "var(--orange)",
+  orangeLight: "var(--orange-light)",
+  success: "#10b981",
+  danger: "#ef4444",
 };
 
-/* ---------- Questionnaire ---------- */
-const LIKERT = [1, 2, 3, 4];
+// Scale: 1 to 4
+const LIKERT_VALUES = [
+  { val: 1, label: "Pas du tout d'accord" },
+  { val: 2, label: "Plutôt pas d'accord" },
+  { val: 3, label: "Plutôt d'accord" },
+  { val: 4, label: "Tout à fait d'accord" }
+];
+
+// Mapping for charts
+const CHART_COLORS = {
+  D: COLORS.primary, // Demands
+  C: COLORS.purple,  // Control
+  S: COLORS.orange   // Support
+};
+
+// Static Labels
+const TEXTS = {
+  title: "Questionnaire Karasek",
+  subtitle: "Modèle Demande–Contrôle–Soutien",
+  instructions: "Répondez aux 27 affirmations concernant votre travail actuel.",
+  warning: "Cet outil est indicatif et ne constitue pas un diagnostic clinique.",
+  dims: { D: "Demandes Psychologiques", C: "Contrôle Décisionnel", S: "Soutien Social" },
+  subs: { DA: "Autorité décisionnelle", SD: "Utilisation des compétences", SS: "Soutien hiérarchique", SC: "Soutien collègues" },
+  quadrants: {
+    lowStrain: "Détendu (Faible contrainte)",
+    highStrain: "Tendu (Forte contrainte)",
+    active: "Actif (Motivé)",
+    passive: "Passif (Ennuyeux)"
+  }
+};
 
 const QUESTIONS = [
   // DEMANDS (D)
-  { id: 1, sub: "D", key: "d1", rev: false, fr: "Mon travail exige de travailler très vite.", en: "My job requires working very fast." },
-  { id: 2, sub: "D", key: "d2", rev: false, fr: "Mon travail exige de travailler très dur.", en: "My job requires working very hard." },
-  { id: 3, sub: "D", key: "d3", rev: false, fr: "Je manque de temps pour accomplir mes tâches.", en: "I am pressed for time in my job." },
-  { id: 4, sub: "D", key: "d4", rev: false, fr: "Mon travail comporte des contraintes contradictoires.", en: "My job has conflicting demands." },
-  { id: 5, sub: "D", key: "d5", rev: false, fr: "Je dois accomplir une grande quantité de travail.", en: "I have a great deal of work to do." },
-  { id: 6, sub: "D", key: "d6", rev: false, fr: "Je dois travailler intensément sans pause suffisante.", en: "I must work intensively without enough breaks." },
-  { id: 7, sub: "D", key: "d7", rev: false, fr: "Les délais au travail sont serrés.", en: "Deadlines at work are tight." },
-  { id: 8, sub: "D", key: "d8", rev: true,  fr: "Mon travail est généralement calme et détendu.", en: "My job is generally calm and relaxed." },
-  { id: 9, sub: "D", key: "d9", rev: false, fr: "Je dois gérer plusieurs choses à la fois.", en: "I have to do several things at once." },
-
-  // CONTROL – Decision Authority (DA)
-  { id: 10, sub: "DA", key: "da1", rev: false, fr: "J’ai beaucoup à dire sur la manière d’effectuer mon travail.", en: "I have a lot to say about how I do my job." },
-  { id: 11, sub: "DA", key: "da2", rev: false, fr: "Je peux prendre des décisions importantes dans mon travail.", en: "I can make important decisions in my job." },
-  { id: 12, sub: "DA", key: "da3", rev: true,  fr: "On me dit exactement comment faire mon travail.", en: "I am told exactly how to do my job." },
-  { id: 13, sub: "DA", key: "da4", rev: false, fr: "Je peux influencer les décisions qui touchent mon travail.", en: "I can influence decisions that affect my job." },
-  { id: 14, sub: "DA", key: "da5", rev: false, fr: "Je peux organiser mon travail comme je le souhaite.", en: "I can arrange my work as I wish." },
-  { id: 15, sub: "DA", key: "da6", rev: true,  fr: "On contrôle fortement ma manière de travailler.", en: "My way of working is tightly controlled." },
-
-  // CONTROL – Skill Discretion (SD)
-  { id: 16, sub: "SD", key: "sd1", rev: false, fr: "Mon travail requiert d’apprendre de nouvelles choses.", en: "My job requires learning new things." },
-  { id: 17, sub: "SD", key: "sd2", rev: false, fr: "Mon travail nécessite des compétences variées.", en: "My job requires a variety of skills." },
-  { id: 18, sub: "SD", key: "sd3", rev: false, fr: "Je peux développer ma créativité dans mon travail.", en: "I can be creative in my job." },
-  { id: 19, sub: "SD", key: "sd4", rev: true,  fr: "Mon travail est monotone.", en: "My job is repetitive." },
-  { id: 20, sub: "SD", key: "sd5", rev: false, fr: "Je peux utiliser pleinement mes compétences.", en: "I can fully use my skills." },
-  { id: 21, sub: "SD", key: "sd6", rev: false, fr: "J’ai des possibilités d’évolution/apprentissage.", en: "I have opportunities to grow/learn." },
-
-  // SOCIAL SUPPORT – Supervisor (SS)
-  { id: 22, sub: "SS", key: "ss1", rev: false, fr: "Mon supérieur est compréhensif.", en: "My supervisor is understanding." },
-  { id: 23, sub: "SS", key: "ss2", rev: false, fr: "Je peux compter sur mon supérieur en cas de besoin.", en: "I can rely on my supervisor when needed." },
-  { id: 24, sub: "SS", key: "ss3", rev: true,  fr: "Je me sens critiqué par mon supérieur.", en: "I feel criticized by my supervisor." },
-
-  // SOCIAL SUPPORT – Coworkers (SC)
-  { id: 25, sub: "SC", key: "sc1", rev: false, fr: "Mes collègues sont amicaux.", en: "My coworkers are friendly." },
-  { id: 26, sub: "SC", key: "sc2", rev: false, fr: "Je reçois de l’aide de mes collègues.", en: "I get help from my coworkers." },
-  { id: 27, sub: "SC", key: "sc3", rev: true,  fr: "Mes collègues me mettent des bâtons dans les roues.", en: "My coworkers make things difficult for me." },
+  { id: 1, sub: "D", rev: false, text: "Mon travail exige de travailler très vite." },
+  { id: 2, sub: "D", rev: false, text: "Mon travail exige de travailler très dur." },
+  { id: 3, sub: "D", rev: false, text: "Je manque de temps pour accomplir mes tâches." },
+  { id: 4, sub: "D", rev: false, text: "Mon travail comporte des contraintes contradictoires." },
+  { id: 5, sub: "D", rev: false, text: "Je dois accomplir une grande quantité de travail." },
+  { id: 6, sub: "D", rev: false, text: "Je dois travailler intensément sans pause suffisante." },
+  { id: 7, sub: "D", rev: false, text: "Les délais au travail sont serrés." },
+  { id: 8, sub: "D", rev: true,  text: "Mon travail est généralement calme et détendu." },
+  { id: 9, sub: "D", rev: false, text: "Je dois gérer plusieurs choses à la fois." },
+  // CONTROL (DA)
+  { id: 10, sub: "DA", rev: false, text: "J’ai beaucoup à dire sur la manière d’effectuer mon travail." },
+  { id: 11, sub: "DA", rev: false, text: "Je peux prendre des décisions importantes dans mon travail." },
+  { id: 12, sub: "DA", rev: true,  text: "On me dit exactement comment faire mon travail." },
+  { id: 13, sub: "DA", rev: false, text: "Je peux influencer les décisions qui touchent mon travail." },
+  { id: 14, sub: "DA", rev: false, text: "Je peux organiser mon travail comme je le souhaite." },
+  { id: 15, sub: "DA", rev: true,  text: "On contrôle fortement ma manière de travailler." },
+  // CONTROL (SD)
+  { id: 16, sub: "SD", rev: false, text: "Mon travail requiert d’apprendre de nouvelles choses." },
+  { id: 17, sub: "SD", rev: false, text: "Mon travail nécessite des compétences variées." },
+  { id: 18, sub: "SD", rev: false, text: "Je peux développer ma créativité dans mon travail." },
+  { id: 19, sub: "SD", rev: true,  text: "Mon travail est monotone." },
+  { id: 20, sub: "SD", rev: false, text: "Je peux utiliser pleinement mes compétences." },
+  { id: 21, sub: "SD", rev: false, text: "J’ai des possibilités d’évolution/apprentissage." },
+  // SUPPORT (SS)
+  { id: 22, sub: "SS", rev: false, text: "Mon supérieur est compréhensif." },
+  { id: 23, sub: "SS", rev: false, text: "Je peux compter sur mon supérieur en cas de besoin." },
+  { id: 24, sub: "SS", rev: true,  text: "Je me sens critiqué par mon supérieur." },
+  // SUPPORT (SC)
+  { id: 25, sub: "SC", rev: false, text: "Mes collègues sont amicaux." },
+  { id: 26, sub: "SC", rev: false, text: "Je reçois de l’aide de mes collègues." },
+  { id: 27, sub: "SC", rev: true,  text: "Mes collègues me mettent des bâtons dans les roues." },
 ];
 
-/* ---------- scoring + helpers ---------- */
+// -----------------------
+// 2. LOGIC HELPERS
+// -----------------------
+
 function normalizeTo100(value, min, max) {
   return Math.round(((value - min) / (max - min)) * 100);
-}
-
-function buildKarasekAnswerLines(lang, answers, QUESTIONS) {
-  const labels = {
-    fr: ["Pas du tout d'accord", "Plutôt pas d'accord", "Plutôt d'accord", "Tout à fait d'accord"],
-    en: ["Strongly Disagree", "Disagree", "Agree", "Strongly Agree"],
-  }[lang];
-
-  return QUESTIONS.filter((q) => answers[q.id])
-    .map((q) => {
-      const v = answers[q.id];
-      const label = labels[v - 1] || v;
-      const dim = q.sub;
-      const text = lang === "fr" ? q.fr : q.en;
-      return `Q${q.id} [${dim}] — ${text} → ${v} (${label})${q.rev ? " [reverse]" : ""}`;
-    })
-    .join("\n");
 }
 
 function computeScores(answers) {
@@ -166,7 +119,7 @@ function computeScores(answers) {
   for (const q of QUESTIONS) {
     const raw = answers[q.id];
     if (!raw) continue;
-    const score = q.rev ? 5 - raw : raw; // reverse 1..4 => 5 - raw
+    const score = q.rev ? 5 - raw : raw; 
     sums[q.sub] += score;
     counts[q.sub] += 1;
   }
@@ -193,385 +146,506 @@ function computeScores(answers) {
   return { subScores, dimScores: { D: Demands, C: Control, S: Support }, quadrant };
 }
 
-function buildKarasekLLMPrompt({ lang, answersText, scores }) {
-  const language = lang === "fr" ? "French" : "English";
-  const { dimScores, subScores, quadrant } = scores;
+/* PDF Generator */
+async function downloadResultsAsPDF(filename) {
+  const html2canvasMod = await import("html2canvas");
+  const jspdfMod = await import("jspdf");
+  const html2canvas = html2canvasMod.default || html2canvasMod;
+  const jsPDFClass = jspdfMod.jsPDF || jspdfMod.default;
 
-  const summary = {
-    dimensions: { Demands: dimScores.D, Control: dimScores.C, Support: dimScores.S },
-    subscales: {
-      DecisionAuthority: subScores.DA,
-      SkillDiscretion: subScores.SD,
-      SupervisorSupport: subScores.SS,
-      CoworkerSupport: subScores.SC,
-      DemandsRaw: subScores.D,
-    },
-    quadrant,
-  };
+  const el = document.getElementById("results-root");
+  if (!el) return null;
 
-  return `
-You are an organizational psychology expert. A client completed the Karasek Demand–Control–Support questionnaire (4-point Likert).
-Write a clear, non-clinical, professional report in ${language}. Keep it under ~450 words.
+  // Add white bg for capture
+  const originalBg = el.style.backgroundColor;
+  el.style.backgroundColor = "#ffffff";
+  el.style.padding = "20px";
+  
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+  el.style.backgroundColor = originalBg; 
+  el.style.padding = "";
 
-DATA (0–100 normalized):
-${JSON.stringify(summary, null, 2)}
-
-RAW ANSWERS (1–4):
-${answersText}
-
-Sections: Title; short overview; Demands/Control/Support insights; Quadrant interpretation; Subscales (DA, SD, SS, SC); Strengths; Watch-outs; Practical suggestions. Avoid medical language. No markdown headings.
-`.trim();
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDFClass({ unit: "pt", format: "a4", orientation: "portrait" });
+  
+  const imgWidth = pdf.internal.pageSize.getWidth();
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  
+  pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+  pdf.save(filename);
+  return pdf.output("blob");
 }
 
-/* ---------- UI atoms ---------- */
-function LikertRow({ q, value, onChange, lang }) {
-  const labels = i18n[lang].scale4;
-  return (
-    <div className="b5-card">
-      <div className="b5-card-title">{lang === "fr" ? q.fr : q.en}</div>
-      <div className="b5-card-sub">{lang === "fr" ? q.en : q.fr}</div>
-      <div className="b5-likert">
-        {LIKERT.map((n, idx) => (
-          <label key={idx} className={`b5-likert-option ${value === n ? "is-selected" : ""}`}>
-            <input
-              type="radio"
-              name={`q-${q.id}`}
-              checked={value === n}
-              onChange={() => onChange(n)}
-            />
-            <span>{labels[idx]}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
+// -----------------------
+// 3. STYLES (CSS-in-JS)
+// -----------------------
+const styles = {
+  mainWrapper: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "24px",
+    border: `1px solid ${COLORS.borderColor}`,
+    boxShadow: COLORS.shadowHuge,
+    width: "100%",
+    margin: "0 auto",
+    overflow: "hidden",
+    fontFamily: "'Inter', system-ui, sans-serif",
+    display: "flex",
+    flexDirection: "column",
+    minHeight: "calc(100vh - 40px)",
+    color: COLORS.textPrimary,
+  },
+  heroSection: {
+    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
+    padding: "32px 48px",
+    borderBottom: `1px solid ${COLORS.borderColor}`,
+  },
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "24px",
+  },
+  heroIconBox: {
+    width: "56px",
+    height: "56px",
+    borderRadius: "16px",
+    backgroundColor: COLORS.primary,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+    boxShadow: `0 8px 16px -4px rgba(0,0,0,0.1)`, 
+    marginRight: "20px",
+  },
+  progressContainer: {
+    height: "8px",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: "4px",
+    overflow: "hidden",
+    marginTop: "8px",
+  },
+  progressBar: (pct) => ({
+    height: "100%",
+    width: `${pct}%`,
+    backgroundColor: COLORS.primary,
+    transition: "width 0.4s ease-in-out",
+  }),
+  contentBody: {
+    flex: 1,
+    padding: "40px 48px",
+    backgroundColor: COLORS.bgMain,
+  },
+  questionCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "20px",
+    padding: "32px",
+    border: `1px solid ${COLORS.borderColor}`,
+    marginBottom: "24px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+  },
+  likertGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "12px",
+    marginTop: "24px",
+  },
+  likertOption: (isSelected) => ({
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px 8px",
+    borderRadius: "12px",
+    border: `2px solid ${isSelected ? COLORS.primary : COLORS.borderColor}`,
+    backgroundColor: isSelected ? `${COLORS.primary}10` : COLORS.cardBg,
+    cursor: "pointer",
+    textAlign: "center",
+    transition: "all 0.2s ease",
+  }),
+  btn: (variant) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    padding: "12px 24px",
+    borderRadius: "12px",
+    fontWeight: "600",
+    fontSize: "14px",
+    cursor: "pointer",
+    border: variant === "primary" ? "none" : `1px solid ${COLORS.borderColor}`,
+    backgroundColor: variant === "primary" ? COLORS.primary : "transparent",
+    color: variant === "primary" ? "#fff" : COLORS.textPrimary,
+    transition: "all 0.2s",
+    opacity: variant === "disabled" ? 0.5 : 1,
+    pointerEvents: variant === "disabled" ? "none" : "auto",
+  }),
+  resultsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
+    gap: "24px",
+  },
+  aiReportBox: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: "16px",
+    border: `1px solid ${COLORS.borderColor}`,
+    padding: "24px",
+    whiteSpace: "pre-wrap",
+    lineHeight: "1.6",
+    color: COLORS.textSecondary,
+    fontSize: "15px",
+    maxHeight: "500px",
+    overflowY: "auto",
+  }
+};
 
-function ReportPanel({ scores, lang }) {
-  const t = i18n[lang];
-  const D = scores.dimScores.D ?? 0;
-  const C = scores.dimScores.C ?? 0;
-  const S = scores.dimScores.S ?? 0;
-  const qLabel = t.quadrant[scores.quadrant];
+const animationStyles = `
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+  .likert-hover:hover { border-color: ${COLORS.primary}; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .btn-hover:hover { opacity: 0.9; transform: scale(1.02); }
+  .btn-ghost:hover { background-color: rgba(0,0,0,0.05); color: ${COLORS.primary}; }
+`;
 
-  const band = (v, hi, lo, mid) => (v >= 60 ? hi : v <= 40 ? lo : mid);
+// -----------------------
+// 4. MAIN COMPONENT
+// -----------------------
 
-  return (
-    <div className="b5-card" style={{ marginBottom: 16 }}>
-      <div className="b5-card-title">{t.resultTitle} — {qLabel}</div>
-      <div className="b5-card-sub">
-        {lang === "fr" ? "Synthèse narrative basée sur vos réponses." : "Narrative summary based on your responses."}
-      </div>
-
-      <div className="b5-report">
-        <h3>{t.overview}</h3>
-        <ul className="b5-report-list">
-          <li>{t.dims.D}: <strong>{D}</strong>/100 — {band(D, lang==="fr"?"élevées":"high", lang==="fr"?"faibles":"low", lang==="fr"?"modérées":"moderate")}</li>
-          <li>{t.dims.C}: <strong>{C}</strong>/100 — {band(C, lang==="fr"?"élevé":"high",  lang==="fr"?"faible":"low",  lang==="fr"?"modéré":"moderate")}</li>
-          <li>{t.dims.S}: <strong>{S}</strong>/100 — {band(S, lang==="fr"?"bon":"good",   lang==="fr"?"à renforcer":"needs improvement", lang==="fr"?"moyen":"average")}</li>
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Page ---------- */
 export default function KarasekTest() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const assignmentId = params.get("assignment"); // /karasek?assignment=ID
-
   const API_BASE = "http://localhost:8080";
-  const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
-  // state
-  const [lang, setLang] = useState("fr");
+  // Auth Logic
+  const isCandidate = sessionStorage.getItem("isCandidate") === "true";
+  const candidateToken = sessionStorage.getItem("candidateToken");
+  const hrToken = localStorage.getItem("access");
+  const assignmentId = isCandidate ? sessionStorage.getItem("candidateAssignmentId") : params.get("assignment");
+
+  const getFetchConfig = () => {
+    if (isCandidate) {
+      return { headers: { "Content-Type": "application/json", "X-Candidate-Token": candidateToken } };
+    } else {
+      return { headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` } };
+    }
+  };
+
+  // State
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [aiLoading, setAiLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState("");
-  const [aiError, setAiError] = useState("");
-
-  // derived
-  const perPage = 4;
+  
+  // Navigation
+  const perPage = 3; 
   const totalPages = Math.ceil(QUESTIONS.length / perPage);
-  const currentPage = Math.min(step, totalPages);
-  const percent = Math.round((Math.min(QUESTIONS.length, Object.keys(answers).length) / QUESTIONS.length) * 100);
-  const pageQuestions = QUESTIONS.slice((currentPage - 1) * perPage, currentPage * perPage);
-  const canNext = pageQuestions.every((q) => !!answers[q.id]);
-  const scores = useMemo(() => computeScores(answers), [answers]);
+  const pageQuestions = QUESTIONS.slice((step - 1) * perPage, step * perPage);
+  
+  const canNext = pageQuestions.every((q) => answers[q.id]);
+  const percent = (Object.keys(answers).length / QUESTIONS.length) * 100;
 
-  // Check assignment belongs to user
-  useEffect(() => {
-    if (!assignmentId) return;
-    fetch(`${API_BASE}/api/assessments/${assignmentId}/`, { headers: { ...authHeader } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .catch(() => {
-        alert("Invalid or inaccessible assignment. Please start from My Assessments.");
-        navigate("/my-assessments");
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignmentId]);
+  // Metrics
+  const metrics = useMemo(() => computeScores(answers), [answers]);
+  
+  // Chart Data preparation
+  const overviewData = [
+    { name: TEXTS.dims.D, short: "Demandes", value: metrics.dimScores.D, color: CHART_COLORS.D },
+    { name: TEXTS.dims.C, short: "Contrôle", value: metrics.dimScores.C, color: CHART_COLORS.C },
+    { name: TEXTS.dims.S, short: "Soutien", value: metrics.dimScores.S, color: CHART_COLORS.S },
+  ];
 
-  // ---- AI (client-side) ----
-  async function generateAIReport() {
-    setAiLoading(true);
-    setAiError("");
-    setAiReport("");
+  const subData = [
+    { name: TEXTS.subs.DA, value: metrics.subScores.DA, color: CHART_COLORS.C },
+    { name: TEXTS.subs.SD, value: metrics.subScores.SD, color: CHART_COLORS.C },
+    { name: TEXTS.subs.SS, value: metrics.subScores.SS, color: CHART_COLORS.S },
+    { name: TEXTS.subs.SC, value: metrics.subScores.SC, color: CHART_COLORS.S },
+  ];
 
+  // Submit Handler
+  async function submit() {
+    setLoading(true);
+    const config = getFetchConfig();
     try {
-      const res = await fetch(`${API_BASE}/api/karasek/report/${assignmentId}/`, {
+      // 1. Generate Report
+      const reportRes = await fetch(`${API_BASE}/api/karasek/report/${assignmentId}/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${access}` },
+        headers: config.headers,
+        body: JSON.stringify({ answers, metrics }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Report generation failed");
-      setAiReport(data.report || "");
-      return data.report;
-    } catch (err) {
-      setAiError(err.message || "Request failed");
-      return "";
-    } finally {
-      setAiLoading(false);
-    }
-  }
+      const reportData = await reportRes.json();
+      const reportText = reportData.report || "";
 
-
-  // ---- Submit: generate AI + send everything to backend ----
-  async function submitToBackend() {
-    if (!assignmentId) {
-      alert("Missing assignment id. Open this test from My Assessments.");
-      return;
-    }
-    try {
-      // 1) compute metrics locally
-      const m = computeScores(answers);
-      const metrics = { dimScores: m.dimScores, subScores: m.subScores, quadrant: m.quadrant };
-
-      // 2) (optional) generate AI report in the browser
-      const reportText = await generateAIReport(); // returns "" if failed/missing key
-
-      // 3) save to backend
-      const r = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
+      // 2. Submit Data
+      const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+        headers: config.headers,
+        body: JSON.stringify({ 
+          answers, 
+          metrics, 
+          ai_report: reportText, 
+          assessment_type: "KARASEK", 
+          overwrite: true 
+        }),
       });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.detail || "Failed to submit.");
-      }
 
-      // 4) show local results
+      if (!submitRes.ok) throw new Error("Erreur soumission");
+      
+      setAiReport(reportText);
       setStep(totalPages + 1);
     } catch (e) {
       alert(e.message);
+    } finally {
+      setLoading(false);
     }
   }
 
-  // ---- PDF upload to backend after user downloads ----
-  async function uploadPDF(blob) {
-    if (!assignmentId || !blob) return;
-    const fd = new FormData();
-    fd.append("file", blob, `karasek-${assignmentId}.pdf`);
-    await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
-      method: "PUT",
-      headers: { ...authHeader }, // don't set Content-Type with FormData
-      body: fd,
-    }).catch(() => {});
+  // Upload PDF Handler
+  async function handleDownload() {
+    const blob = await downloadResultsAsPDF(`karasek-report-${assignmentId}.pdf`);
+    if(blob && assignmentId) {
+      const fd = new FormData();
+      fd.append("file", blob, `karasek-${assignmentId}.pdf`);
+      // Re-use auth headers minus Content-Type for FormData
+      const headers = isCandidate ? { "X-Candidate-Token": candidateToken } : { "Authorization": `Bearer ${hrToken}` };
+      await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
+        method: "PUT",
+        headers: headers,
+        body: fd,
+      }).catch(console.error);
+    }
   }
-
-  if (!assignmentId) {
-    return (
-      <div className="b5-page" style={{ padding: 16 }}>
-        <h2>Karasek</h2>
-        <p>Please start this test from <b>My Assessments</b> so it’s linked to your assignment.</p>
-      </div>
-    );
-  }
-
-  const overviewData = [
-    { name: i18n[lang].dims.D, value: scores.dimScores.D || 0 },
-    { name: i18n[lang].dims.C, value: scores.dimScores.C || 0 },
-    { name: i18n[lang].dims.S, value: scores.dimScores.S || 0 },
-  ];
-
-  const subMap = [
-    { key: "DA", label: i18n[lang].subs.DA },
-    { key: "SD", label: i18n[lang].subs.SD },
-    { key: "SS", label: i18n[lang].subs.SS },
-    { key: "SC", label: i18n[lang].subs.SC },
-  ];
-  const subData = subMap.map(({ key, label }) => ({ name: label, value: scores.subScores[key] || 0 }));
 
   return (
-    <div className="b5-page">
-      {/* Top Bar */}
-      <div className="b5-topbar">
-        <div>
-          <h1 className="b5-title">{i18n[lang].appTitle}</h1>
-          <div className="b5-progress-label">{i18n[lang].progress}</div>
-        </div>
-        <div className="b5-actions">
-          <select className="b5-select" value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Langue">
-            <option value="fr">Français</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-      </div>
+    <div style={styles.mainWrapper}>
+      <style>{animationStyles}</style>
 
-      <div className="b5-progress">
-        <div className="b5-progress-bar" style={{ width: `${step === 0 ? 0 : percent}%` }} />
-      </div>
-
-      {/* Content */}
-      <div className="b5-container">
-        {step === 0 && (
-          <div className="b5-intro">
-            <h2>{i18n[lang].appTitle}</h2>
-            <p>
-              {lang === "fr"
-                ? "Répondez à 27 affirmations (4 points : Pas du tout d'accord → Tout à fait d'accord). Le modèle Karasek évalue Demandes, Contrôle et Soutien social. Les résultats incluent une classification en quadrant (Faible contrainte / Forte contrainte / Actif / Passif)."
-                : "Answer 27 statements (4-point scale: Strongly Disagree → Strongly Agree). Karasek model assesses Demands, Control and Social Support. Results include a quadrant classification (Low strain / High strain / Active / Passive)."}
-            </p>
-            <div className="b5-alert">
-              <AlertTriangle size={16} />
-              <span style={{ marginLeft: 8 }}>
-                {lang === "fr" ? "Outil indicatif non clinique." : "Indicative, non-clinical tool."}
-              </span>
+      {/* --- HERO --- */}
+      <div style={styles.heroSection}>
+        <div style={styles.headerRow}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={styles.heroIconBox}>
+              <Activity size={32} />
             </div>
-            <button className="b5-btn primary" onClick={() => setStep(1)}>
-              {i18n[lang].start}
+            <div>
+              <h1 style={{ fontSize: "28px", fontWeight: "800", margin: 0 }}>
+                {TEXTS.title}
+              </h1>
+              <p style={{ margin: "4px 0 0", color: COLORS.textSecondary }}>
+                {TEXTS.subtitle}
+              </p>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: "14px", fontWeight: "600", color: COLORS.primary }}>
+               {Math.round(percent)}% Complété
+            </span>
+          </div>
+        </div>
+        <div style={styles.progressContainer}>
+          <div style={styles.progressBar(percent)} />
+        </div>
+      </div>
+
+      {/* --- CONTENT --- */}
+      <div style={styles.contentBody}>
+        
+        {/* INTRO */}
+        {step === 0 && (
+          <div className="animate-fade-in" style={{ textAlign: "center", maxWidth: "600px", margin: "40px auto" }}>
+            <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "24px" }}>Bienvenue</h2>
+            <div style={{ 
+              backgroundColor: COLORS.cardBg, 
+              padding: "24px", 
+              borderRadius: "16px", 
+              border: `1px solid ${COLORS.borderColor}`,
+              textAlign: "left",
+              marginBottom: "32px"
+            }}>
+              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", color: COLORS.orange }}>
+                <AlertTriangle size={24} />
+                <span style={{ fontWeight: "600" }}>{TEXTS.warning}</span>
+              </div>
+              <p style={{ color: COLORS.textSecondary, lineHeight: "1.6" }}>{TEXTS.instructions}</p>
+              <ul style={{ color: COLORS.textSecondary, marginTop: "8px", paddingLeft: "20px" }}>
+                <li>Durée estimée : 5 minutes</li>
+                <li>Échelle de 1 à 4</li>
+                <li>Réponses confidentielles</li>
+              </ul>
+            </div>
+            <button 
+              style={styles.btn("primary")} 
+              className="btn-hover" 
+              onClick={() => setStep(1)}
+            >
+              Commencer <ArrowRight size={18} />
             </button>
           </div>
         )}
 
+        {/* QUESTIONS */}
         {step > 0 && step <= totalPages && (
-          <div>
-            <div className="b5-stack">
-              {pageQuestions.map((q) => (
-                <LikertRow
-                  key={q.id}
-                  q={q}
-                  lang={lang}
-                  value={answers[q.id]}
-                  onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))}
-                />
-              ))}
-            </div>
-            <div className="b5-nav">
-              <button className="b5-btn ghost" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
-                <ArrowLeft size={18} /> {i18n[lang].back}
-              </button>
+          <div className="animate-fade-in">
+            {pageQuestions.map((q) => (
+              <div key={q.id} style={styles.questionCard}>
+                <div style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>
+                  <span style={{ color: COLORS.primary, marginRight: "8px" }}>Q{q.id}.</span> 
+                  {q.text}
+                </div>
+                
+                <div style={styles.likertGrid}>
+                  {LIKERT_VALUES.map((opt) => {
+                    const isSelected = answers[q.id] === opt.val;
+                    return (
+                      <div 
+                        key={opt.val}
+                        style={styles.likertOption(isSelected)}
+                        className="likert-hover"
+                        onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt.val }))}
+                      >
+                        <span style={{ fontSize: "20px", fontWeight: "700", color: isSelected ? COLORS.primary : COLORS.textMuted, marginBottom: "4px" }}>
+                          {opt.val}
+                        </span>
+                        <span style={{ fontSize: "12px", color: isSelected ? COLORS.primary : COLORS.textSecondary }}>
+                          {opt.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "32px" }}>
+              <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => setStep(s => Math.max(1, s-1))}>
+                <ArrowLeft size={18} /> Retour
+              </button>
+              
               {step < totalPages ? (
-                <button
-                  className="b5-btn primary"
-                  onClick={() => canNext && setStep((s) => Math.min(totalPages, s + 1))}
-                  disabled={!canNext}
+                <button 
+                  style={styles.btn(canNext ? "primary" : "disabled")} 
+                  className={canNext ? "btn-hover" : ""} 
+                  onClick={() => canNext && setStep(s => s+1)}
                 >
-                  {i18n[lang].next} <ArrowRight size={18} />
+                  Suivant <ArrowRight size={18} />
                 </button>
               ) : (
-                <button className="b5-btn primary" onClick={submitToBackend} disabled={!canNext}>
-                  {i18n[lang].submit}
+                <button 
+                  style={styles.btn(loading ? "disabled" : "primary")} 
+                  className={!loading ? "btn-hover" : ""} 
+                  onClick={submit}
+                >
+                   {loading ? <Loader2 className="loading-spin" size={18} /> : <>Envoyer <ArrowRight size={18} /></>}
                 </button>
               )}
             </div>
           </div>
         )}
 
+        {/* RESULTS */}
         {step > totalPages && (
-          <div id="results-root">
-            <div className="b5-results-head">
-              <h2>{i18n[lang].resultTitle}</h2>
-              <div className="b5-results-actions">
-                <button
-                  className="b5-btn outline"
-                  onClick={async () => {
-                    const blob = await downloadResultsAsPDF();
-                    // Save a copy server-side
-                    await uploadPDF(blob);
-                  }}
-                >
-                  <Download size={18} /> {i18n[lang].download}
-                </button>
-                <button
-                  className="b5-btn"
-                  onClick={() => {
-                    setAnswers({});
-                    setStep(1);
-                    setAiReport("");
-                    setAiError("");
-                  }}
-                >
-                  <RotateCcw size={18} /> {i18n[lang].restart}
-                </button>
+          <div className="animate-fade-in" id="results-root">
+            
+            {/* Results Header */}
+            <div style={{ ...styles.headerRow, marginBottom: "32px" }}>
+              <div>
+                <h2 style={{ fontSize: "24px", fontWeight: "700", margin: 0 }}>
+                  {TEXTS.quadrants[metrics.quadrant]}
+                </h2>
+                <span style={{ color: COLORS.textSecondary }}>Résultat Global</span>
+              </div>
+              <div style={{ display: "flex", gap: "12px" }}>
+                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => { setAnswers({}); setStep(1); setAiReport(""); }}>
+                   <RotateCcw size={18} /> Recommencer
+                 </button>
+                 <button style={styles.btn("primary")} className="btn-hover" onClick={handleDownload}>
+                   <Download size={18} /> PDF
+                 </button>
               </div>
             </div>
 
-            {/* AI Report */}
-            {aiLoading && (
-              <div className="b5-card"><div className="b5-card-title">AI</div><div className="b5-report">…</div></div>
-            )}
-            {aiError && (
-              <div className="b5-card"><div className="b5-card-title">AI error</div><div className="b5-report">{aiError}</div></div>
-            )}
-            {aiReport && (
-              <div className="b5-card" style={{ marginBottom: 16 }}>
-                <div className="b5-card-title">{lang === "fr" ? "Rapport IA — Karasek" : "AI Report — Karasek"}</div>
-                <div className="b5-report">
-                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", lineHeight: 1.6 }}>
-                    {aiReport}
-                  </pre>
+            <div style={styles.resultsGrid}>
+              
+              {/* CHARTS COLUMN */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                
+                {/* Main Dimensions */}
+                <div style={{ ...styles.questionCard, minHeight: "300px", display: "flex", flexDirection: "column" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "16px" }}>Dimensions Principales</h3>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={overviewData} layout="vertical" margin={{ left: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" domain={[0, 100]} hide />
+                      <YAxis dataKey="short" type="category" width={80} tick={{ fill: COLORS.textSecondary, fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px', border:'none', boxShadow: COLORS.shadowHuge}} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
+                        {overviewData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
-            )}
 
-            {/* Overview */}
-            <div className="b5-card">
-              <div className="b5-card-title">{i18n[lang].overview}</div>
-              <div className="b5-card-sub">{i18n[lang].dims.D}, {i18n[lang].dims.C}, {i18n[lang].dims.S}</div>
-              <div className="b5-chart">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={overviewData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="value" name="Score" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {/* Subscales */}
+                <div style={{ ...styles.questionCard, minHeight: "300px", display: "flex", flexDirection: "column" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "16px" }}>Sous-échelles</h3>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={subData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: COLORS.textSecondary }} interval={0} />
+                      <YAxis domain={[0, 100]} hide />
+                      <Tooltip cursor={{fill: 'transparent'}} />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {subData.map((entry, index) => (
+                           <Cell key={`sub-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+              </div>
+
+              {/* TEXT COLUMN */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                
+                {/* Metric Summary */}
+                <div style={{ ...styles.questionCard, padding: "24px" }}>
+                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", borderBottom: `1px solid ${COLORS.borderColor}`, paddingBottom: "8px" }}>
+                     <span>{TEXTS.dims.D}</span>
+                     <strong style={{ color: COLORS.primary }}>{metrics.dimScores.D} / 100</strong>
+                   </div>
+                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", borderBottom: `1px solid ${COLORS.borderColor}`, paddingBottom: "8px" }}>
+                     <span>{TEXTS.dims.C}</span>
+                     <strong style={{ color: COLORS.purple }}>{metrics.dimScores.C} / 100</strong>
+                   </div>
+                   <div style={{ display: "flex", justifyContent: "space-between" }}>
+                     <span>{TEXTS.dims.S}</span>
+                     <strong style={{ color: COLORS.orange }}>{metrics.dimScores.S} / 100</strong>
+                   </div>
+                </div>
+
+                {/* AI Report */}
+                {aiReport && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: COLORS.success }}>
+                       <CheckCircle2 size={20} />
+                       <span style={{ fontWeight: "600" }}>Analyse Complétée</span>
+                     </div>
+                     <div style={styles.aiReportBox}>
+                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", color: COLORS.textPrimary }}>
+                         <FileText size={18} /> <strong>Rapport IA</strong>
+                       </div>
+                       {aiReport}
+                     </div>
+                  </div>
+                )}
+
               </div>
             </div>
-
-            {/* Subscales */}
-            <div className="b5-card">
-              <div className="b5-card-title">
-                {lang === "fr" ? "Sous-dimensions du Contrôle & du Soutien" : "Control & Support Subscales"}
-              </div>
-              <div className="b5-chart">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={subData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" interval={0} angle={-10} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Bar dataKey="value" name="Score" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Server-stored metrics summary (quick read) */}
-            <ReportPanel scores={scores} lang={lang} />
           </div>
         )}
-      </div>
 
-      <div className="b5-footer">© {new Date().getFullYear()} • DeepMind</div>
+      </div>
     </div>
   );
 }
