@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileText,
   Edit3,
@@ -313,12 +313,58 @@ const responsiveStyles = `
 `;
 
 const CreateSurveyForm = () => {
+  const API_BASE = "http://localhost:8080";
+  const access = localStorage.getItem("access");
+  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+
   const [option, setOption] = useState("manual"); // 'upload' | 'manual'
   const [questions, setQuestions] = useState([{ id: Date.now(), text: "" }]);
   const [responseType, setResponseType] = useState("named");
   const [schedule, setSchedule] = useState(null);
-  const [audience, setAudience] = useState({ type: "all", selected: [] });
 
+  // --- Dynamic Audience State ---
+  const [audience, setAudience] = useState({ type: "all", selected: [] });
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loadingAudience, setLoadingAudience] = useState(true);
+
+  // --- Fetch Departments and Employees ---
+  useEffect(() => {
+    async function fetchAudienceData() {
+      setLoadingAudience(true);
+      try {
+        const [depRes, empRes] = await Promise.all([
+          fetch(`${API_BASE}/api/departments/`, { headers: authHeader }),
+          fetch(`${API_BASE}/api/users/`, { headers: authHeader }),
+        ]);
+
+        // Process Departments
+        const depData = depRes.ok ? await depRes.json() : [];
+        setDepartments(Array.isArray(depData) ? depData : []);
+
+        // Process Employees (Map to friendly format)
+        const empData = empRes.ok ? await empRes.json() : [];
+        if (Array.isArray(empData)) {
+          const formattedEmployees = empData.map((u) => ({
+            id: u.id,
+            name:
+              `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+            department: u.department || "No Department",
+            email: u.email,
+          }));
+          setEmployees(formattedEmployees);
+        }
+      } catch (e) {
+        console.error("Failed to load audience data", e);
+      } finally {
+        setLoadingAudience(false);
+      }
+    }
+
+    fetchAudienceData();
+  }, []);
+
+  // --- Question Handlers ---
   const handleAddQuestion = () =>
     setQuestions([...questions, { id: Date.now(), text: "" }]);
   const handleQuestionChange = (id, text) =>
@@ -326,6 +372,7 @@ const CreateSurveyForm = () => {
   const handleRemoveQuestion = (id) =>
     setQuestions(questions.filter((q) => q.id !== id));
 
+  // --- Submit ---
   const handleSubmit = () => {
     console.log({ option, responseType, audience, schedule, questions });
     alert("Survey Built & Dispatched Successfully!");
@@ -335,7 +382,10 @@ const CreateSurveyForm = () => {
     <div className="survey-builder-container" style={styles.container}>
       <style>{responsiveStyles}</style>
 
-      <div className="survey-builder-main-wrapper" style={styles.mainWrapperCard}>
+      <div
+        className="survey-builder-main-wrapper"
+        style={styles.mainWrapperCard}
+      >
         {/* Header */}
         <div className="survey-builder-header" style={styles.sectionHeader}>
           <div
@@ -368,9 +418,15 @@ const CreateSurveyForm = () => {
           </p>
         </div>
 
-        <div className="survey-builder-content-wrapper" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        <div
+          className="survey-builder-content-wrapper"
+          style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+        >
           {/* Methodology Choice */}
-          <div className="survey-builder-choice-wrapper" style={{ display: "flex", gap: "20px" }}>
+          <div
+            className="survey-builder-choice-wrapper"
+            style={{ display: "flex", gap: "20px" }}
+          >
             <div
               className="survey-builder-choice-card"
               style={styles.choiceCard(option === "upload")}
@@ -393,7 +449,10 @@ const CreateSurveyForm = () => {
                 >
                   Upload File
                 </div>
-                <div className="survey-builder-choice-desc" style={{ fontSize: "12px", color: COLORS.textSecondary }}>
+                <div
+                  className="survey-builder-choice-desc"
+                  style={{ fontSize: "12px", color: COLORS.textSecondary }}
+                >
                   Import PDF or Excel
                 </div>
               </div>
@@ -420,7 +479,10 @@ const CreateSurveyForm = () => {
                 >
                   Build Manually
                 </div>
-                <div className="survey-builder-choice-desc" style={{ fontSize: "12px", color: COLORS.textSecondary }}>
+                <div
+                  className="survey-builder-choice-desc"
+                  style={{ fontSize: "12px", color: COLORS.textSecondary }}
+                >
                   Write custom questions
                 </div>
               </div>
@@ -457,7 +519,10 @@ const CreateSurveyForm = () => {
                     marginBottom: "20px",
                   }}
                 >
-                  <label className="survey-builder-label" style={{ ...styles.label, marginBottom: 0 }}>
+                  <label
+                    className="survey-builder-label"
+                    style={{ ...styles.label, marginBottom: 0 }}
+                  >
                     <Edit3 size={18} color={COLORS.primary} /> Question List
                   </label>
                   <button
@@ -470,7 +535,11 @@ const CreateSurveyForm = () => {
                 </div>
 
                 {questions.map((q, i) => (
-                  <div key={q.id} className="survey-builder-question-row" style={styles.questionRow}>
+                  <div
+                    key={q.id}
+                    className="survey-builder-question-row"
+                    style={styles.questionRow}
+                  >
                     <div
                       className="survey-builder-question-number"
                       style={{
@@ -540,7 +609,13 @@ const CreateSurveyForm = () => {
               <label className="survey-builder-label" style={styles.label}>
                 <Target size={18} color={COLORS.primary} /> Recipients
               </label>
-              <AudienceSelector value={audience} onChange={setAudience} />
+              <AudienceSelector
+                value={audience}
+                onChange={setAudience}
+                departments={departments}
+                employees={employees}
+                loading={loadingAudience}
+              />
             </div>
           </div>
 
@@ -555,7 +630,10 @@ const CreateSurveyForm = () => {
               backgroundColor: "#fcfcfd",
             }}
           >
-            <div className="survey-builder-schedule-header" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              className="survey-builder-schedule-header"
+              style={{ display: "flex", alignItems: "center", gap: "16px" }}
+            >
               <div
                 className="survey-builder-icon-box"
                 style={{
@@ -567,7 +645,10 @@ const CreateSurveyForm = () => {
                 <Calendar size={20} color={COLORS.primary} />
               </div>
               <div>
-                <div className="survey-builder-schedule-title" style={{ fontWeight: "700", fontSize: "15px" }}>
+                <div
+                  className="survey-builder-schedule-title"
+                  style={{ fontWeight: "700", fontSize: "15px" }}
+                >
                   Delivery Schedule
                 </div>
                 <div
@@ -582,8 +663,10 @@ const CreateSurveyForm = () => {
               </div>
             </div>
 
-            {/* Wider container */}
-            <div className="survey-builder-schedule-container" style={{ width: "65%" }}>
+            <div
+              className="survey-builder-schedule-container"
+              style={{ width: "65%" }}
+            >
               <div
                 className="survey-builder-schedule-inner"
                 style={{
@@ -600,7 +683,11 @@ const CreateSurveyForm = () => {
           </div>
 
           {/* Final Action */}
-          <button className="survey-builder-btn-primary" style={styles.btnPrimary} onClick={handleSubmit}>
+          <button
+            className="survey-builder-btn-primary"
+            style={styles.btnPrimary}
+            onClick={handleSubmit}
+          >
             <CheckCircle2 size={20} />
             Launch Custom Survey
           </button>
