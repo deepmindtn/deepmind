@@ -317,7 +317,8 @@ export default function RecruitmentMatch() {
 
   // View Assignments States
   const [viewAssignmentsOpen, setViewAssignmentsOpen] = useState(false);
-  const [viewAssignmentsCandidate, setViewAssignmentsCandidate] = useState(null);
+  const [viewAssignmentsCandidate, setViewAssignmentsCandidate] =
+    useState(null);
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
 
@@ -538,15 +539,15 @@ export default function RecruitmentMatch() {
     setViewAssignmentsCandidate(candidate);
     setViewAssignmentsOpen(true);
     setLoadingAssignments(true);
-    
+
     try {
       const res = await fetch(
         `${API_BASE}/api/candidates/${candidate.id}/assignments/`,
         { headers: authHeader }
       );
-      
+
       if (!res.ok) throw new Error("Failed to fetch assignments");
-      
+
       const data = await res.json();
       setAssignments(data);
     } catch (e) {
@@ -1412,143 +1413,470 @@ export default function RecruitmentMatch() {
         </div>
       </Modal>
 
-      {/* View Assignments Modal */}
-      <Modal
-        open={viewAssignmentsOpen}
-        title="Assessment Assignments"
-        onClose={() => setViewAssignmentsOpen(false)}
-        actions={
-          <button
-            style={{
-              ...styles.btnPrimary,
-              backgroundColor: COLORS.textMuted,
-            }}
+      {/* View Assignments Modal - Enhanced */}
+      {viewAssignmentsOpen &&
+        ReactDOM.createPortal(
+          <div
+            style={styles.modalOverlay}
             onClick={() => setViewAssignmentsOpen(false)}
           >
-            Close
-          </button>
-        }
-      >
-        {viewAssignmentsCandidate && (
-          <div
-            style={{
-              marginBottom: 20,
-              padding: 16,
-              backgroundColor: "#f8fafc",
-              borderRadius: 12,
-              border: `1px solid ${COLORS.borderColor}`,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                ...styles.card,
+                width: "90%",
+                maxWidth: "1000px",
+                height: "85vh",
+                maxHeight: "700px",
+                padding: 0,
+                boxShadow: COLORS.shadowLg,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header - Fixed */}
               <div
                 style={{
-                  padding: 10,
-                  backgroundColor: COLORS.primaryLight,
-                  borderRadius: 10,
+                  padding: "24px 32px",
+                  borderBottom: `1px solid ${COLORS.borderColor}`,
+                  backgroundColor: "#fafafa",
+                  flexShrink: 0,
                 }}
               >
-                <Users size={20} color={COLORS.primary} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>
-                  {viewAssignmentsCandidate.name}
-                </div>
-                <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                  {viewAssignmentsCandidate.email}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {loadingAssignments ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 40,
-            }}
-          >
-            <Loader2 className="spin" size={32} color={COLORS.primary} />
-          </div>
-        ) : assignments.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: 40,
-              color: COLORS.textSecondary,
-            }}
-          >
-            <FileText
-              size={40}
-              color={COLORS.textMuted}
-              style={{ marginBottom: 12 }}
-            />
-            <p style={{ margin: 0 }}>No assessments assigned yet.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {assignments.map((assignment) => (
-              <div
-                key={assignment.id}
-                style={{
-                  padding: 16,
-                  backgroundColor: "#fff",
-                  border: `1px solid ${COLORS.borderColor}`,
-                  borderRadius: 12,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontWeight: 600,
-                      marginBottom: 4,
-                      fontSize: 14,
-                    }}
-                  >
-                    {assignment.template.name}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: COLORS.textSecondary,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <Clock size={12} />
-                    Assigned{" "}
-                    {new Date(assignment.assigned_at).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      }
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div>
+                    <h3
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: "22px",
+                        fontWeight: "700",
+                      }}
+                    >
+                      Assessment Overview
+                    </h3>
+                    {viewAssignmentsCandidate && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: 8,
+                            backgroundColor: COLORS.primaryLight,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Users size={16} color={COLORS.primary} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 15 }}>
+                            {viewAssignmentsCandidate.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: COLORS.textSecondary,
+                            }}
+                          >
+                            {viewAssignmentsCandidate.email}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-                <div>
-                  <span
+                  <button
+                    onClick={() => setViewAssignmentsOpen(false)}
                     style={{
-                      ...styles.badge(assignment.status.toLowerCase()),
-                      fontSize: 11,
-                      padding: "6px 12px",
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                      padding: 8,
+                      borderRadius: 8,
+                      transition: "background 0.2s",
                     }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#f1f5f9")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "transparent")
+                    }
                   >
-                    {assignment.status}
-                  </span>
+                    <X size={20} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Content - Scrollable */}
+              <div style={{ flex: 1, overflow: "auto", padding: "32px" }}>
+                {loadingAssignments ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                      gap: 16,
+                    }}
+                  >
+                    <Loader2
+                      className="spin"
+                      size={40}
+                      color={COLORS.primary}
+                    />
+                    <p style={{ color: COLORS.textSecondary, margin: 0 }}>
+                      Loading assessments...
+                    </p>
+                  </div>
+                ) : assignments.length === 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                      color: COLORS.textSecondary,
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: 24,
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "50%",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <FileText size={48} color={COLORS.textMuted} />
+                    </div>
+                    <h4
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: 18,
+                        color: COLORS.textPrimary,
+                      }}
+                    >
+                      No Assessments Yet
+                    </h4>
+                    <p style={{ margin: 0, fontSize: 14 }}>
+                      This candidate hasn't been assigned any assessments.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Stats */}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: 16,
+                        marginBottom: 32,
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: 20,
+                          backgroundColor: "#eff6ff",
+                          borderRadius: 12,
+                          border: `1px solid ${COLORS.blue}30`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: COLORS.blue,
+                            fontWeight: 600,
+                            marginBottom: 8,
+                          }}
+                        >
+                          TOTAL ASSIGNED
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: COLORS.blue,
+                          }}
+                        >
+                          {assignments.length}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          padding: 20,
+                          backgroundColor: "#ecfdf5",
+                          borderRadius: 12,
+                          border: "1px solid #05966930",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#059669",
+                            fontWeight: 600,
+                            marginBottom: 8,
+                          }}
+                        >
+                          COMPLETED
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: "#059669",
+                          }}
+                        >
+                          {
+                            assignments.filter(
+                              (a) => a.status.toLowerCase() === "completed"
+                            ).length
+                          }
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          padding: 20,
+                          backgroundColor: "#fffbeb",
+                          borderRadius: 12,
+                          border: "1px solid #d9770630",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#d97706",
+                            fontWeight: 600,
+                            marginBottom: 8,
+                          }}
+                        >
+                          PENDING
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: "#d97706",
+                          }}
+                        >
+                          {
+                            assignments.filter(
+                              (a) => a.status.toLowerCase() === "pending"
+                            ).length
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Assessment Grid */}
+                    <div>
+                      <h4
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: COLORS.textMuted,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          marginBottom: 16,
+                        }}
+                      >
+                        Assessment History
+                      </h4>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fill, minmax(280px, 1fr))",
+                          gap: 16,
+                        }}
+                      >
+                        {assignments.map((assignment) => {
+                          const isCompleted =
+                            assignment.status.toLowerCase() === "completed";
+                          const isPending =
+                            assignment.status.toLowerCase() === "pending";
+
+                          return (
+                            <div
+                              key={assignment.id}
+                              style={{
+                                padding: 20,
+                                backgroundColor: "#fff",
+                                border: `2px solid ${
+                                  isCompleted
+                                    ? "#05966920"
+                                    : isPending
+                                    ? "#d9770620"
+                                    : COLORS.borderColor
+                                }`,
+                                borderRadius: 16,
+                                transition: "all 0.2s",
+                                cursor: "default",
+                                position: "relative",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {/* Status indicator stripe */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 4,
+                                  backgroundColor: isCompleted
+                                    ? "#059669"
+                                    : isPending
+                                    ? "#d97706"
+                                    : "#94a3b8",
+                                }}
+                              />
+
+                              <div style={{ marginTop: 8 }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "flex-start",
+                                    marginBottom: 12,
+                                  }}
+                                >
+                                  <div style={{ flex: 1, paddingRight: 8 }}>
+                                    <h5
+                                      style={{
+                                        margin: "0 0 6px 0",
+                                        fontSize: 15,
+                                        fontWeight: 700,
+                                        color: COLORS.textPrimary,
+                                        lineHeight: 1.3,
+                                      }}
+                                    >
+                                      {assignment.template.name}
+                                    </h5>
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...styles.badge(
+                                        assignment.status.toLowerCase()
+                                      ),
+                                      fontSize: 10,
+                                      padding: "4px 10px",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {assignment.status}
+                                  </span>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 8,
+                                    fontSize: 12,
+                                    color: COLORS.textSecondary,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <Clock
+                                      size={14}
+                                      style={{ flexShrink: 0 }}
+                                    />
+                                    <span>
+                                      Assigned{" "}
+                                      {new Date(
+                                        assignment.assigned_at
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  {assignment.completed_at && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                      }}
+                                    >
+                                      <CheckCircle
+                                        size={14}
+                                        style={{ flexShrink: 0 }}
+                                        color="#059669"
+                                      />
+                                      <span style={{ color: "#059669" }}>
+                                        Completed{" "}
+                                        {new Date(
+                                          assignment.completed_at
+                                        ).toLocaleDateString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer - Fixed */}
+              {!loadingAssignments && assignments.length > 0 && (
+                <div
+                  style={{
+                    padding: "20px 32px",
+                    borderTop: `1px solid ${COLORS.borderColor}`,
+                    backgroundColor: "#fafafa",
+                    flexShrink: 0,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                    Showing {assignments.length} assessment
+                    {assignments.length !== 1 ? "s" : ""}
+                  </div>
+                  <button
+                    style={{
+                      ...styles.btnPrimary,
+                      backgroundColor: COLORS.primary,
+                    }}
+                    onClick={() => setViewAssignmentsOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
         )}
-      </Modal>
 
       {/* TOAST NOTIFICATION */}
       {toast && (
