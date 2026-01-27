@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 
 # Models
-from .models import User, Company, Recruitee, Invite, Department
+from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment
 
 User = get_user_model()
 
@@ -23,10 +23,7 @@ class SignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         company_name = validated_data.pop("company_name")
         password = validated_data.pop("password")
-
-        # create or reuse company
         company, _ = Company.objects.get_or_create(name=company_name)
-
         user = User(
             **validated_data,
             company=company,
@@ -37,7 +34,6 @@ class SignupSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-
 # --------------------------
 # Recruitee Serializer
 # --------------------------
@@ -47,19 +43,15 @@ class RecruiteeSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
-
 # --------------------------
-# HR Creates Invite (✅ UPDATED)
+# HR Creates Invite
 # --------------------------
 class InviteCreateSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source="company.name", read_only=True)
-    
-    # We accept the ID from the frontend grid selector
     department_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Invite
-        # Added department_id to fields
         fields = ["id", "email", "department", "department_id", "first_name", "last_name", "company_name"]
         read_only_fields = ["id", "created_at", "department"] 
 
@@ -70,34 +62,28 @@ class InviteCreateSerializer(serializers.ModelSerializer):
         if user.role != User.Roles.HR:
             raise serializers.ValidationError("Only HR can create invites.")
 
-        # Logic: Look up the department Name based on the ID provided
-        dept_name = User.Departments.HR # Default fallback
+        dept_name = User.Departments.HR 
         
         if dept_id:
             try:
                 dept_obj = Department.objects.get(id=dept_id, company=user.company)
-                dept_name = dept_obj.name # We save the Name string to the Invite
+                dept_name = dept_obj.name 
             except Department.DoesNotExist:
                 raise serializers.ValidationError({"department_id": "Invalid department selection."})
         
-        # Explicitly assign fields
         validated_data["department"] = dept_name
         validated_data["company"] = user.company
 
         return Invite.objects.create(created_by=user, **validated_data)
 
-
 # --------------------------
 # Employee Accepts Invite
 # --------------------------
 class AcceptInviteSerializer(serializers.Serializer):
-    # Inputs (write-only)
     token = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
     last_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    
-    # Output
     email = serializers.EmailField(read_only=True)
 
     def validate_password(self, value):
@@ -106,27 +92,22 @@ class AcceptInviteSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         raw = (attrs.get("token") or "").strip()
-
         try:
             tok = str(UUID(raw))
         except ValueError:
             raise serializers.ValidationError({"token": "Invalid token format."})
-
         try:
             invite = Invite.objects.get(id=tok)
         except Invite.DoesNotExist:
             raise serializers.ValidationError({"token": "Invite not found."})
-
         if invite.is_accepted:
             raise serializers.ValidationError({"token": "Invite already used."})
-
         attrs["invite"] = invite
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         invite: Invite = validated_data["invite"]
-
         user = User.objects.create_user(
             email=invite.email,
             password=validated_data["password"],
@@ -136,12 +117,9 @@ class AcceptInviteSerializer(serializers.Serializer):
             role=User.Roles.EMPLOYEE,
             company=invite.company,
         )
-
         invite.is_accepted = True
         invite.save(update_fields=["is_accepted"])
-
         return {"email": user.email}
-
 
 # --------------------------
 # Current User (Me)
@@ -156,68 +134,111 @@ class UserMeSerializer(serializers.ModelSerializer):
             "nationality", "marital_status", "company",
         ]
 
-
 # --------------------------
 # User List
 # --------------------------
 class UserListSerializer(serializers.ModelSerializer):
     company = serializers.CharField(source="company.name", read_only=True)
-    last_assessment = serializers.SerializerMethodField()
-    latest_risk = serializers.SerializerMethodField()
-
+    
     class Meta:
         model = User
-        fields = [
-            "id", "email", "first_name", "last_name", "role",
-            "department", "is_active", "last_assessment",
-            "latest_risk", "company",
-        ]
-
-    def get_last_assessment(self, obj):
-        from assessments.models import Assignment
-        qs = getattr(obj, "assignments", None)
-        if not qs: return None
-        latest = qs.filter(status=Assignment.Status.COMPLETED).order_by("-completed_at").first()
-        return latest.completed_at.isoformat() if (latest and latest.completed_at) else None
-
-    def get_latest_risk(self, obj):
-        from assessments.models import Assignment
-        qs = getattr(obj, "assignments", None)
-        if not qs: return 0
-        a = qs.filter(status=Assignment.Status.COMPLETED).order_by("-completed_at").first() or \
-            qs.order_by("-assigned_at").first()
-        if not a: return 0
-
-        metrics = getattr(a, "metrics", None)
-        if isinstance(metrics, dict):
-            risk = metrics.get("risk", None)
-            if isinstance(risk, (int, float)): return int(risk)
-            
-            quadrant = metrics.get("quadrant")
-            if isinstance(quadrant, str):
-                mapping = { "highStrain": 80, "active": 50, "passive": 40, "lowStrain": 20 }
-                return int(mapping.get(quadrant, 0))
-            
-            dims = metrics.get("dim")
-            if isinstance(dims, dict):
-                d = dims.get("D", 0); c = dims.get("C", 0)
-                if d >= 60 and c < 60: return 70
-                if d >= 60 and c >= 60: return 50
-                if d < 60 and c < 60: return 40
-                return 25
-            
-            burnout = metrics.get("burnout")
-            if isinstance(burnout, dict):
-                exh = burnout.get("exhaustion", 0)
-                return int(exh) if isinstance(exh, (int, float)) else 0
-        return 0
-
+        fields = ["id", "email", "first_name", "last_name", "role", "department", "is_active", "company"]
 
 # --------------------------
-# Department Serializer (✅ Added Icon)
+# Department Serializer
 # --------------------------
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ['id', 'name', 'description', 'icon', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+# --------------------------
+# Survey & Question Serializers
+# --------------------------
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = ['id', 'text', 'order']
+        read_only_fields = ['id']
+
+# accounts/serializers.py
+
+class SurveyCreateSerializer(serializers.ModelSerializer):
+    questions = QuestionSerializer(many=True, required=False)
+    audience = serializers.JSONField(write_only=True)
+    
+    # ✅ NEW: Calculate how many people received it
+    recipient_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Survey
+        # ✅ ADD 'created_at' and 'recipient_count' here
+        fields = [
+            'id', 'title', 'method', 'response_type', 
+            'scheduled_for', 'survey_file', 'questions', 
+            'audience', 'created_at', 'recipient_count'
+        ]
+
+    def get_recipient_count(self, obj):
+        # Counts how many assignments exist for this survey
+        return obj.assignments.count()
+
+    @transaction.atomic
+    def create(self, validated_data):
+        # ... (Keep your existing create logic exactly as it is) ...
+        questions_data = validated_data.pop('questions', [])
+        audience_data = validated_data.pop('audience', {})
+        user = self.context['request'].user
+
+        survey = Survey.objects.create(
+            company=user.company,
+            created_by=user,
+            **validated_data
+        )
+
+        if survey.method == 'manual':
+            for index, q_data in enumerate(questions_data):
+                Question.objects.create(
+                    survey=survey,
+                    text=q_data.get('text'),
+                    order=index
+                )
+
+        target_users = self._get_target_users(user.company, audience_data)
+        
+        assignments = []
+        for target_user in target_users:
+            assignments.append(Assignment(
+                survey=survey,
+                user=target_user,
+                status=Assignment.Status.PENDING
+            ))
+        
+        Assignment.objects.bulk_create(assignments, ignore_conflicts=True)
+
+        return survey
+
+    def _get_target_users(self, company, audience):
+        # ... (Keep your existing logic) ...
+        audience_type = audience.get('type', 'all')
+        selected_ids = audience.get('selected', []) 
+        
+        base_employees = User.objects.filter(
+            company=company, 
+            role=User.Roles.EMPLOYEE, 
+            is_active=True
+        )
+
+        if audience_type == 'all':
+            return base_employees
+        elif audience_type == 'departments':
+            dept_names = Department.objects.filter(
+                id__in=selected_ids, 
+                company=company
+            ).values_list('name', flat=True)
+            return base_employees.filter(department__in=dept_names)
+        elif audience_type == 'specific' or audience_type == 'employees':
+            return base_employees.filter(id__in=selected_ids)
+            
+        return base_employees.none()

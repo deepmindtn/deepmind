@@ -199,7 +199,6 @@ class Recruitee(models.Model):
     
     @property
     def is_active(self):
-        # Required by DRF
         return True
 
 
@@ -210,9 +209,117 @@ class Department(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="departments")
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
-    # 👇 NEW FIELD
     icon = models.CharField(max_length=50, default="Layers", blank=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+class Survey(models.Model):
+    """
+    The main container for a survey (formerly Assessment).
+    """
+    class ResponseType(models.TextChoices):
+        NAMED = 'named', 'Named'
+        ANONYMOUS = 'anonymous', 'Anonymous'
+
+    class Method(models.TextChoices):
+        MANUAL = 'manual', 'Manual Builder'
+        UPLOAD = 'upload', 'File Upload'
+
+    title = models.CharField(max_length=255, default="New Survey")
+    
+    # Ownership
+    company = models.ForeignKey(
+        'Company', 
+        on_delete=models.CASCADE, 
+        related_name='company_surveys'
+    )
+    created_by = models.ForeignKey(
+        'User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='created_surveys'
+    )
+    
+    # Configuration
+    method = models.CharField(max_length=20, choices=Method.choices, default=Method.MANUAL)
+    response_type = models.CharField(max_length=20, choices=ResponseType.choices, default=ResponseType.NAMED)
+    
+    # For file uploads
+    survey_file = models.FileField(upload_to='surveys/', null=True, blank=True)
+    
+    # Scheduling
+    scheduled_for = models.DateTimeField(null=True, blank=True, help_text="If null, sent immediately")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.company.name}"
+
+
+class Question(models.Model):
+    # Linked to Survey instead of Assessment
+    survey = models.ForeignKey(
+        Survey, 
+        on_delete=models.CASCADE, 
+        related_name='questions'
+    )
+    text = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+    question_type = models.CharField(max_length=50, default='text') 
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.order}. {self.text[:50]}..."
+
+
+class Assignment(models.Model):
+    """
+    Connects a User (Employee) to a Survey.
+    """
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        COMPLETED = 'completed', 'Completed'
+        EXPIRED = 'expired', 'Expired'
+
+    # Linked to Survey
+    survey = models.ForeignKey(
+        Survey, 
+        on_delete=models.CASCADE, 
+        related_name='assignments'
+    )
+    user = models.ForeignKey(
+        'User', 
+        on_delete=models.CASCADE, 
+        related_name='survey_assignments'
+    )
+    
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('survey', 'user') 
+
+    def __str__(self):
+        return f"{self.user.email} -> {self.survey.title} ({self.status})"
+
+
+class Response(models.Model):
+    assignment = models.ForeignKey(
+        Assignment, 
+        on_delete=models.CASCADE, 
+        related_name='responses'
+    )
+    question = models.ForeignKey(
+        Question, 
+        on_delete=models.CASCADE, 
+        related_name='responses'
+    )
+    answer_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Response to Q{self.question.order}"

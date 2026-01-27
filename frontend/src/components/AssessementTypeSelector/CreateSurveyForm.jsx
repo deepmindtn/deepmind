@@ -9,9 +9,15 @@ import {
   Target,
   Layout,
   Calendar,
-  Send,
   CheckCircle2,
-  XCircle,
+  Loader2,
+  X,
+  AlertCircle,
+  List,
+  ChevronDown,
+  ChevronUp,
+  Users,
+  HelpCircle
 } from "lucide-react";
 import AudienceSelector from "./AudienceSelector";
 import ScheduleSender from "./ScheduleSender";
@@ -19,30 +25,21 @@ import ResponseOptions from "./ResponseOptions";
 import UploadSurveyFile from "./UploadSurveyFile";
 
 // -----------------------
-// Theme Constants (Synchronized across all dashboards)
+// Theme Constants
 // -----------------------
 const COLORS = {
   primary: "var(--primary)",
-  primaryLight: "var(--primary-light)",
+  primaryLight: "var(--primary-light)", // Light purple background
   primaryDark: "var(--primary-dark)",
   secondary: "var(--secondary)",
-  blue: "var(--blue)",
-  blueLight: "var(--blue-light)",
-  purple: "var(--purple)",
-  purpleLight: "var(--purple-light)",
-  orange: "var(--orange)",
-  orangeLight: "var(--orange-light)",
   red: "var(--red)",
-  dark: "var(--dark)",
+  green: "#10b981",
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
   textSecondary: "var(--text-secondary)",
   textMuted: "var(--text-muted)",
   borderColor: "var(--border-color)",
-  shadowSm: "var(--shadow-sm)",
-  shadowMd: "var(--shadow-md)",
-  shadowLg: "var(--shadow-lg)",
   shadowHuge: "var(--shadow-huge)",
 };
 
@@ -52,6 +49,7 @@ const styles = {
     backgroundColor: COLORS.bgMain,
     minHeight: "100vh",
     fontFamily: "'Inter', system-ui, sans-serif",
+    position: "relative",
   },
   mainWrapperCard: {
     backgroundColor: COLORS.cardBg,
@@ -60,6 +58,7 @@ const styles = {
     boxShadow: COLORS.shadowHuge,
     margin: "0 auto",
     padding: "48px",
+    minHeight: "80vh",
   },
   card: {
     backgroundColor: COLORS.cardBg,
@@ -101,6 +100,7 @@ const styles = {
     fontWeight: "600",
     fontSize: "16px",
     cursor: "pointer",
+    transition: "opacity 0.2s",
   },
   btnSecondary: {
     display: "flex",
@@ -115,6 +115,39 @@ const styles = {
     fontSize: "14px",
     cursor: "pointer",
   },
+  // New Styles for History Cards
+  historyGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+    gap: "24px",
+  },
+  historyCard: {
+    backgroundColor: "#fff",
+    borderRadius: "16px",
+    border: `1px solid ${COLORS.borderColor}`,
+    padding: "0",
+    overflow: "hidden",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    display: "flex",
+    flexDirection: "column",
+  },
+  historyHeader: {
+    padding: "20px",
+    borderBottom: `1px solid ${COLORS.borderColor}`,
+    backgroundColor: "#fafafa",
+  },
+  badge: (type) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 10px",
+    borderRadius: "20px",
+    fontSize: "11px",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    backgroundColor: type === 'manual' ? COLORS.primaryLight : "#FFF7ED",
+    color: type === 'manual' ? COLORS.primary : "#C2410C",
+    marginBottom: "12px"
+  }),
   choiceCard: (active) => ({
     flex: 1,
     display: "flex",
@@ -142,185 +175,172 @@ const styles = {
 
 const responsiveStyles = `
   @media (max-width: 1024px) {
-    .survey-builder-main-wrapper {
-      padding: 32px 24px !important;
-    }
-    .survey-builder-settings-grid {
-      grid-template-columns: 1fr !important;
-      gap: 20px !important;
-    }
-    .survey-builder-schedule-section {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 20px !important;
-    }
-    .survey-builder-schedule-container {
-      width: 100% !important;
-    }
+    .survey-builder-main-wrapper { padding: 32px 24px !important; }
+    .survey-builder-settings-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+    .survey-builder-schedule-section { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; }
+    .survey-builder-schedule-container { width: 100% !important; }
   }
-
   @media (max-width: 768px) {
-    .survey-builder-container {
-      padding: 5px 10px !important;
-    }
-    .survey-builder-main-wrapper {
-      padding: 24px 16px !important;
-      border-radius: 20px !important;
-    }
-    .survey-builder-header {
-      margin-bottom: 32px !important;
-    }
-    .survey-builder-header h1 {
-      font-size: 28px !important;
-    }
-    .survey-builder-header p {
-      font-size: 15px !important;
-    }
-    .survey-builder-choice-wrapper {
-      flex-direction: column !important;
-      gap: 16px !important;
-    }
-    .survey-builder-card {
-      padding: 20px !important;
-    }
-    .survey-builder-content-wrapper {
-      gap: 20px !important;
-    }
-    .survey-builder-btn-primary {
-      width: 100% !important;
-      padding: 12px 24px !important;
-      font-size: 15px !important;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .survey-builder-container {
-      padding: 5px 8px !important;
-    }
-    .survey-builder-main-wrapper {
-      padding: 20px 12px !important;
-      border-radius: 16px !important;
-    }
-    .survey-builder-header {
-      margin-bottom: 24px !important;
-    }
-    .survey-builder-header-title-wrapper {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 8px !important;
-    }
-    .survey-builder-header h1 {
-      font-size: 24px !important;
-    }
-    .survey-builder-header p {
-      font-size: 14px !important;
-    }
-    .survey-builder-icon-box {
-      padding: 8px !important;
-    }
-    .survey-builder-icon-box svg {
-      width: 20px !important;
-      height: 20px !important;
-    }
-    .survey-builder-choice-wrapper {
-      gap: 12px !important;
-    }
-    .survey-builder-choice-card {
-      padding: 20px !important;
-    }
-    .survey-builder-choice-card svg {
-      width: 24px !important;
-      height: 24px !important;
-    }
-    .survey-builder-choice-title {
-      font-size: 14px !important;
-    }
-    .survey-builder-choice-desc {
-      font-size: 11px !important;
-    }
-    .survey-builder-card {
-      padding: 16px !important;
-    }
-    .survey-builder-content-wrapper {
-      gap: 16px !important;
-    }
-    .survey-builder-label {
-      font-size: 13px !important;
-      margin-bottom: 10px !important;
-    }
-    .survey-builder-label svg {
-      width: 16px !important;
-      height: 16px !important;
-    }
-    .survey-builder-question-header {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 12px !important;
-      margin-bottom: 16px !important;
-    }
-    .survey-builder-btn-secondary {
-      padding: 8px 14px !important;
-      font-size: 13px !important;
-      width: 100%;
-    }
-    .survey-builder-btn-secondary svg {
-      width: 14px !important;
-      height: 14px !important;
-    }
-    .survey-builder-question-row {
-      padding: 12px !important;
-      gap: 8px !important;
-      margin-bottom: 10px !important;
-    }
-    .survey-builder-question-number {
-      font-size: 13px !important;
-      width: 25px !important;
-    }
-    .survey-builder-question-input {
-      font-size: 14px !important;
-      padding: 8px 12px !important;
-    }
-    .survey-builder-question-delete svg {
-      width: 16px !important;
-      height: 16px !important;
-    }
-    .survey-builder-upload-area {
-      padding: 30px 20px !important;
-    }
-    .survey-builder-schedule-header {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 8px !important;
-    }
-    .survey-builder-schedule-title {
-      font-size: 14px !important;
-    }
-    .survey-builder-schedule-desc {
-      font-size: 12px !important;
-    }
-    .survey-builder-schedule-inner {
-      padding: 12px 14px !important;
-    }
-    .survey-builder-btn-primary {
-      padding: 10px 20px !important;
-      font-size: 14px !important;
-    }
-    .survey-builder-btn-primary svg {
-      width: 18px !important;
-      height: 18px !important;
-    }
+    .survey-builder-container { padding: 5px 10px !important; }
+    .survey-builder-main-wrapper { padding: 24px 16px !important; border-radius: 20px !important; }
+    .survey-builder-header h1 { font-size: 28px !important; }
+    .survey-builder-choice-wrapper { flex-direction: column !important; gap: 16px !important; }
+    .survey-builder-btn-primary { width: 100% !important; }
+    .history-grid { grid-template-columns: 1fr !important; }
   }
 `;
+
+// --- Toast Component ---
+const Toast = ({ message, type, onClose }) => {
+  const isError = type === "error";
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: "24px",
+        right: "24px",
+        backgroundColor: isError ? "#FEF2F2" : "#ECFDF5",
+        border: `1px solid ${isError ? "#FECACA" : "#A7F3D0"}`,
+        color: isError ? "#991B1B" : "#065F46",
+        padding: "16px 20px",
+        borderRadius: "12px",
+        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        zIndex: 9999,
+        animation: "slideIn 0.3s ease-out",
+        maxWidth: "400px",
+      }}
+    >
+      {isError ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+      <span style={{ fontWeight: "500", fontSize: "14px" }}>{message}</span>
+      <button
+        onClick={onClose}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          marginLeft: "auto",
+          color: "inherit",
+          opacity: 0.7,
+        }}
+      >
+        <X size={16} />
+      </button>
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// --- Single Survey History Card ---
+// --- Single Survey History Card ---
+const SurveyHistoryCard = ({ survey }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  // ✅ Fix: Safe Date Formatting
+  const dateStr = survey.created_at 
+    ? new Date(survey.created_at).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric", hour: '2-digit', minute: '2-digit'
+      })
+    : "Just now";
+
+  // ✅ Fix: Use recipient_count from backend
+  const userCountLabel = survey.recipient_count 
+    ? `${survey.recipient_count} Recipients` 
+    : "All Users";
+
+  return (
+    <div style={styles.historyCard}>
+      <div style={styles.historyHeader}>
+        <span style={styles.badge(survey.method)}>
+          {survey.method === 'upload' ? <Upload size={10} style={{marginRight: 4}}/> : <Edit3 size={10} style={{marginRight: 4}}/>}
+          {survey.method}
+        </span>
+        <h3 style={{ margin: "0 0 8px 0", fontSize: "18px", fontWeight: "700", color: COLORS.textPrimary }}>
+          {survey.title}
+        </h3>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: COLORS.textSecondary }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={14} /> {dateStr}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* Display the correct count */}
+            <Users size={14} /> {userCountLabel}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "20px", borderTop: `1px solid ${COLORS.borderColor}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: expanded ? "16px" : "0" }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600', color: COLORS.textPrimary }}>
+            <HelpCircle size={16} color={COLORS.primary} /> 
+            {survey.questions ? survey.questions.length : 0} Questions
+          </div>
+          <button 
+            onClick={() => setExpanded(!expanded)}
+            style={{ 
+              background: 'none', border: 'none', cursor: 'pointer', 
+              color: COLORS.primary, fontWeight: '600', fontSize: '13px',
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}
+          >
+            {expanded ? "Hide" : "View"}
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+
+        {expanded && (
+          <div style={{ 
+            backgroundColor: "#f9fafb", 
+            borderRadius: "8px", 
+            padding: "12px",
+            display: "flex", 
+            flexDirection: "column", 
+            gap: "8px",
+            animation: "fadeIn 0.2s"
+          }}>
+            {survey.questions && survey.questions.map((q, idx) => (
+              <div key={idx} style={{ fontSize: "13px", color: COLORS.textSecondary, lineHeight: "1.4" }}>
+                <span style={{ fontWeight: "700", marginRight: "6px", color: COLORS.textPrimary }}>{idx + 1}.</span>
+                {q.text}
+              </div>
+            ))}
+            {(!survey.questions || survey.questions.length === 0) && (
+              <span style={{fontSize: "12px", color: COLORS.textMuted, fontStyle: "italic"}}>
+                File upload based survey.
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const CreateSurveyForm = () => {
   const API_BASE = "http://localhost:8080";
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
-  const [option, setOption] = useState("manual"); // 'upload' | 'manual'
+  // --- View State: 'create' or 'history' ---
+  const [view, setView] = useState("create"); 
+  const [historyList, setHistoryList] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // --- Create Form State ---
+  const [title, setTitle] = useState("");
+  const [option, setOption] = useState("manual");
   const [questions, setQuestions] = useState([{ id: Date.now(), text: "" }]);
   const [responseType, setResponseType] = useState("named");
   const [schedule, setSchedule] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // --- Dynamic Audience State ---
   const [audience, setAudience] = useState({ type: "all", selected: [] });
@@ -328,7 +348,15 @@ const CreateSurveyForm = () => {
   const [employees, setEmployees] = useState([]);
   const [loadingAudience, setLoadingAudience] = useState(true);
 
-  // --- Fetch Departments and Employees ---
+  // --- Auto-dismiss Toast ---
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // --- Fetch Audience Data ---
   useEffect(() => {
     async function fetchAudienceData() {
       setLoadingAudience(true);
@@ -337,18 +365,13 @@ const CreateSurveyForm = () => {
           fetch(`${API_BASE}/api/departments/`, { headers: authHeader }),
           fetch(`${API_BASE}/api/users/`, { headers: authHeader }),
         ]);
-
-        // Process Departments
         const depData = depRes.ok ? await depRes.json() : [];
         setDepartments(Array.isArray(depData) ? depData : []);
-
-        // Process Employees (Map to friendly format)
         const empData = empRes.ok ? await empRes.json() : [];
         if (Array.isArray(empData)) {
           const formattedEmployees = empData.map((u) => ({
             id: u.id,
-            name:
-              `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+            name: `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
             department: u.department || "No Department",
             email: u.email,
           }));
@@ -360,9 +383,23 @@ const CreateSurveyForm = () => {
         setLoadingAudience(false);
       }
     }
-
     fetchAudienceData();
   }, []);
+
+  // --- Fetch History Data when view changes ---
+  useEffect(() => {
+    if (view === "history") {
+      setLoadingHistory(true);
+      fetch(`${API_BASE}/api/surveys/create/`, { headers: authHeader }) // GET request
+        .then(res => {
+            if(!res.ok) throw new Error("Failed to fetch");
+            return res.json();
+        })
+        .then(data => setHistoryList(Array.isArray(data) ? data : []))
+        .catch(e => console.error(e))
+        .finally(() => setLoadingHistory(false));
+    }
+  }, [view]);
 
   // --- Question Handlers ---
   const handleAddQuestion = () =>
@@ -372,56 +409,175 @@ const CreateSurveyForm = () => {
   const handleRemoveQuestion = (id) =>
     setQuestions(questions.filter((q) => q.id !== id));
 
-  // --- Submit ---
-  const handleSubmit = () => {
-    console.log({ option, responseType, audience, schedule, questions });
-    alert("Survey Built & Dispatched Successfully!");
+  // --- Submit Logic ---
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      setToast({ message: "Please give your assessment a title.", type: "error" });
+      return;
+    }
+    if (option === "manual" && (questions.length === 0 || !questions[0].text.trim())) {
+      setToast({ message: "Please add at least one question.", type: "error" });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const formattedQuestions = questions.map((q, index) => ({
+      text: q.text,
+      order: index,
+    }));
+
+    const formattedSchedule = schedule ? new Date(schedule).toISOString() : null;
+
+    const payload = {
+      title: title,
+      method: option,
+      response_type: responseType,
+      scheduled_for: formattedSchedule,
+      questions: formattedQuestions,
+      audience: {
+        type: audience.type,
+        selected: audience.selected,
+      },
+    };
+
+    try {
+      const response = await fetch(`${API_BASE}/api/surveys/create/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setToast({ message: "Survey Created and Assigned Successfully!", type: "success" });
+        setTitle("");
+        setQuestions([{ id: Date.now(), text: "" }]);
+        // Switch to history view to see the new survey?
+        // setView("history"); 
+      } else {
+        const errorData = await response.json();
+        console.error("Error:", errorData);
+        setToast({ message: "Failed to create survey.", type: "error" });
+      }
+    } catch (error) {
+      console.error("Network Error:", error);
+      setToast({ message: "Network error occurred.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="survey-builder-container" style={styles.container}>
       <style>{responsiveStyles}</style>
 
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div
         className="survey-builder-main-wrapper"
         style={styles.mainWrapperCard}
       >
-        {/* Header */}
-        <div className="survey-builder-header" style={styles.sectionHeader}>
-          <div
-            className="survey-builder-header-title-wrapper"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "8px",
-            }}
-          >
+        {/* Header with Switcher */}
+        <div className="survey-builder-header" style={{...styles.sectionHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+          <div>
             <div
-              className="survey-builder-icon-box"
+              className="survey-builder-header-title-wrapper"
               style={{
-                padding: "10px",
-                backgroundColor: COLORS.primaryLight,
-                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "8px",
               }}
             >
-              <ClipboardList size={24} color={COLORS.primary} />
+              <div
+                className="survey-builder-icon-box"
+                style={{
+                  padding: "10px",
+                  backgroundColor: COLORS.primaryLight,
+                  borderRadius: "12px",
+                }}
+              >
+                <ClipboardList size={24} color={COLORS.primary} />
+              </div>
+              <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
+                {view === 'create' ? "Survey Builder" : "Survey History"}
+              </h1>
             </div>
-            <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
-              Survey Builder
-            </h1>
+            <p style={{ color: COLORS.textSecondary, fontSize: "16px", margin: 0 }}>
+              {view === 'create' 
+                ? "Design your custom assessment from scratch or upload a template."
+                : "View and manage all previously created assessments."}
+            </p>
           </div>
-          <p
-            style={{ color: COLORS.textSecondary, fontSize: "16px", margin: 0 }}
+
+          {/* Toggle View Button */}
+          <button
+            style={styles.btnSecondary}
+            onClick={() => setView(view === 'create' ? 'history' : 'create')}
           >
-            Design your custom assessment from scratch or upload a template.
-          </p>
+            {view === 'create' ? (
+                <> <List size={18} /> View History </>
+            ) : (
+                <> <Plus size={18} /> Create New </>
+            )}
+          </button>
         </div>
 
+        {/* ================= VIEW: HISTORY ================= */}
+        {view === 'history' && (
+            <div>
+                {loadingHistory ? (
+                    <div style={{textAlign: "center", padding: "40px", color: COLORS.textMuted}}>
+                        <Loader2 className="animate-spin" size={32} style={{margin: "0 auto 10px"}}/>
+                        Loading Surveys...
+                    </div>
+                ) : historyList.length === 0 ? (
+                    <div style={{textAlign: "center", padding: "60px", border: `2px dashed ${COLORS.borderColor}`, borderRadius: "16px"}}>
+                        <div style={{marginBottom: "16px", color: COLORS.textMuted}}>
+                            <ClipboardList size={48} style={{opacity: 0.3}} />
+                        </div>
+                        <h3 style={{color: COLORS.textPrimary}}>No Surveys Found</h3>
+                        <p style={{color: COLORS.textSecondary}}>You haven't created any assessments yet.</p>
+                    </div>
+                ) : (
+                    <div className="history-grid" style={styles.historyGrid}>
+                        {historyList.map(survey => (
+                            <SurveyHistoryCard key={survey.id} survey={survey} />
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
+
+        {/* ================= VIEW: CREATE FORM ================= */}
+        {view === 'create' && (
         <div
           className="survey-builder-content-wrapper"
           style={{ display: "flex", flexDirection: "column", gap: "24px" }}
         >
+          {/* Title Input */}
+          <div className="survey-builder-card" style={styles.card}>
+            <label className="survey-builder-label" style={styles.label}>
+              <Edit3 size={18} color={COLORS.primary} /> Assessment Title
+            </label>
+            <input
+              style={styles.input}
+              type="text"
+              placeholder="e.g. Q1 Employee Wellness Check"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
           {/* Methodology Choice */}
           <div
             className="survey-builder-choice-wrapper"
@@ -685,13 +841,26 @@ const CreateSurveyForm = () => {
           {/* Final Action */}
           <button
             className="survey-builder-btn-primary"
-            style={styles.btnPrimary}
+            style={{
+              ...styles.btnPrimary,
+              opacity: isSubmitting ? 0.7 : 1,
+              cursor: isSubmitting ? "not-allowed" : "pointer",
+            }}
             onClick={handleSubmit}
+            disabled={isSubmitting}
           >
-            <CheckCircle2 size={20} />
-            Launch Custom Survey
+            {isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin" size={20} /> Sending...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={20} /> Launch Custom Survey
+              </>
+            )}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

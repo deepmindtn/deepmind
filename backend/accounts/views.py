@@ -7,8 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import HttpResponse
-
-from .models import Recruitee, Invite, Department
+from rest_framework.generics import ListCreateAPIView
+# Models
+from .models import Recruitee, Invite, Department, Survey
 
 from .serializers import (
     SignupSerializer,
@@ -18,12 +19,13 @@ from .serializers import (
     RecruiteeSerializer,
     UserListSerializer,
     DepartmentSerializer,
+    SurveyCreateSerializer, # ✅ Correct Import
 )
 
 User = get_user_model()
 
 # --------------------------
-# ✅ 1. HR Permission Helper (MOVED TO TOP)
+# Permissions
 # --------------------------
 class IsHR(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -45,24 +47,20 @@ class RecruiteeListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get_queryset(self):
-        user = self.request.user
-        return Recruitee.objects.filter(company=user.company).order_by("-created_at")
+        return Recruitee.objects.filter(company=self.request.user.company).order_by("-created_at")
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, company=self.request.user.company)
 
 class RecruiteeDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    Handles GET (single), PUT (update), DELETE (remove) for a candidate.
-    """
     serializer_class = RecruiteeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsHR] # ✅ Now IsHR is defined
+    permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get_queryset(self):
         return Recruitee.objects.filter(company=self.request.user.company)
 
 # --------------------------
-# Invite Employee (Single - WITH EMAIL)
+# Invite Employee
 # --------------------------
 class InviteCreateView(generics.CreateAPIView):
     serializer_class = InviteCreateSerializer
@@ -74,7 +72,6 @@ class InviteCreateView(generics.CreateAPIView):
         invite = serializer.save()
 
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
-        # ✅ FIXED: Use .token (Secure UUID) instead of .id (PK)
         invite_link = f"{origin}/accept-invite?token={invite.id}" 
         
         email_sent = False
@@ -199,8 +196,7 @@ class ImportEmployeesView(APIView):
                     invite_instance = serializer.save()
                     added_count += 1
                     
-                    # ✅ FIXED: Use .token (Secure UUID) instead of .id
-                    token = str(invite_instance.token) 
+                    token = str(invite_instance.id) 
                     invite_link = f"{base_url}?token={token}"
                     
                     try:
@@ -248,7 +244,7 @@ class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Department.objects.filter(company=self.request.user.company)
 
 # --------------------------
-# Export Departments to CSV
+# Export Departments
 # --------------------------
 class ExportDepartmentsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
@@ -271,3 +267,14 @@ class ExportDepartmentsView(APIView):
             ])
 
         return response
+
+# --------------------------
+# Survey Views (✅ Corrected)
+# --------------------------
+class CreateSurveyView(ListCreateAPIView):  # <--- CHANGED FROM CreateAPIView
+    serializer_class = SurveyCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Allow filtering by company so they see their own surveys
+        return Survey.objects.filter(company=self.request.user.company).order_by('-created_at')
