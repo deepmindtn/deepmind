@@ -20,6 +20,11 @@ from .serializers import (
 
 User = get_user_model()
 
+from django.template import Template, Context
+from django.core.mail import EmailMultiAlternatives
+from accounts.models import EmailTemplate
+
+
 class AssignAssessmentView(generics.CreateAPIView):
     """
     HR: POST { "employee_email": "...", "template_codes": ["BIG_FIVE", "DISC"] }
@@ -28,92 +33,112 @@ class AssignAssessmentView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        # 1. Validate the incoming data
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data["employee_email"]
         codes = serializer.validated_data["template_codes"]
 
-        # 2. Check if Employee exists
+        # 1. Check employee
         try:
             employee = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response(
-                {"detail": f"Employee with email {email} not found."}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": f"Employee with email {email} not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        # 3. Get origin for email links
-        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
-        
-        # 4. Create Assignments Loop
+        origin = request.META.get("HTTP_ORIGIN") or "http://localhost:5173"
+
         assigned_count = 0
         errors = []
         email_errors = []
 
+        # 2. Load email template ONCE
+        try:
+            email_template = EmailTemplate.objects.get(
+                name="Assessment Assignment",
+                audience_type="employee",
+                status="active",
+            )
+        except EmailTemplate.DoesNotExist:
+            return Response(
+                {"detail": "Assessment Assignment email template not found or inactive."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # 3. Assignment loop
         for code in codes:
             try:
                 template = AssessmentTemplate.objects.get(code=code)
-                
-                # Check for duplicate pending assignment
-                if Assignment.objects.filter(
-                    employee=employee, 
-                    template=template, 
-                    status="PENDING"
-                ).exists():
-                    continue 
 
-                # Create assignment
+                if Assignment.objects.filter(
+                    employee=employee,
+                    template=template,
+                    status="PENDING",
+                ).exists():
+                    continue
+
                 assignment = Assignment.objects.create(
                     employee=employee,
                     template=template,
                     status="PENDING",
-                    assigned_by=request.user
+                    assigned_by=request.user,
                 )
                 assigned_count += 1
-                
-                # ✅ NEW: Send email notification
+
+                # 4. Send templated email
                 try:
                     assessment_link = f"{origin}/assessments/{assignment.id}"
-                    
-                    send_mail(
-                        subject=f"New Assessment Assigned: {template.name}",
-                        message=f"""Hi {employee.first_name or employee.email},
 
-You have been assigned a new assessment: {template.name}
+                    context = {
+                        "firstName": employee.first_name or employee.email,
+                        "assessmentTitle": template.name,
+                        "assessmentLink": assessment_link,
+                    }
 
-Please complete it at your earliest convenience by clicking the link below:
-{assessment_link}
-
-Best regards,
-HR Team
-""",
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[employee.email],
-                        fail_silently=False,
+                    subject = Template(email_template.subject).render(
+                        Context(context)
                     )
-                    print(f"✅ Email sent successfully to {employee.email} for {template.name}")
-                    
+                    html_body = Template(email_template.body).render(
+                        Context(context)
+                    )
+
+                    email_msg = EmailMultiAlternatives(
+                        subject=subject,
+                        body="Please view this email in HTML format.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[employee.email],
+                    )
+                    email_msg.attach_alternative(html_body, "text/html")
+                    email_msg.send()
+
+                    print(
+                        f"✅ Assessment email sent to {employee.email} ({template.name})"
+                    )
+
                 except Exception as email_error:
-                    email_errors.append(f"Failed to send email for '{template.name}': {str(email_error)}")
-                    print(f"❌ Email error for {employee.email}: {str(email_error)}")
-                    
+                    email_errors.append(
+                        f"Failed to send email for '{template.name}': {str(email_error)}"
+                    )
+                    print(
+                        f"❌ Email error for {employee.email}: {str(email_error)}"
+                    )
+
             except AssessmentTemplate.DoesNotExist:
                 errors.append(f"Template code '{code}' not found in database.")
             except Exception as e:
                 errors.append(f"Error assigning '{code}': {str(e)}")
 
-        # 5. Return Summary Response
         response_data = {
             "message": f"Successfully assigned {assigned_count} assessments.",
             "errors": errors if errors else None,
             "email_sent": len(email_errors) == 0,
         }
-        
+
         if email_errors:
             response_data["email_errors"] = email_errors
-            
+
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
@@ -1219,25 +1244,47 @@ from .serializers import CandidateAssignmentSerializer
 # Import candidate authentication
 from accounts.authentication import CandidateTokenAuthentication
 
+from django.template import Template, Context
+from django.core.mail import EmailMultiAlternatives
+from accounts.models import EmailTemplate
+from django.db import transaction
+
+
 # --------------------------
 # Assign Candidate Assessments (HR) ✅
 # --------------------------
 class AssignCandidateAssessmentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # HR JWT auth
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        candidate_emails = request.data.get("candidate_emails", []) 
+        candidate_emails = request.data.get("candidate_emails", [])
         template_codes = request.data.get("template_codes", [])
 
         if not candidate_emails or not template_codes:
-            return Response({"detail": "Candidate emails and templates are required."}, status=400)
+            return Response(
+                {"detail": "Candidate emails and templates are required."},
+                status=400,
+            )
 
         if isinstance(candidate_emails, str):
             candidate_emails = [candidate_emails]
 
+        origin = request.META.get("HTTP_ORIGIN") or "http://localhost:5173"
         assigned_count = 0
-        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         errors = []
+
+        # 1. Load email template ONCE
+        try:
+            email_template = EmailTemplate.objects.get(
+                name="Candidate Assessment Invitation",
+                audience_type="candidate",
+                status="active",
+            )
+        except EmailTemplate.DoesNotExist:
+            return Response(
+                {"detail": "Candidate Assessment Invitation email template not found or inactive."},
+                status=500,
+            )
 
         with transaction.atomic():
             for email in candidate_emails:
@@ -1250,30 +1297,55 @@ class AssignCandidateAssessmentView(APIView):
                 for code in template_codes:
                     try:
                         template = AssessmentTemplate.objects.get(code=code)
+
                         assignment, created = CandidateAssignment.objects.get_or_create(
                             recruitee=recruitee,
-                            template=template
+                            template=template,
                         )
-                        link = f"{origin}/take-assessment/{assignment.token}"
 
-                        send_mail(
-                            subject=f"Assessment Invitation: {template.name}",
-                            message=f"Hi {recruitee.first_name},\n\nPlease complete your {template.name} assessment using the link below:\n\n{link}",
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[email],
-                            fail_silently=False,
+                        assignment_link = f"{origin}/take-assessment/{assignment.token}"
+
+                        # 2. Render email
+                        context = {
+                            "firstName": recruitee.first_name or "Candidate",
+                            "templateName": template.name,
+                            "assignmentLink": assignment_link,
+                        }
+
+                        subject = Template(email_template.subject).render(
+                            Context(context)
                         )
+                        html_body = Template(email_template.body).render(
+                            Context(context)
+                        )
+
+                        # 3. Send HTML email
+                        email_msg = EmailMultiAlternatives(
+                            subject=subject,
+                            body="Please view this email in HTML format.",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            to=[email],
+                        )
+                        email_msg.attach_alternative(html_body, "text/html")
+                        email_msg.send()
+
                         assigned_count += 1
+                        print(
+                            f"✅ Candidate email sent to {email} ({template.name})"
+                        )
 
                     except AssessmentTemplate.DoesNotExist:
                         errors.append(f"Template code '{code}' invalid.")
                     except Exception as e:
                         errors.append(f"Failed sending to {email}: {str(e)}")
+                        print(f"❌ Email error for {email}: {str(e)}")
 
-        return Response({
-            "message": f"Processed {assigned_count} assignments.",
-            "errors": errors,
-        })
+        return Response(
+            {
+                "message": f"Processed {assigned_count} assignments.",
+                "errors": errors,
+            }
+        )
 
 
 from rest_framework import generics, permissions
