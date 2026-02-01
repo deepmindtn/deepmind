@@ -2,7 +2,7 @@ import React from "react";
 import {
   Heart, Users, Home, ClipboardList, Bolt, Brain, 
   LogOut, User, ChevronLeft, ChevronRight,
-  Search, Briefcase, Zap
+  Search, Briefcase, Zap, FileText 
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Sidebar.css";
@@ -26,6 +26,8 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
 
   const employeeMenu = [
     { path: "/my-assessments", label: "My Growth", icon: ClipboardList },
+    // ✅ 2. Added the Survey Button here
+    { path: "/surveys", label: "My Surveys", icon: FileText }, 
     { path: "/wellbeing-techniques", label: "Well-Being", icon: Heart },
     { path: "/productivity-tools", label: "Focus Tools", icon: Bolt },
     { path: "/assesement-description", label: "Library", icon: Search },
@@ -48,28 +50,25 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
 
   return (
     <div className={`sidebar-island ${!isOpen ? "collapsed" : ""}`}>
-      {/* Integrated Toggle Button */}
       {!isMobile && (
         <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
       )}
 
-      {/* Logo Section */}
       <div className="sidebar-header">
-  <div className="logo-box-emerald">
-    <img
-      src="/icon_sidebar.png"
-      alt="DeepMind logo"
-      width={22}
-      height={22}
-      style={{ objectFit: "contain" }}
-    />
-  </div>
-  {isOpen && <span className="brand-name">DeepMind</span>}
-</div>
+        <div className="logo-box-emerald">
+          <img
+            src="/icon_sidebar.png"
+            alt="DeepMind logo"
+            width={22}
+            height={22}
+            style={{ objectFit: "contain" }}
+          />
+        </div>
+        {isOpen && <span className="brand-name">DeepMind</span>}
+      </div>
 
-      {/* Navigation */}
       <div className="sidebar-content">
         <nav className="nav-stack">
           {menuItems.map((item) => {
@@ -92,7 +91,6 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
         </nav>
       </div>
 
-      {/* Profile Card Section */}
       <div className="sidebar-footer">
         <div className={`profile-mini-card ${!isOpen ? "collapsed" : ""}`}>
           <div className="avatar-emerald" onClick={() => navigate("/profile")}>

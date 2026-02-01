@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import SignupView, InviteCreateView, AcceptInviteView, MeView, UsersListView,  RecruiteeListCreateView,ImportEmployeesView , DepartmentListCreateView, DepartmentDetailView , ExportDepartmentsView ,RecruiteeDetailView ,CreateSurveyView
+from .views import SignupView, InviteCreateView, AcceptInviteView, MeView, UsersListView,  RecruiteeListCreateView,ImportEmployeesView , DepartmentListCreateView, DepartmentDetailView , ExportDepartmentsView ,RecruiteeDetailView ,CreateSurveyView ,SurveyDetailView,EmployeeMySurveysView, EmployeeTakeSurveyView
 
 urlpatterns = [
     # Auth & profile
@@ -22,6 +22,10 @@ urlpatterns = [
     path("recruitment/candidates/", RecruiteeListCreateView.as_view(), name="recruitee-list-create"),
     path("recruitment/candidates/<int:pk>/", RecruiteeDetailView.as_view()), 
 
-    # Assessments
+    # Survey
     path("surveys/create/", CreateSurveyView.as_view(), name="survey-create"),
+    path("surveys/<int:pk>/", SurveyDetailView.as_view(), name="survey-detail"),
+    # Employee Survey Routes
+    path("employee/surveys/", EmployeeMySurveysView.as_view(), name="employee-surveys-list"),
+    path("employee/surveys/<int:pk>/take/", EmployeeTakeSurveyView.as_view(), name="employee-survey-take"),
 ]

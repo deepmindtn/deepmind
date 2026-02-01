@@ -40,3 +40,6 @@ numpy
 djangorestframework-simplejwt
 langchain_community==0.0.15
 PyPDF2
+
+# scheduler
+apscheduler

@@ -3,9 +3,11 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
 
 # Models
-from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment
+from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment,Response
 
 User = get_user_model()
 
@@ -162,18 +164,14 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = ['id', 'text', 'order']
         read_only_fields = ['id']
 
-# accounts/serializers.py
 
 class SurveyCreateSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, required=False)
-    audience = serializers.JSONField(write_only=True)
-    
-    # ✅ NEW: Calculate how many people received it
+    audience = serializers.JSONField(write_only=True) 
     recipient_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Survey
-        # ✅ ADD 'created_at' and 'recipient_count' here
         fields = [
             'id', 'title', 'method', 'response_type', 
             'scheduled_for', 'survey_file', 'questions', 
@@ -181,46 +179,80 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
         ]
 
     def get_recipient_count(self, obj):
-        # Counts how many assignments exist for this survey
         return obj.assignments.count()
 
     @transaction.atomic
     def create(self, validated_data):
-        # ... (Keep your existing create logic exactly as it is) ...
         questions_data = validated_data.pop('questions', [])
         audience_data = validated_data.pop('audience', {})
         user = self.context['request'].user
 
+        # 1. Check Schedule
+        scheduled_time = validated_data.get('scheduled_for')
+        
+        # If no time is picked, it means "Send Now", so we mark emails_sent=True immediately
+        # If time IS picked, we mark emails_sent=False
+        should_send_now = scheduled_time is None
+        
         survey = Survey.objects.create(
             company=user.company,
             created_by=user,
+            emails_sent=should_send_now, 
             **validated_data
         )
 
-        if survey.method == 'manual':
+        # 2. Create Questions (✅ UPDATED LOGIC)
+        # We process questions if they exist, regardless of method (manual or upload)
+        # The frontend now parses the file and sends the questions array for both methods.
+        if questions_data:
             for index, q_data in enumerate(questions_data):
-                Question.objects.create(
-                    survey=survey,
-                    text=q_data.get('text'),
-                    order=index
-                )
+                Question.objects.create(survey=survey, text=q_data.get('text'), order=index)
 
+        # 3. Create Assignments (Keep existing logic)
         target_users = self._get_target_users(user.company, audience_data)
-        
         assignments = []
         for target_user in target_users:
-            assignments.append(Assignment(
-                survey=survey,
-                user=target_user,
-                status=Assignment.Status.PENDING
-            ))
-        
+            assignments.append(Assignment(survey=survey, user=target_user, status=Assignment.Status.PENDING))
         Assignment.objects.bulk_create(assignments, ignore_conflicts=True)
+
+        # 4. Email Logic
+        if should_send_now:
+            # ✅ SEND IMMEDIATELY
+            self._send_emails(survey, target_users)
+        else:
+            # ✅ SKIP EMAIL (It will be handled by the background job later)
+            print(f"🕒 Survey '{survey.title}' scheduled for {scheduled_time}. Emails queued.")
 
         return survey
 
+    def _send_emails(self, survey, users):
+        """ Helper function to send emails """
+        print(f"📧 Sending emails for '{survey.title}'...")
+        frontend_url = "http://localhost:5173" # Or your domain
+        
+        for employee in users:
+            if employee.email:
+                try:
+                    send_mail(
+                        subject=f"New Survey Assigned: {survey.title}",
+                        message=(
+                            f"Hi {employee.first_name},\n\n"
+                            f"You have been assigned a new survey: '{survey.title}'.\n"
+                            "Please log in to your dashboard to complete the questions.\n\n"
+                            f"Click here: {frontend_url}\n\n"
+                            "Best regards,\nHR Team"
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[employee.email],
+                        fail_silently=True 
+                    )
+                except Exception as e:
+                    print(f"❌ Email failed: {e}")
+
     def _get_target_users(self, company, audience):
-        # ... (Keep your existing logic) ...
+        """
+        Logic to filter users based on Role=EMPLOYEE.
+        """
         audience_type = audience.get('type', 'all')
         selected_ids = audience.get('selected', []) 
         
@@ -232,13 +264,81 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
 
         if audience_type == 'all':
             return base_employees
+
         elif audience_type == 'departments':
             dept_names = Department.objects.filter(
                 id__in=selected_ids, 
                 company=company
             ).values_list('name', flat=True)
             return base_employees.filter(department__in=dept_names)
+        
         elif audience_type == 'specific' or audience_type == 'employees':
             return base_employees.filter(id__in=selected_ids)
             
         return base_employees.none()
+
+# ==========================================
+# ✅ NEW: Survey Detail & Response Serializers
+# ==========================================
+
+class ResponseDetailSerializer(serializers.ModelSerializer):
+    question_text = serializers.CharField(source='question.text', read_only=True)
+    
+    class Meta:
+        model = Response
+        fields = ['id', 'question_text', 'answer_text', 'created_at']
+
+class AssignmentDetailSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.SerializerMethodField() # ✅ Changed to MethodField
+    responses = ResponseDetailSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Assignment
+        fields = ['id', 'user_name', 'user_email', 'status', 'assigned_at', 'completed_at', 'responses']
+
+    def get_user_name(self, obj):
+        # ✅ Security: If anonymous, hide the name
+        if obj.survey.response_type == 'anonymous':
+            return "Anonymous User"
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+
+    def get_user_email(self, obj):
+        # ✅ Security: If anonymous, hide the email
+        if obj.survey.response_type == 'anonymous':
+            return None 
+        return obj.user.email
+
+class SurveyRetrieveSerializer(serializers.ModelSerializer):
+    assignments = AssignmentDetailSerializer(many=True, read_only=True)
+    questions = QuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Survey
+        fields = ['id', 'title', 'method', 'created_at', 'questions', 'assignments']
+
+
+class EmployeeAssignmentListSerializer(serializers.ModelSerializer):
+    survey_title = serializers.CharField(source='survey.title', read_only=True)
+    survey_method = serializers.CharField(source='survey.method', read_only=True)
+    # ✅ NEW: Add this field
+    survey_response_type = serializers.CharField(source='survey.response_type', read_only=True)
+    
+    class Meta:
+        model = Assignment
+        # ✅ Add 'survey_response_type' to fields
+        fields = ['id', 'survey_title', 'survey_method', 'survey_response_type', 'status', 'assigned_at', 'completed_at']
+
+class EmployeeSurveyTakeSerializer(serializers.ModelSerializer):
+    """ Used when an employee opens a survey to take it """
+    survey_title = serializers.CharField(source='survey.title', read_only=True)
+    questions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assignment
+        fields = ['id', 'survey_title', 'status', 'questions']
+
+    def get_questions(self, obj):
+        # Return questions linked to the Survey of this Assignment
+        questions = obj.survey.questions.all().order_by('order')
+        return QuestionSerializer(questions, many=True).data

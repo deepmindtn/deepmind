@@ -228,6 +228,7 @@ class Survey(models.Model):
         UPLOAD = 'upload', 'File Upload'
 
     title = models.CharField(max_length=255, default="New Survey")
+    emails_sent = models.BooleanField(default=False)
     
     # Ownership
     company = models.ForeignKey(

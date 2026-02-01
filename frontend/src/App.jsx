@@ -23,6 +23,7 @@ import Employees from "./pages/Employees";
 import Scheduling from "./pages/Scheduling";
 import SendAssessment from "./pages/Assessement/AssessementPage";
 import MyAssessments from "./pages/MyAssessments";
+import EmployeeSurveys from "./pages/EmployeeSurveys";
 
 // Assessment runners
 import BigFiveTest from "./pages/Assessement/BigFiveTest";
@@ -221,6 +222,16 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <WellbeingTechniques />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/surveys"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <EmployeeSurveys />
               </LayoutComponent>
             </ProtectedRoute>
           }
