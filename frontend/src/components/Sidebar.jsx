@@ -2,7 +2,7 @@ import React from "react";
 import {
   Heart, Users, Home, ClipboardList, Bolt, Brain, 
   LogOut, User, ChevronLeft, ChevronRight,
-  Search, Briefcase, Zap, FileText 
+  Search, Briefcase, Zap, FileText, Mail 
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Sidebar.css";
@@ -22,6 +22,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
     { path: "/departments", label: "Departments", icon: Briefcase }, 
     { path: "/recruitment", label: "AI Recruitment", icon: Brain },
     { path: "/assesement-description", label: "Library", icon: Search },
+    { path: "/email-templates", label: "Email Templates", icon: Mail },,
   ];
 
   const employeeMenu = [

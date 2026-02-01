@@ -324,3 +324,54 @@ class Response(models.Model):
 
     def __str__(self):
         return f"Response to Q{self.question.order}"
+    
+# --------------------------
+# Email Template model
+# --------------------------
+class EmailTemplate(models.Model):
+    """
+    Stores email templates for employees/candidates.
+    Can be used for surveys, assessments, or other notifications.
+    """
+    class Category(models.TextChoices):
+        ACCOUNT = "account", "Account"
+        ASSESSMENT = "assessment", "Assessment"
+        SURVEY = "survey", "Survey"
+
+    class Audience(models.TextChoices):
+        EMPLOYEE = "employee", "Employee"
+        CANDIDATE = "candidate", "Candidate"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+
+    name = models.CharField(max_length=255)
+    subject = models.TextField()
+    body = models.TextField()
+
+    category = models.CharField(max_length=20, choices=Category.choices)
+    audience_type = models.CharField(max_length=20, choices=Audience.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+
+    variables = models.JSONField(
+        default=dict, 
+        help_text="Allowed placeholders like {{firstName}}, {{surveyLink}}"
+    )
+
+    is_system = models.BooleanField(default=False, help_text="System templates cannot be deleted")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="email_templates",
+        help_text="Optional: Template specific to a company"
+    )
+
+    def __str__(self):
+        return f"{self.name} ({self.category} - {self.audience_type})"
