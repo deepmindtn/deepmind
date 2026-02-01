@@ -3,13 +3,26 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework import generics, permissions, status
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import HttpResponse
+from rest_framework.generics import ListCreateAPIView, RetrieveAPIView 
+from django.utils import timezone 
+from django.db.models import Q
 
-from .models import Recruitee, Invite, Department
+# ✅ RENAMED IMPORT TO AVOID CONFLICT
+from rest_framework.response import Response as APIResponse 
 
+# Models
+from .models import (
+    Recruitee, 
+    Invite, 
+    Department, 
+    Survey, 
+    Response, 
+    Question, 
+    Assignment  
+)
 from .serializers import (
     SignupSerializer,
     InviteCreateSerializer,
@@ -18,12 +31,16 @@ from .serializers import (
     RecruiteeSerializer,
     UserListSerializer,
     DepartmentSerializer,
+    SurveyCreateSerializer,
+    EmployeeAssignmentListSerializer,
+    EmployeeSurveyTakeSerializer,
+    SurveyRetrieveSerializer
 )
 
 User = get_user_model()
 
 # --------------------------
-# ✅ 1. HR Permission Helper (MOVED TO TOP)
+# Permissions
 # --------------------------
 class IsHR(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -45,24 +62,20 @@ class RecruiteeListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get_queryset(self):
-        user = self.request.user
-        return Recruitee.objects.filter(company=user.company).order_by("-created_at")
+        return Recruitee.objects.filter(company=self.request.user.company).order_by("-created_at")
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, company=self.request.user.company)
 
 class RecruiteeDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    Handles GET (single), PUT (update), DELETE (remove) for a candidate.
-    """
     serializer_class = RecruiteeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsHR] # ✅ Now IsHR is defined
+    permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get_queryset(self):
         return Recruitee.objects.filter(company=self.request.user.company)
 
 # --------------------------
-# Invite Employee (Single - WITH EMAIL)
+# Invite Employee
 # --------------------------
 class InviteCreateView(generics.CreateAPIView):
     serializer_class = InviteCreateSerializer
@@ -74,7 +87,6 @@ class InviteCreateView(generics.CreateAPIView):
         invite = serializer.save()
 
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
-        # ✅ FIXED: Use .token (Secure UUID) instead of .id (PK)
         invite_link = f"{origin}/accept-invite?token={invite.id}" 
         
         email_sent = False
@@ -102,7 +114,7 @@ class InviteCreateView(generics.CreateAPIView):
         if not email_sent:
             response_data['email_error'] = email_error_msg
 
-        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+        return APIResponse(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
 # --------------------------
 # Accept Invite
@@ -118,14 +130,14 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(UserMeSerializer(request.user).data)
+        return APIResponse(UserMeSerializer(request.user).data)
 
     def patch(self, request):
         serializer = UserMeSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return APIResponse(serializer.data)
+        return APIResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # --------------------------
 # Employees List
@@ -147,14 +159,14 @@ class ImportEmployeesView(APIView):
     def post(self, request, *args, **kwargs):
         file_obj = request.FILES.get('file')
         if not file_obj:
-            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+            return APIResponse({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             decoded_file = file_obj.read().decode('utf-8-sig').splitlines()
             reader = csv.DictReader(decoded_file)
             reader.fieldnames = [h.strip() for h in reader.fieldnames] 
         except Exception as e:
-            return Response({"error": f"CSV Read Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            return APIResponse({"error": f"CSV Read Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         dept_map = {
             "Sales": "sales", "HR": "hr", "Finance": "finance",
@@ -199,8 +211,7 @@ class ImportEmployeesView(APIView):
                     invite_instance = serializer.save()
                     added_count += 1
                     
-                    # ✅ FIXED: Use .token (Secure UUID) instead of .id
-                    token = str(invite_instance.token) 
+                    token = str(invite_instance.id) 
                     invite_link = f"{base_url}?token={token}"
                     
                     try:
@@ -222,7 +233,7 @@ class ImportEmployeesView(APIView):
                 err_msg = "; ".join([f"{k}: {v[0]}" for k, v in serializer.errors.items()])
                 errors.append(f"Skipped {email}: {err_msg}")
 
-        return Response({
+        return APIResponse({
             "message": f"Successfully created {added_count} invites.",
             "errors": errors
         }, status=status.HTTP_201_CREATED)
@@ -248,7 +259,7 @@ class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Department.objects.filter(company=self.request.user.company)
 
 # --------------------------
-# Export Departments to CSV
+# Export Departments
 # --------------------------
 class ExportDepartmentsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
@@ -271,3 +282,92 @@ class ExportDepartmentsView(APIView):
             ])
 
         return response
+
+# --------------------------
+# Survey Views
+# --------------------------
+class CreateSurveyView(ListCreateAPIView):
+    serializer_class = SurveyCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Survey.objects.filter(company=self.request.user.company).order_by('-created_at')
+
+class SurveyDetailView(RetrieveAPIView):
+    serializer_class = SurveyRetrieveSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Survey.objects.all()
+
+    def get_queryset(self):
+        return Survey.objects.filter(company=self.request.user.company)
+
+# ==========================================
+# Employee Survey Views
+# ==========================================
+
+class EmployeeMySurveysView(generics.ListAPIView):
+    serializer_class = EmployeeAssignmentListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        now = timezone.now()
+        
+        # ✅ Filter Logic:
+        # 1. Assignment belongs to user
+        # 2. AND (Survey is not scheduled OR Schedule time has passed)
+        return Assignment.objects.filter(
+            user=self.request.user
+        ).filter(
+            Q(survey__scheduled_for__isnull=True) | 
+            Q(survey__scheduled_for__lte=now)
+        ).order_by('-assigned_at')
+
+class EmployeeTakeSurveyView(APIView):
+    """ GET questions & POST answers """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            assignment = Assignment.objects.get(id=pk, user=request.user)
+            serializer = EmployeeSurveyTakeSerializer(assignment)
+            return APIResponse(serializer.data) # ✅ Used APIResponse
+        except Assignment.DoesNotExist:
+            return APIResponse({"error": "Survey not found or access denied."}, status=404)
+
+    def post(self, request, pk):
+        try:
+            assignment = Assignment.objects.get(id=pk, user=request.user)
+            
+            if assignment.status == Assignment.Status.COMPLETED:
+                return APIResponse({"error": "You have already completed this survey."}, status=400)
+
+            answers_data = request.data.get('answers', [])
+            
+            if not answers_data:
+                return APIResponse({"error": "No answers provided."}, status=400)
+
+            # Save Responses
+            for item in answers_data:
+                q_id = item.get('question_id')
+                text = item.get('text')
+                
+                try:
+                    question = Question.objects.get(id=q_id, survey=assignment.survey)
+                    # ✅ This now uses the correctly imported Response model
+                    Response.objects.create(
+                        assignment=assignment,
+                        question=question,
+                        answer_text=text
+                    )
+                except Question.DoesNotExist:
+                    continue 
+
+            # Mark Assignment as Completed
+            assignment.status = Assignment.Status.COMPLETED
+            assignment.completed_at = timezone.now() # ✅ Now timezone is defined
+            assignment.save()
+
+            return APIResponse({"message": "Survey submitted successfully!"}, status=200)
+
+        except Assignment.DoesNotExist:
+            return APIResponse({"error": "Survey not found."}, status=404)

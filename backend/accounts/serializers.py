@@ -3,9 +3,11 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
 
 # Models
-from .models import User, Company, Recruitee, Invite, Department
+from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment,Response
 
 User = get_user_model()
 
@@ -23,10 +25,7 @@ class SignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         company_name = validated_data.pop("company_name")
         password = validated_data.pop("password")
-
-        # create or reuse company
         company, _ = Company.objects.get_or_create(name=company_name)
-
         user = User(
             **validated_data,
             company=company,
@@ -37,7 +36,6 @@ class SignupSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-
 # --------------------------
 # Recruitee Serializer
 # --------------------------
@@ -47,19 +45,15 @@ class RecruiteeSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
-
 # --------------------------
-# HR Creates Invite (✅ UPDATED)
+# HR Creates Invite
 # --------------------------
 class InviteCreateSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source="company.name", read_only=True)
-    
-    # We accept the ID from the frontend grid selector
     department_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Invite
-        # Added department_id to fields
         fields = ["id", "email", "department", "department_id", "first_name", "last_name", "company_name"]
         read_only_fields = ["id", "created_at", "department"] 
 
@@ -70,34 +64,28 @@ class InviteCreateSerializer(serializers.ModelSerializer):
         if user.role != User.Roles.HR:
             raise serializers.ValidationError("Only HR can create invites.")
 
-        # Logic: Look up the department Name based on the ID provided
-        dept_name = User.Departments.HR # Default fallback
+        dept_name = User.Departments.HR 
         
         if dept_id:
             try:
                 dept_obj = Department.objects.get(id=dept_id, company=user.company)
-                dept_name = dept_obj.name # We save the Name string to the Invite
+                dept_name = dept_obj.name 
             except Department.DoesNotExist:
                 raise serializers.ValidationError({"department_id": "Invalid department selection."})
         
-        # Explicitly assign fields
         validated_data["department"] = dept_name
         validated_data["company"] = user.company
 
         return Invite.objects.create(created_by=user, **validated_data)
 
-
 # --------------------------
 # Employee Accepts Invite
 # --------------------------
 class AcceptInviteSerializer(serializers.Serializer):
-    # Inputs (write-only)
     token = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
     last_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    
-    # Output
     email = serializers.EmailField(read_only=True)
 
     def validate_password(self, value):
@@ -106,27 +94,22 @@ class AcceptInviteSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         raw = (attrs.get("token") or "").strip()
-
         try:
             tok = str(UUID(raw))
         except ValueError:
             raise serializers.ValidationError({"token": "Invalid token format."})
-
         try:
             invite = Invite.objects.get(id=tok)
         except Invite.DoesNotExist:
             raise serializers.ValidationError({"token": "Invite not found."})
-
         if invite.is_accepted:
             raise serializers.ValidationError({"token": "Invite already used."})
-
         attrs["invite"] = invite
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         invite: Invite = validated_data["invite"]
-
         user = User.objects.create_user(
             email=invite.email,
             password=validated_data["password"],
@@ -136,12 +119,9 @@ class AcceptInviteSerializer(serializers.Serializer):
             role=User.Roles.EMPLOYEE,
             company=invite.company,
         )
-
         invite.is_accepted = True
         invite.save(update_fields=["is_accepted"])
-
         return {"email": user.email}
-
 
 # --------------------------
 # Current User (Me)
@@ -156,68 +136,209 @@ class UserMeSerializer(serializers.ModelSerializer):
             "nationality", "marital_status", "company",
         ]
 
-
 # --------------------------
 # User List
 # --------------------------
 class UserListSerializer(serializers.ModelSerializer):
     company = serializers.CharField(source="company.name", read_only=True)
-    last_assessment = serializers.SerializerMethodField()
-    latest_risk = serializers.SerializerMethodField()
-
+    
     class Meta:
         model = User
-        fields = [
-            "id", "email", "first_name", "last_name", "role",
-            "department", "is_active", "last_assessment",
-            "latest_risk", "company",
-        ]
-
-    def get_last_assessment(self, obj):
-        from assessments.models import Assignment
-        qs = getattr(obj, "assignments", None)
-        if not qs: return None
-        latest = qs.filter(status=Assignment.Status.COMPLETED).order_by("-completed_at").first()
-        return latest.completed_at.isoformat() if (latest and latest.completed_at) else None
-
-    def get_latest_risk(self, obj):
-        from assessments.models import Assignment
-        qs = getattr(obj, "assignments", None)
-        if not qs: return 0
-        a = qs.filter(status=Assignment.Status.COMPLETED).order_by("-completed_at").first() or \
-            qs.order_by("-assigned_at").first()
-        if not a: return 0
-
-        metrics = getattr(a, "metrics", None)
-        if isinstance(metrics, dict):
-            risk = metrics.get("risk", None)
-            if isinstance(risk, (int, float)): return int(risk)
-            
-            quadrant = metrics.get("quadrant")
-            if isinstance(quadrant, str):
-                mapping = { "highStrain": 80, "active": 50, "passive": 40, "lowStrain": 20 }
-                return int(mapping.get(quadrant, 0))
-            
-            dims = metrics.get("dim")
-            if isinstance(dims, dict):
-                d = dims.get("D", 0); c = dims.get("C", 0)
-                if d >= 60 and c < 60: return 70
-                if d >= 60 and c >= 60: return 50
-                if d < 60 and c < 60: return 40
-                return 25
-            
-            burnout = metrics.get("burnout")
-            if isinstance(burnout, dict):
-                exh = burnout.get("exhaustion", 0)
-                return int(exh) if isinstance(exh, (int, float)) else 0
-        return 0
-
+        fields = ["id", "email", "first_name", "last_name", "role", "department", "is_active", "company"]
 
 # --------------------------
-# Department Serializer (✅ Added Icon)
+# Department Serializer
 # --------------------------
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ['id', 'name', 'description', 'icon', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+# --------------------------
+# Survey & Question Serializers
+# --------------------------
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = ['id', 'text', 'order']
+        read_only_fields = ['id']
+
+
+class SurveyCreateSerializer(serializers.ModelSerializer):
+    questions = QuestionSerializer(many=True, required=False)
+    audience = serializers.JSONField(write_only=True) 
+    recipient_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Survey
+        fields = [
+            'id', 'title', 'method', 'response_type', 
+            'scheduled_for', 'survey_file', 'questions', 
+            'audience', 'created_at', 'recipient_count'
+        ]
+
+    def get_recipient_count(self, obj):
+        return obj.assignments.count()
+
+    @transaction.atomic
+    def create(self, validated_data):
+        questions_data = validated_data.pop('questions', [])
+        audience_data = validated_data.pop('audience', {})
+        user = self.context['request'].user
+
+        # 1. Check Schedule
+        scheduled_time = validated_data.get('scheduled_for')
+        
+        # If no time is picked, it means "Send Now", so we mark emails_sent=True immediately
+        # If time IS picked, we mark emails_sent=False
+        should_send_now = scheduled_time is None
+        
+        survey = Survey.objects.create(
+            company=user.company,
+            created_by=user,
+            emails_sent=should_send_now, 
+            **validated_data
+        )
+
+        # 2. Create Questions (✅ UPDATED LOGIC)
+        # We process questions if they exist, regardless of method (manual or upload)
+        # The frontend now parses the file and sends the questions array for both methods.
+        if questions_data:
+            for index, q_data in enumerate(questions_data):
+                Question.objects.create(survey=survey, text=q_data.get('text'), order=index)
+
+        # 3. Create Assignments (Keep existing logic)
+        target_users = self._get_target_users(user.company, audience_data)
+        assignments = []
+        for target_user in target_users:
+            assignments.append(Assignment(survey=survey, user=target_user, status=Assignment.Status.PENDING))
+        Assignment.objects.bulk_create(assignments, ignore_conflicts=True)
+
+        # 4. Email Logic
+        if should_send_now:
+            # ✅ SEND IMMEDIATELY
+            self._send_emails(survey, target_users)
+        else:
+            # ✅ SKIP EMAIL (It will be handled by the background job later)
+            print(f"🕒 Survey '{survey.title}' scheduled for {scheduled_time}. Emails queued.")
+
+        return survey
+
+    def _send_emails(self, survey, users):
+        """ Helper function to send emails """
+        print(f"📧 Sending emails for '{survey.title}'...")
+        frontend_url = "http://localhost:5173" # Or your domain
+        
+        for employee in users:
+            if employee.email:
+                try:
+                    send_mail(
+                        subject=f"New Survey Assigned: {survey.title}",
+                        message=(
+                            f"Hi {employee.first_name},\n\n"
+                            f"You have been assigned a new survey: '{survey.title}'.\n"
+                            "Please log in to your dashboard to complete the questions.\n\n"
+                            f"Click here: {frontend_url}\n\n"
+                            "Best regards,\nHR Team"
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[employee.email],
+                        fail_silently=True 
+                    )
+                except Exception as e:
+                    print(f"❌ Email failed: {e}")
+
+    def _get_target_users(self, company, audience):
+        """
+        Logic to filter users based on Role=EMPLOYEE.
+        """
+        audience_type = audience.get('type', 'all')
+        selected_ids = audience.get('selected', []) 
+        
+        base_employees = User.objects.filter(
+            company=company, 
+            role=User.Roles.EMPLOYEE, 
+            is_active=True
+        )
+
+        if audience_type == 'all':
+            return base_employees
+
+        elif audience_type == 'departments':
+            dept_names = Department.objects.filter(
+                id__in=selected_ids, 
+                company=company
+            ).values_list('name', flat=True)
+            return base_employees.filter(department__in=dept_names)
+        
+        elif audience_type == 'specific' or audience_type == 'employees':
+            return base_employees.filter(id__in=selected_ids)
+            
+        return base_employees.none()
+
+# ==========================================
+# ✅ NEW: Survey Detail & Response Serializers
+# ==========================================
+
+class ResponseDetailSerializer(serializers.ModelSerializer):
+    question_text = serializers.CharField(source='question.text', read_only=True)
+    
+    class Meta:
+        model = Response
+        fields = ['id', 'question_text', 'answer_text', 'created_at']
+
+class AssignmentDetailSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.SerializerMethodField() # ✅ Changed to MethodField
+    responses = ResponseDetailSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Assignment
+        fields = ['id', 'user_name', 'user_email', 'status', 'assigned_at', 'completed_at', 'responses']
+
+    def get_user_name(self, obj):
+        # ✅ Security: If anonymous, hide the name
+        if obj.survey.response_type == 'anonymous':
+            return "Anonymous User"
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+
+    def get_user_email(self, obj):
+        # ✅ Security: If anonymous, hide the email
+        if obj.survey.response_type == 'anonymous':
+            return None 
+        return obj.user.email
+
+class SurveyRetrieveSerializer(serializers.ModelSerializer):
+    assignments = AssignmentDetailSerializer(many=True, read_only=True)
+    questions = QuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Survey
+        fields = ['id', 'title', 'method', 'created_at', 'questions', 'assignments']
+
+
+class EmployeeAssignmentListSerializer(serializers.ModelSerializer):
+    survey_title = serializers.CharField(source='survey.title', read_only=True)
+    survey_method = serializers.CharField(source='survey.method', read_only=True)
+    # ✅ NEW: Add this field
+    survey_response_type = serializers.CharField(source='survey.response_type', read_only=True)
+    
+    class Meta:
+        model = Assignment
+        # ✅ Add 'survey_response_type' to fields
+        fields = ['id', 'survey_title', 'survey_method', 'survey_response_type', 'status', 'assigned_at', 'completed_at']
+
+class EmployeeSurveyTakeSerializer(serializers.ModelSerializer):
+    """ Used when an employee opens a survey to take it """
+    survey_title = serializers.CharField(source='survey.title', read_only=True)
+    questions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assignment
+        fields = ['id', 'survey_title', 'status', 'questions']
+
+    def get_questions(self, obj):
+        # Return questions linked to the Survey of this Assignment
+        questions = obj.survey.questions.all().order_by('order')
+        return QuestionSerializer(questions, many=True).data

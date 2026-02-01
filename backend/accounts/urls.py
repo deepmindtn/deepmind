@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import SignupView, InviteCreateView, AcceptInviteView, MeView, UsersListView,  RecruiteeListCreateView,ImportEmployeesView , DepartmentListCreateView, DepartmentDetailView , ExportDepartmentsView ,RecruiteeDetailView
+from .views import SignupView, InviteCreateView, AcceptInviteView, MeView, UsersListView,  RecruiteeListCreateView,ImportEmployeesView , DepartmentListCreateView, DepartmentDetailView , ExportDepartmentsView ,RecruiteeDetailView ,CreateSurveyView ,SurveyDetailView,EmployeeMySurveysView, EmployeeTakeSurveyView
 
 urlpatterns = [
     # Auth & profile
@@ -18,7 +18,14 @@ urlpatterns = [
     path("invites/accept/", AcceptInviteView.as_view(), name="invite-accept"),
      path("users/", UsersListView.as_view(), name="users-list"),
 
+    # Recruitment
     path("recruitment/candidates/", RecruiteeListCreateView.as_view(), name="recruitee-list-create"),
-    path("recruitment/candidates/<int:pk>/", RecruiteeDetailView.as_view()), # <--- Add this line
+    path("recruitment/candidates/<int:pk>/", RecruiteeDetailView.as_view()), 
 
+    # Survey
+    path("surveys/create/", CreateSurveyView.as_view(), name="survey-create"),
+    path("surveys/<int:pk>/", SurveyDetailView.as_view(), name="survey-detail"),
+    # Employee Survey Routes
+    path("employee/surveys/", EmployeeMySurveysView.as_view(), name="employee-surveys-list"),
+    path("employee/surveys/<int:pk>/take/", EmployeeTakeSurveyView.as_view(), name="employee-survey-take"),
 ]
