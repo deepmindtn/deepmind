@@ -342,3 +342,25 @@ class EmployeeSurveyTakeSerializer(serializers.ModelSerializer):
         # Return questions linked to the Survey of this Assignment
         questions = obj.survey.questions.all().order_by('order')
         return QuestionSerializer(questions, many=True).data
+    
+from rest_framework import serializers
+from .models import EmailTemplate
+
+class EmailTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailTemplate
+        fields = [
+            "id",
+            "name",
+            "subject",
+            "body",
+            "category",
+            "audience_type",
+            "status",
+            "variables",
+            "is_system",
+            "created_at",
+            "updated_at",
+            "company",
+        ]
+        read_only_fields = ["id", "updated_at"]

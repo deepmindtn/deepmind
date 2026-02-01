@@ -21,7 +21,8 @@ from .models import (
     Survey, 
     Response, 
     Question, 
-    Assignment  
+    Assignment, 
+    EmailTemplate 
 )
 from .serializers import (
     SignupSerializer,
@@ -371,3 +372,12 @@ class EmployeeTakeSurveyView(APIView):
 
         except Assignment.DoesNotExist:
             return APIResponse({"error": "Survey not found."}, status=404)
+        
+from rest_framework import viewsets, permissions
+from .models import EmailTemplate
+from .serializers import EmailTemplateSerializer
+
+class EmailTemplateViewSet(viewsets.ModelViewSet):
+    queryset = EmailTemplate.objects.all()
+    serializer_class = EmailTemplateSerializer
+    permission_classes = [permissions.IsAuthenticated]  # Adjust if needed

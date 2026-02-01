@@ -24,6 +24,7 @@ import Scheduling from "./pages/Scheduling";
 import SendAssessment from "./pages/Assessement/AssessementPage";
 import MyAssessments from "./pages/MyAssessments";
 import EmployeeSurveys from "./pages/EmployeeSurveys";
+import EmailTemplates from "./pages/emailtemplates";
 
 // Assessment runners
 import BigFiveTest from "./pages/Assessement/BigFiveTest";
@@ -232,6 +233,16 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <EmployeeSurveys />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/email-templates"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <EmailTemplates />
               </LayoutComponent>
             </ProtectedRoute>
           }
