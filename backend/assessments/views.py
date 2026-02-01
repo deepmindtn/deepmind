@@ -28,7 +28,7 @@ class AssignAssessmentView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        # 1. Validate the incoming data (email + list of codes)
+        # 1. Validate the incoming data
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -44,36 +44,77 @@ class AssignAssessmentView(generics.CreateAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # 3. Create Assignments Loop
+        # 3. Get origin for email links
+        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
+        
+        # 4. Create Assignments Loop
         assigned_count = 0
         errors = []
+        email_errors = []
 
         for code in codes:
             try:
                 template = AssessmentTemplate.objects.get(code=code)
                 
-                # Check for duplicate pending assignment to prevent spamming
-                if Assignment.objects.filter(employee=employee, template=template, status="PENDING").exists():
+                # Check for duplicate pending assignment
+                if Assignment.objects.filter(
+                    employee=employee, 
+                    template=template, 
+                    status="PENDING"
+                ).exists():
                     continue 
 
-                Assignment.objects.create(
+                # Create assignment
+                assignment = Assignment.objects.create(
                     employee=employee,
                     template=template,
                     status="PENDING",
                     assigned_by=request.user
-                    # assigned_by=request.user # Uncomment if your model has this field
                 )
                 assigned_count += 1
+                
+                # ✅ NEW: Send email notification
+                try:
+                    assessment_link = f"{origin}/assessments/{assignment.id}"
+                    
+                    send_mail(
+                        subject=f"New Assessment Assigned: {template.name}",
+                        message=f"""Hi {employee.first_name or employee.email},
+
+You have been assigned a new assessment: {template.name}
+
+Please complete it at your earliest convenience by clicking the link below:
+{assessment_link}
+
+Best regards,
+HR Team
+""",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[employee.email],
+                        fail_silently=False,
+                    )
+                    print(f"✅ Email sent successfully to {employee.email} for {template.name}")
+                    
+                except Exception as email_error:
+                    email_errors.append(f"Failed to send email for '{template.name}': {str(email_error)}")
+                    print(f"❌ Email error for {employee.email}: {str(email_error)}")
+                    
             except AssessmentTemplate.DoesNotExist:
                 errors.append(f"Template code '{code}' not found in database.")
             except Exception as e:
                 errors.append(f"Error assigning '{code}': {str(e)}")
 
-        # 4. Return Summary Response
-        return Response({
+        # 5. Return Summary Response
+        response_data = {
             "message": f"Successfully assigned {assigned_count} assessments.",
-            "errors": errors if errors else None
-        }, status=status.HTTP_201_CREATED)
+            "errors": errors if errors else None,
+            "email_sent": len(email_errors) == 0,
+        }
+        
+        if email_errors:
+            response_data["email_errors"] = email_errors
+            
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 class MyAssignmentsView(generics.ListAPIView):
