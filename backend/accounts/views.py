@@ -78,6 +78,10 @@ class RecruiteeDetailView(generics.RetrieveUpdateDestroyAPIView):
 # --------------------------
 # Invite Employee
 # --------------------------
+from django.template import Template, Context
+from django.core.mail import EmailMultiAlternatives
+from accounts.models import EmailTemplate
+
 class InviteCreateView(generics.CreateAPIView):
     serializer_class = InviteCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -88,34 +92,64 @@ class InviteCreateView(generics.CreateAPIView):
         invite = serializer.save()
 
         origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
-        invite_link = f"{origin}/accept-invite?token={invite.id}" 
-        
+        invite_link = f"{origin}/accept-invite?token={invite.id}"
+
         email_sent = False
         email_error_msg = None
 
         try:
-            print(f"Sending single invite to {invite.email}...")
-            send_mail(
-                subject="You're invited to join DeepMind HR!",
-                message=f"Hi {invite.first_name},\n\nYou have been invited to join. Click here:\n\n{invite_link}\n\nBest regards,",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[invite.email],
-                fail_silently=False,
+            # 1️⃣ Load system email template
+            template = EmailTemplate.objects.get(
+                name="Welcome Email",
+                audience_type="employee",
+                status="active"
             )
+
+            # 2️⃣ Prepare context
+            context = {
+                "firstName": invite.first_name,
+                "companyName": invite.company.name if invite.company else "Deep Mind",
+                "inviteLink": invite_link,
+            }
+
+            # 3️⃣ Render subject & body
+            subject = Template(template.subject).render(Context(context))
+            html_body = Template(template.body).render(Context(context))
+
+            # 4️⃣ Send HTML email
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body="Please view this email in HTML format.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[invite.email],
+            )
+            email.attach_alternative(html_body, "text/html")
+            email.send()
+
             email_sent = True
+            print(f"✅ Invite email sent to {invite.email}")
+
+        except EmailTemplate.DoesNotExist:
+            email_error_msg = "Welcome Email template not found."
+            print("❌ Email template missing")
+
         except Exception as e:
-            print(f"Email failed: {e}")
             email_error_msg = str(e)
+            print(f"❌ Email failed: {e}")
 
         headers = self.get_success_headers(serializer.data)
         response_data = serializer.data
-        response_data['email_sent'] = email_sent
-        response_data['invite_link'] = invite_link
-        
-        if not email_sent:
-            response_data['email_error'] = email_error_msg
+        response_data["email_sent"] = email_sent
+        response_data["invite_link"] = invite_link
 
-        return APIResponse(response_data, status=status.HTTP_201_CREATED, headers=headers)
+        if not email_sent:
+            response_data["email_error"] = email_error_msg
+
+        return APIResponse(
+            response_data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
 # --------------------------
 # Accept Invite
@@ -153,41 +187,80 @@ class UsersListView(generics.ListAPIView):
 # --------------------------
 # CSV Import View
 # --------------------------
+from django.template import Template, Context
+from django.core.mail import EmailMultiAlternatives
+from accounts.models import EmailTemplate
+
 class ImportEmployeesView(APIView):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        file_obj = request.FILES.get('file')
+        file_obj = request.FILES.get("file")
         if not file_obj:
-            return APIResponse({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+            return APIResponse(
+                {"error": "No file provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # -------------------------
+        # Read CSV
+        # -------------------------
         try:
-            decoded_file = file_obj.read().decode('utf-8-sig').splitlines()
+            decoded_file = file_obj.read().decode("utf-8-sig").splitlines()
             reader = csv.DictReader(decoded_file)
-            reader.fieldnames = [h.strip() for h in reader.fieldnames] 
+            reader.fieldnames = [h.strip() for h in reader.fieldnames]
         except Exception as e:
-            return APIResponse({"error": f"CSV Read Error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            return APIResponse(
+                {"error": f"CSV Read Error: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # -------------------------
+        # Department mapping
+        # -------------------------
         dept_map = {
-            "Sales": "sales", "HR": "hr", "Finance": "finance",
-            "Operations": "operations", "Design": "design",
-            "Product": "product", "Other": "other"
+            "Sales": "sales",
+            "HR": "hr",
+            "Finance": "finance",
+            "Operations": "operations",
+            "Design": "design",
+            "Product": "product",
+            "Other": "other",
         }
 
-        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
+        origin = request.META.get("HTTP_ORIGIN") or "http://localhost:5173"
         base_url = f"{origin}/accept-invite"
 
         added_count = 0
         errors = []
 
-        for row in reader:
-            email = row.get('Email Address', '').strip()
-            first_name = row.get('First Name', '').strip()
-            last_name = row.get('Last Name', '').strip()
-            raw_dept = row.get('Department', '').strip()
+        # -------------------------
+        # Load email template ONCE
+        # -------------------------
+        try:
+            email_template = EmailTemplate.objects.get(
+                name="Welcome Email",
+                audience_type="employee",
+                status="active",
+            )
+        except EmailTemplate.DoesNotExist:
+            return APIResponse(
+                {"error": "Welcome Email template not found or inactive."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-            if not email: continue
+        # -------------------------
+        # Process CSV rows
+        # -------------------------
+        for row in reader:
+            email = row.get("Email Address", "").strip()
+            first_name = row.get("First Name", "").strip()
+            last_name = row.get("Last Name", "").strip()
+            raw_dept = row.get("Department", "").strip()
+
+            if not email:
+                continue
 
             if User.objects.filter(email=email).exists():
                 errors.append(f"Skipped {email}: User already registered.")
@@ -196,48 +269,87 @@ class ImportEmployeesView(APIView):
             if Invite.objects.filter(email=email).exists():
                 errors.append(f"Skipped {email}: Invite already sent/pending.")
                 continue
-            
-            department_key = dept_map.get(raw_dept)
-            if not department_key: department_key = raw_dept.lower() 
+
+            department_key = dept_map.get(raw_dept) or raw_dept.lower()
 
             invite_data = {
-                "email": email, "first_name": first_name,
-                "last_name": last_name, "department": department_key,
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "department": department_key,
             }
 
-            serializer = InviteCreateSerializer(data=invite_data, context={'request': request})
+            serializer = InviteCreateSerializer(
+                data=invite_data,
+                context={"request": request},
+            )
 
-            if serializer.is_valid():
-                try:
-                    invite_instance = serializer.save()
-                    added_count += 1
-                    
-                    token = str(invite_instance.id) 
-                    invite_link = f"{base_url}?token={token}"
-                    
-                    try:
-                        print(f"Sending invite to {email}")
-                        send_mail(
-                            subject="You're invited to join DeepMind HR!",
-                            message=f"Hi {first_name},\n\nYou have been invited to join. Link: {invite_link}",
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[email],
-                            fail_silently=False,
-                        )
-                    except Exception as email_error:
-                        print(f"Email failed: {email_error}")
-                        errors.append(f"Created {email} but failed to send email. Check SMTP settings.")
-
-                except Exception as e:
-                    errors.append(f"DB Error {email}: {str(e)}")
-            else:
-                err_msg = "; ".join([f"{k}: {v[0]}" for k, v in serializer.errors.items()])
+            if not serializer.is_valid():
+                err_msg = "; ".join(
+                    [f"{k}: {v[0]}" for k, v in serializer.errors.items()]
+                )
                 errors.append(f"Skipped {email}: {err_msg}")
+                continue
 
-        return APIResponse({
-            "message": f"Successfully created {added_count} invites.",
-            "errors": errors
-        }, status=status.HTTP_201_CREATED)
+            # -------------------------
+            # Create invite
+            # -------------------------
+            try:
+                invite = serializer.save()
+                added_count += 1
+
+                token = str(invite.id)
+                invite_link = f"{base_url}?token={token}"
+
+                # -------------------------
+                # Render email
+                # -------------------------
+                context = {
+                    "firstName": first_name,
+                    "companyName": invite.company.name
+                    if invite.company
+                    else "Deep Mind",
+                    "inviteLink": invite_link,
+                }
+
+                subject = Template(email_template.subject).render(
+                    Context(context)
+                )
+                html_body = Template(email_template.body).render(
+                    Context(context)
+                )
+
+                # -------------------------
+                # Send email
+                # -------------------------
+                try:
+                    email_msg = EmailMultiAlternatives(
+                        subject=subject,
+                        body="Please view this email in HTML format.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[email],
+                    )
+                    email_msg.attach_alternative(html_body, "text/html")
+                    email_msg.send()
+
+                    print(f"✅ Invite email sent to {email}")
+
+                except Exception as email_error:
+                    print(f"❌ Email failed for {email}: {email_error}")
+                    errors.append(
+                        f"Created {email} but failed to send email."
+                    )
+
+            except Exception as e:
+                errors.append(f"DB Error {email}: {str(e)}")
+
+        return APIResponse(
+            {
+                "message": f"Successfully created {added_count} invites.",
+                "errors": errors,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 # --------------------------
 # Department Views

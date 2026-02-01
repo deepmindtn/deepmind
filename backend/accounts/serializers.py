@@ -165,6 +165,12 @@ class QuestionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+from django.db import transaction
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template import Context, Template
+from rest_framework import serializers
+
 class SurveyCreateSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, required=False)
     audience = serializers.JSONField(write_only=True) 
@@ -185,13 +191,10 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         questions_data = validated_data.pop('questions', [])
         audience_data = validated_data.pop('audience', {})
-        user = self.context['request'].user
+        request = self.context.get('request')
+        user = request.user
 
-        # 1. Check Schedule
         scheduled_time = validated_data.get('scheduled_for')
-        
-        # If no time is picked, it means "Send Now", so we mark emails_sent=True immediately
-        # If time IS picked, we mark emails_sent=False
         should_send_now = scheduled_time is None
         
         survey = Survey.objects.create(
@@ -201,58 +204,71 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        # 2. Create Questions (✅ UPDATED LOGIC)
-        # We process questions if they exist, regardless of method (manual or upload)
-        # The frontend now parses the file and sends the questions array for both methods.
         if questions_data:
             for index, q_data in enumerate(questions_data):
                 Question.objects.create(survey=survey, text=q_data.get('text'), order=index)
 
-        # 3. Create Assignments (Keep existing logic)
         target_users = self._get_target_users(user.company, audience_data)
-        assignments = []
-        for target_user in target_users:
-            assignments.append(Assignment(survey=survey, user=target_user, status=Assignment.Status.PENDING))
+        assignments = [
+            Assignment(survey=survey, user=target_user, status=Assignment.Status.PENDING)
+            for target_user in target_users
+        ]
         Assignment.objects.bulk_create(assignments, ignore_conflicts=True)
 
-        # 4. Email Logic
         if should_send_now:
-            # ✅ SEND IMMEDIATELY
-            self._send_emails(survey, target_users)
+            # Pass request to helper to get the correct Domain/Origin
+            self._send_emails(survey, target_users, request)
         else:
-            # ✅ SKIP EMAIL (It will be handled by the background job later)
-            print(f"🕒 Survey '{survey.title}' scheduled for {scheduled_time}. Emails queued.")
+            print(f"🕒 Survey '{survey.title}' scheduled for {scheduled_time}.")
 
         return survey
 
-    def _send_emails(self, survey, users):
-        """ Helper function to send emails """
-        print(f"📧 Sending emails for '{survey.title}'...")
-        frontend_url = "http://localhost:5173" # Or your domain
+    def _send_emails(self, survey, users, request):
+        """ Renders the HTML template and sends emails to all target users """
+        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
         
+        try:
+            # 1. Fetch the template from the database
+            template_obj = EmailTemplate.objects.get(
+                name="Survey Assignment",
+                audience_type="employee",
+                status="active"
+            )
+        except EmailTemplate.DoesNotExist:
+            print("❌ Email template 'Survey Assignment' missing. Skipping emails.")
+            return
+
         for employee in users:
-            if employee.email:
-                try:
-                    send_mail(
-                        subject=f"New Survey Assigned: {survey.title}",
-                        message=(
-                            f"Hi {employee.first_name},\n\n"
-                            f"You have been assigned a new survey: '{survey.title}'.\n"
-                            "Please log in to your dashboard to complete the questions.\n\n"
-                            f"Click here: {frontend_url}\n\n"
-                            "Best regards,\nHR Team"
-                        ),
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[employee.email],
-                        fail_silently=True 
-                    )
-                except Exception as e:
-                    print(f"❌ Email failed: {e}")
+            if not employee.email:
+                continue
+
+            try:
+                # 2. Prepare dynamic context for each user
+                context_data = {
+                    "firstName": employee.first_name or "Employee",
+                    "surveyTitle": survey.title,
+                    "surveyLink": f"{origin}/surveys/{survey.id}",
+                }
+
+                # 3. Render Subject and Body
+                subject = Template(template_obj.subject).render(Context(context_data))
+                html_body = Template(template_obj.body).render(Context(context_data))
+
+                # 4. Create and Send Email
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=f"New Survey Assigned: {survey.title}. Please view in HTML.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[employee.email],
+                )
+                email.attach_alternative(html_body, "text/html")
+                email.send()
+                
+            except Exception as e:
+                print(f"❌ Failed to send email to {employee.email}: {str(e)}")
 
     def _get_target_users(self, company, audience):
-        """
-        Logic to filter users based on Role=EMPLOYEE.
-        """
+        # ... (Your existing filtering logic stays the same)
         audience_type = audience.get('type', 'all')
         selected_ids = audience.get('selected', []) 
         
@@ -264,15 +280,9 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
 
         if audience_type == 'all':
             return base_employees
-
         elif audience_type == 'departments':
-            dept_names = Department.objects.filter(
-                id__in=selected_ids, 
-                company=company
-            ).values_list('name', flat=True)
-            return base_employees.filter(department__in=dept_names)
-        
-        elif audience_type == 'specific' or audience_type == 'employees':
+            return base_employees.filter(department_id__in=selected_ids)
+        elif audience_type in ['specific', 'employees']:
             return base_employees.filter(id__in=selected_ids)
             
         return base_employees.none()
