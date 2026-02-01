@@ -267,3 +267,72 @@
 .profile-details {
   animation: fadeIn 0.3s ease-in-out;
 }
+
+.sidebar-section-separator {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  /* Faded slate */
+  margin-bottom: 8px;
+  margin-left: 12px;
+  font-weight: 700;
+}
+
+.section-divider {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 0 10px 10px 10px;
+  opacity: 0.5;
+}
+
+/* If sidebar is collapsed, hide the label but keep the divider */
+.collapsed .section-label {
+  display: none;
+}
+
+/* Sidebar Footer now acts as a container for bottom items */
+.sidebar-footer {
+  padding: 16px;
+  /* Reduced slightly to accommodate more items */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-system-section {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure bottom nav items look consistent with top ones */
+.bottom-nav {
+  margin-top: 4px;
+}
+
+/* Optional: Add a subtle separator if you want a line above the system menu */
+.sidebar-system-section::before {
+  content: "";
+  display: block;
+  height: 1px;
+  background: var(--border-color);
+  margin: 0 8px 16px 8px;
+  opacity: 0.6;
+}
+
+/* Adjustments for collapsed state in the footer */
+.collapsed .sidebar-system-section {
+  align-items: center;
+}
+
+.collapsed .sidebar-system-section .nav-link {
+  padding: 12px 0;
+  justify-content: center;
+}
