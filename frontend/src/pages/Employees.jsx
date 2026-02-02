@@ -109,6 +109,7 @@ const COLORS = {
   shadowMd: "var(--shadow-md)",
   shadowLg: "var(--shadow-lg)",
   shadowHuge: "var(--shadow-huge)",
+  tableRow: "var(--table-row)",
 };
 
 // -----------------------
@@ -664,7 +665,7 @@ export default function Employees() {
 
   async function assignAssessment() {
     console.log("🚀 assignAssessment triggered");
-  
+
     if (!assignForm.template_codes || assignForm.template_codes.length === 0) {
       console.warn("❌ No assessments selected");
       setToast({
@@ -673,19 +674,19 @@ export default function Employees() {
       });
       return;
     }
-  
+
     if (!assignRow) {
       console.error("❌ assignRow is null");
       return;
     }
-  
+
     const payload = {
       employee_email: assignRow.email,
       template_codes: assignForm.template_codes,
     };
-  
+
     console.log("📤 Sending payload:", payload);
-  
+
     try {
       const res = await fetch(`${API_BASE}/api/assessments/assign/`, {
         method: "POST",
@@ -695,23 +696,23 @@ export default function Employees() {
         },
         body: JSON.stringify(payload),
       });
-  
+
       console.log("📡 Response status:", res.status);
-  
+
       const data = await res.json().catch(() => null);
       console.log("📥 Response body:", data);
-  
+
       if (!res.ok) {
         throw new Error(data?.detail || "Failed to assign assessment");
       }
-  
+
       setToast({
         message: "Assessments assigned successfully!",
         type: "success",
       });
-  
+
       console.log("✅ Assignment success");
-  
+
       setAssignOpen(false);
       setAssignRow(null);
       setAssignForm({ template_codes: [] });
@@ -723,7 +724,6 @@ export default function Employees() {
       });
     }
   }
-  
 
   async function createInvite() {
     setIsInviting(true);
@@ -996,7 +996,8 @@ export default function Employees() {
             style={{
               ...styles.input,
               paddingLeft: "44px",
-              backgroundColor: "#fcfcfd",
+              backgroundColor: COLORS.cardBg,
+              color: COLORS.textPrimary,
             }}
             placeholder="Search employees by name, email, or role..."
             value={q}
@@ -1018,7 +1019,8 @@ export default function Employees() {
               ...styles.input,
               width: isMobile ? "100%" : "auto",
               padding: "10px 16px",
-              backgroundColor: "#fcfcfd",
+              backgroundColor: COLORS.cardBg,
+              color: COLORS.textPrimary,
             }}
             value={dep}
             onChange={(e) => setDep(e.target.value)}
@@ -1036,7 +1038,8 @@ export default function Employees() {
               ...styles.input,
               width: isMobile ? "100%" : "auto",
               padding: "10px 16px",
-              backgroundColor: "#fcfcfd",
+              backgroundColor: COLORS.cardBg,
+              color: COLORS.textPrimary,
             }}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
@@ -1066,7 +1069,6 @@ export default function Employees() {
               display: "flex",
               alignItems: "center",
               gap: "10px",
-              backgroundColor: "#fcfcfd",
             }}
           >
             <Users size={20} color={COLORS.primary} />
@@ -1207,7 +1209,7 @@ export default function Employees() {
                   textAlign: "left",
                 }}
               >
-                <thead style={{ backgroundColor: "#fafafa" }}>
+                <thead style={{ backgroundColor: COLORS.tableRow }}>
                   <tr>
                     {[
                       "Employee",
@@ -1589,10 +1591,10 @@ export default function Employees() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              backgroundColor: "#fff",
+              backgroundColor: COLORS.cardBg,
             }}
           >
-            <span>
+            <span style={{ color: COLORS.textPrimary }}>
               {assignForm.template_codes && assignForm.template_codes.length > 0
                 ? `${assignForm.template_codes.length} Assessment(s) Selected`
                 : "Select assessments..."}
@@ -1622,12 +1624,12 @@ export default function Employees() {
                     <div
                       style={{
                         padding: "8px 12px",
-                        backgroundColor: "#f9fafb",
+                        backgroundColor: COLORS.tableRow,
                         fontWeight: "bold",
                         fontSize: "12px",
-                        color: "#6b7280",
-                        borderBottom: "1px solid #f3f4f6",
-                        borderTop: "1px solid #f3f4f6",
+                        color: COLORS.textSecondary,
+                        borderBottom: `1px solid ${COLORS.tableRow}`,
+                        borderTop: `1px solid ${COLORS.tableRow}`,
                       }}
                     >
                       {group.group}
@@ -1646,7 +1648,9 @@ export default function Employees() {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            backgroundColor: isSelected ? "#eef2ff" : "white",
+                            backgroundColor: isSelected
+                              ? COLORS.primaryLight
+                              : COLORS.cardBg,
                             transition: "background-color 0.1s",
                           }}
                         >
@@ -1820,7 +1824,7 @@ export default function Employees() {
                               : `1px solid ${COLORS.borderColor}`,
                             background: isSelected
                               ? COLORS.primaryLight
-                              : "#fff",
+                              : COLORS.cardBg,
                             borderRadius: "10px",
                             padding: "10px",
                             cursor: "pointer",

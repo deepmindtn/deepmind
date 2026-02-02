@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState, useEffect, useCallback } from "react";
+import PropTypes from "prop-types";
 import Sidebar from "../Sidebar";
 import { Menu, Sun, Moon } from "lucide-react";
 
 const LayoutComponent = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  
+
   // --- Theme State ---
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark';
+    return localStorage.getItem("theme") === "dark";
   });
 
   useEffect(() => {
@@ -19,30 +19,41 @@ const LayoutComponent = ({ children }) => {
       if (!mobile) setIsSidebarOpen(true);
       else setIsSidebarOpen(false);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Sync theme with localStorage and Body class
   useEffect(() => {
     if (isDarkMode) {
-      document.body.classList.add('dark-theme'); // Apply here so Modals see it
+      document.body.classList.add("dark-theme"); // Apply here so Modals see it
     } else {
-      document.body.classList.remove('dark-theme');
+      document.body.classList.remove("dark-theme");
     }
   }, [isDarkMode]);
 
-  const toggleSidebar = useCallback(() => setIsSidebarOpen(prev => !prev), []);
-  const toggleTheme = () => setIsDarkMode(prev => !prev);
+  const toggleSidebar = useCallback(
+    () => setIsSidebarOpen((prev) => !prev),
+    []
+  );
+  const toggleTheme = () => setIsDarkMode((prev) => !prev);
 
   const SIDEBAR_LEFT_OFFSET = 14;
   const currentSidebarWidth = isSidebarOpen ? 280 : 88;
-  const dynamicMargin = isMobile ? 0 : (SIDEBAR_LEFT_OFFSET + currentSidebarWidth);
+  const dynamicMargin = isMobile
+    ? 0
+    : SIDEBAR_LEFT_OFFSET + currentSidebarWidth;
 
   return (
-    <div className={`dashboard-layout ${isDarkMode ? 'dark-theme' : ''}`} 
-         style={{ display: 'flex', backgroundColor: 'var(--bg-main)', minHeight: '100vh', transition: 'background-color 0.3s ease' }}>
-      
+    <div
+      className={`dashboard-layout ${isDarkMode ? "dark-theme" : ""}`}
+      style={{
+        display: "flex",
+        backgroundColor: "var(--bg-main)",
+        minHeight: "100vh",
+        transition: "background-color 0.3s ease",
+      }}
+    >
       <style>{`
         :root {
     /* Main Branding & Accents */
@@ -74,6 +85,9 @@ const LayoutComponent = ({ children }) => {
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     --shadow-huge: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+    /* Table rows*/ 
+    --table-row : #fafafa
   }
 
   .dark-theme {
@@ -103,6 +117,9 @@ const LayoutComponent = ({ children }) => {
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     --shadow-huge: 0 20px 25px -5px rgba(0, 0, 0, 0.8);
+
+     /* Table rows*/ 
+    --table-row : #0f172a
   }
 
         .theme-toggle-btn {
@@ -173,26 +190,31 @@ const LayoutComponent = ({ children }) => {
       `}</style>
 
       {/* Floating Mode Switcher */}
-      <button 
-        className="theme-toggle-btn" 
+      <button
+        className="theme-toggle-btn"
         onClick={toggleTheme}
         aria-label="Toggle Dark Mode"
       >
         {isDarkMode ? (
           <Sun size={20} className="sun-icon" fill="#fbbf24" color="#fbbf24" />
         ) : (
-          <Moon size={20} className="moon-icon" fill="#4b5563" color="#4b5563" />
+          <Moon
+            size={20}
+            className="moon-icon"
+            fill="#4b5563"
+            color="#4b5563"
+          />
         )}
       </button>
-      
+
       {isMobile && isSidebarOpen && (
         <div className="sidebar-overlay" onClick={toggleSidebar} />
       )}
 
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        toggleSidebar={toggleSidebar} 
-        isMobile={isMobile} 
+      <Sidebar
+        isOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        isMobile={isMobile}
         isDarkMode={isDarkMode} // Pass theme to sidebar if needed
       />
 
@@ -201,21 +223,21 @@ const LayoutComponent = ({ children }) => {
         style={{
           flex: 1,
           marginLeft: dynamicMargin,
-          transition: 'margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          minHeight: '100vh',
-          padding: isMobile ? '16px' : '24px',
-          paddingTop: isMobile ? '80px' : '24px',
-          boxSizing: 'border-box',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          color: 'var(--text-primary)' // Apply global text color
+          transition: "margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          minHeight: "100vh",
+          padding: isMobile ? "16px" : "24px",
+          paddingTop: isMobile ? "80px" : "24px",
+          boxSizing: "border-box",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          color: "var(--text-primary)", // Apply global text color
         }}
       >
         {isMobile && (
           <header className="mobile-top-nav">
-            <button 
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }} 
+            <button
+              style={{ background: "none", border: "none", cursor: "pointer" }}
               onClick={toggleSidebar}
             >
               <Menu size={24} color="#10b981" />
