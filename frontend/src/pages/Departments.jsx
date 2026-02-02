@@ -230,7 +230,7 @@ const Modal = ({ open, title, onClose, children, actions }) => {
     <div style={styles.modalOverlay} onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "800" }}>
+          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: COLORS.textPrimary }}>
             {title}
           </h3>
           <button
@@ -384,7 +384,7 @@ export default function Departments() {
         .header-flex { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 1px solid ${COLORS.borderColor}; padding-bottom: 40px; }
         .action-btns { display: flex; gap: 12px; }
         .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
-        .modal-container { background: #fff; border-radius: 20px; width: 100%; max-width: 500px; padding: 32px; box-shadow: ${COLORS.shadowHuge}; }
+        .modal-container { background:${COLORS.cardBg}; border-radius: 20px; width: 100%; max-width: 500px; padding: 32px; box-shadow: ${COLORS.shadowHuge}; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 32px; }
         .icon-selector { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; padding: 12px; max-height: 160px; overflow-y: auto; }
@@ -478,8 +478,8 @@ export default function Departments() {
               ...styles.input,
               paddingLeft: "48px",
               height: "48px",
-              backgroundColor: "#f1f5f9",
-              border: "none",
+              border: `1px solid ${COLORS.borderColor}`, // ✅ use template literal
+              backgroundColor: COLORS.cardBg,
             }}
             placeholder="Search departments..."
             value={q}
@@ -555,104 +555,152 @@ export default function Departments() {
       </div>
 
       <Modal
-        open={open}
-        title={isEditing ? "Edit Department" : "New Department"}
-        onClose={() => setOpen(false)}
-        actions={
-          <React.Fragment>
-            <button className="outline-btn" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-            <button className="emerald-btn" onClick={handleSubmit}>
-              {submitting ? "Saving..." : "Save"}
-            </button>
-          </React.Fragment>
-        }
+  open={open}
+  title={isEditing ? "Edit Department" : "New Department"}
+  onClose={() => setOpen(false)}
+  style={{ backgroundColor: COLORS.cardBg }} // entire modal bg
+  actions={
+    <>
+      <button
+        className="outline-btn"
+        style={{
+          color: COLORS.textPrimary,
+          borderColor: COLORS.borderColor,
+        }}
+        onClick={() => setOpen(false)}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        Cancel
+      </button>
+      <button
+        className="emerald-btn"
+        style={{
+          backgroundColor: COLORS.primary,
+          color: COLORS.textCard,
+        }}
+        onClick={handleSubmit}
+      >
+        {submitting ? "Saving..." : "Save"}
+      </button>
+    </>
+  }
+>
+  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div
+      style={{
+        border: `1px solid ${COLORS.borderColor}`,
+        borderRadius: "12px",
+        overflow: "hidden",
+        backgroundColor: COLORS.cardBg, // inner card bg
+      }}
+    >
+      <div
+        style={{
+          padding: "10px",
+          backgroundColor: COLORS.cardBg, // search header bg
+          borderBottom: `1px solid ${COLORS.borderColor}`,
+          display: "flex",
+          gap: "8px",
+        }}
+      >
+        <Search size={14} color={COLORS.textSecondary} />
+        <input
+          style={{
+            border: "none",
+            background: "none",
+            width: "100%",
+            color: COLORS.textPrimary,
+          }}
+          placeholder="Search icons..."
+          value={iconSearch}
+          onChange={(e) => setIconSearch(e.target.value)}
+        />
+      </div>
+      <div className="icon-selector">
+        {filteredIcons.map((key) => (
           <div
+            key={key}
+            onClick={() => setFormData({ ...formData, icon: key })}
             style={{
-              border: `1px solid ${COLORS.borderColor}`,
-              borderRadius: "12px",
-              overflow: "hidden",
+              cursor: "pointer",
+              width: "36px",
+              height: "36px",
+              display: "grid",
+              placeItems: "center",
+              borderRadius: "8px",
+              backgroundColor:
+                formData.icon === key ? COLORS.primary : COLORS.cardBg,
+              color: formData.icon === key ? "#fff" : COLORS.textMuted,
             }}
           >
-            <div
-              style={{
-                padding: "10px",
-                backgroundColor: "#f8fafc",
-                borderBottom: `1px solid ${COLORS.borderColor}`,
-                display: "flex",
-                gap: "8px",
-              }}
-            >
-              <Search size={14} />
-              <input
-                style={{ border: "none", background: "none", width: "100%" }}
-                placeholder="Search icons..."
-                value={iconSearch}
-                onChange={(e) => setIconSearch(e.target.value)}
-              />
-            </div>
-            <div className="icon-selector">
-              {filteredIcons.map((key) => (
-                <div
-                  key={key}
-                  onClick={() => setFormData({ ...formData, icon: key })}
-                  style={{
-                    cursor: "pointer",
-                    width: "36px",
-                    height: "36px",
-                    display: "grid",
-                    placeItems: "center",
-                    borderRadius: "8px",
-                    backgroundColor:
-                      formData.icon === key ? COLORS.primary : "transparent",
-                    color: formData.icon === key ? "#fff" : COLORS.textMuted,
-                  }}
-                >
-                  <DynamicIcon name={key} size={18} color="currentColor" />
-                </div>
-              ))}
-            </div>
+            <DynamicIcon name={key} size={18} color="currentColor" />
           </div>
-          <input
-            style={styles.input}
-            placeholder="Name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          />
-          <textarea
-            style={{ ...styles.input, height: "100px" }}
-            placeholder="Description"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-          />
-        </div>
-      </Modal>
+        ))}
+      </div>
+    </div>
 
-      <Modal
-        open={deleteOpen}
-        title="Delete?"
-        onClose={() => setDeleteOpen(false)}
-        actions={
-          <React.Fragment>
-            <button
-              className="outline-btn"
-              onClick={() => setDeleteOpen(false)}
-            >
-              No
-            </button>
-            <button className="danger-btn" onClick={handleDelete}>
-              Delete
-            </button>
-          </React.Fragment>
-        }
+    <input
+      style={{
+        ...styles.input,
+        backgroundColor: COLORS.cardBg,
+        color: COLORS.textPrimary,
+        border: `1px solid ${COLORS.borderColor}`,
+      }}
+      placeholder="Name"
+      value={formData.name}
+      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+    />
+    <textarea
+      style={{
+        ...styles.input,
+        backgroundColor: COLORS.cardBg,
+        color: COLORS.textPrimary,
+        border: `1px solid ${COLORS.borderColor}`,
+        height: "100px",
+      }}
+      placeholder="Description"
+      value={formData.description}
+      onChange={(e) =>
+        setFormData({ ...formData, description: e.target.value })
+      }
+    />
+  </div>
+</Modal>
+
+<Modal
+  open={deleteOpen}
+  title="Delete?"
+  onClose={() => setDeleteOpen(false)}
+  style={{ backgroundColor: COLORS.cardBg }} // entire modal bg
+  actions={
+    <>
+      <button
+        className="outline-btn"
+        style={{
+          color: COLORS.textPrimary,
+          borderColor: COLORS.borderColor,
+        }}
+        onClick={() => setDeleteOpen(false)}
       >
-        <p>This action cannot be undone.</p>
-      </Modal>
+        No
+      </button>
+      <button
+        className="danger-btn"
+        style={{
+          backgroundColor: COLORS.danger,
+          color: COLORS.textCard,
+        }}
+        onClick={handleDelete}
+      >
+        Delete
+      </button>
+    </>
+  }
+>
+  <p style={{ color: COLORS.textSecondary }}>
+    This action cannot be undone.
+  </p>
+</Modal>
+
 
       {toast && (
         <div

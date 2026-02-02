@@ -15,7 +15,7 @@ import {
   Copy,
   Loader2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 // -----------------------
@@ -241,11 +241,11 @@ const EmailTemplateManager = () => {
   const [editorMode, setEditorMode] = useState("code"); // 'code' or 'preview'
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // View State
   const [view, setView] = useState("list"); // 'list' or 'edit'
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  
+
   // Form State
   const [editFormData, setEditFormData] = useState({ subject: "", body: "" });
   const [isSaving, setIsSaving] = useState(false);
@@ -285,9 +285,9 @@ const EmailTemplateManager = () => {
         },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
+
       const data = await res.json();
-      
+
       const mappedTemplates = data.map((t) => ({
         id: t.id,
         name: t.name,
@@ -321,7 +321,7 @@ const EmailTemplateManager = () => {
     setSelectedTemplate(template);
     setEditFormData({
       subject: template.subject,
-      body: template.body
+      body: template.body,
     });
     setView("edit");
   };
@@ -371,27 +371,32 @@ const EmailTemplateManager = () => {
               subject: updatedBackendData.subject,
               body: updatedBackendData.body,
               description: updatedBackendData.subject,
-              lastUpdated: new Date(updatedBackendData.updated_at).toLocaleDateString()
+              lastUpdated: new Date(
+                updatedBackendData.updated_at
+              ).toLocaleDateString(),
             };
           }
           return t;
         })
       );
-      
+
       setSelectedTemplate((prev) => ({
-          ...prev,
-          subject: updatedBackendData.subject,
-          body: updatedBackendData.body,
-          lastUpdated: new Date(updatedBackendData.updated_at).toLocaleDateString()
+        ...prev,
+        subject: updatedBackendData.subject,
+        body: updatedBackendData.body,
+        lastUpdated: new Date(
+          updatedBackendData.updated_at
+        ).toLocaleDateString(),
       }));
 
       // SUCCESS TOAST
       showToast("Template saved successfully!", "success");
-
     } catch (err) {
       console.error(err);
       // ERROR TOAST
-      const errMsg = err.response?.data ? "Check your data inputs" : "Failed to save changes";
+      const errMsg = err.response?.data
+        ? "Check your data inputs"
+        : "Failed to save changes";
       showToast(errMsg, "error");
     } finally {
       setIsSaving(false);
@@ -399,8 +404,11 @@ const EmailTemplateManager = () => {
   };
 
   const filteredTemplates = templates.filter((t) => {
-    const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCat = selectedCategory === "All" || t.category === selectedCategory;
+    const matchesSearch = t.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesCat =
+      selectedCategory === "All" || t.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
 
@@ -408,174 +416,322 @@ const EmailTemplateManager = () => {
   // RENDER: Editor View
   // -----------------------
   // -----------------------
-// RENDER: Editor View
-// -----------------------
-if (view === "edit" && selectedTemplate) {
-  return (
-    <div style={styles.container}>
-      <style>{responsiveStyles}</style>
-      <div className="main-wrapper" style={styles.mainWrapperCard}>
-        {/* Editor Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: `1px solid ${COLORS.borderColor}`, paddingBottom: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <button onClick={handleGoBack} className="secondary-btn" style={{ padding: "8px 12px" }}>
-              <ArrowLeft size={18} /> Back
-            </button>
-            <div>
-              <div style={{ fontSize: "12px", fontWeight: "700", color: COLORS.textMuted, textTransform: "uppercase" }}>
-                Editing Template
+  // RENDER: Editor View
+  // -----------------------
+  if (view === "edit" && selectedTemplate) {
+    return (
+      <div style={styles.container}>
+        <style>{responsiveStyles}</style>
+        <div className="main-wrapper" style={styles.mainWrapperCard}>
+          {/* Editor Header */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "20px",
+              borderBottom: `1px solid ${COLORS.borderColor}`,
+              paddingBottom: "24px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <button
+                onClick={handleGoBack}
+                className="secondary-btn"
+                style={{
+                  padding: "8px 12px",
+                  backgroundColor: COLORS.cardBg, // button background
+                  color: COLORS.textPrimary, // text color
+                  border: `1px solid ${COLORS.borderColor}`, // border color
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                <ArrowLeft size={18} color={COLORS.textPrimary} /> Back
+              </button>
+              <div>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    color: COLORS.textMuted,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Editing Template
+                </div>
+                <h2
+                  style={{
+                    fontSize: "24px",
+                    fontWeight: "800",
+                    color: COLORS.textPrimary,
+                    margin: 0,
+                  }}
+                >
+                  {selectedTemplate.name}
+                </h2>
               </div>
-              <h2 style={{ fontSize: "24px", fontWeight: "800", color: COLORS.textPrimary, margin: 0 }}>
-                {selectedTemplate.name}
-              </h2>
+            </div>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                className="primary-btn"
+                onClick={handleSave}
+                disabled={isSaving}
+                style={{ opacity: isSaving ? 0.7 : 1 }}
+              >
+                {isSaving ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Save size={16} />
+                )}
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "12px" }}>
-            <button 
-              className="primary-btn" 
-              onClick={handleSave} 
-              disabled={isSaving}
-              style={{ opacity: isSaving ? 0.7 : 1 }}
+
+          {/* MODE TOGGLE TABS */}
+          <div
+            style={{
+              display: "flex",
+              gap: "0",
+              marginBottom: "24px",
+              borderBottom: `1px solid ${COLORS.borderColor}`,
+            }}
+          >
+            <button
+              onClick={() => setEditorMode("code")}
+              style={{
+                padding: "12px 24px",
+                borderBottom:
+                  editorMode === "code"
+                    ? `2px solid ${COLORS.primary}`
+                    : "2px solid transparent",
+                color:
+                  editorMode === "code" ? COLORS.primary : COLORS.textSecondary,
+                fontWeight: "600",
+                background: "transparent",
+                borderTop: "none",
+                borderLeft: "none",
+                borderRight: "none",
+                cursor: "pointer",
+              }}
             >
-              {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              {isSaving ? "Saving..." : "Save Changes"}
+              Code Editor
+            </button>
+            <button
+              onClick={() => setEditorMode("preview")}
+              style={{
+                padding: "12px 24px",
+                borderBottom:
+                  editorMode === "preview"
+                    ? `2px solid ${COLORS.primary}`
+                    : "2px solid transparent",
+                color:
+                  editorMode === "preview"
+                    ? COLORS.primary
+                    : COLORS.textSecondary,
+                fontWeight: "600",
+                background: "transparent",
+                borderTop: "none",
+                borderLeft: "none",
+                borderRight: "none",
+                cursor: "pointer",
+              }}
+            >
+              Visual Preview
             </button>
           </div>
-        </div>
 
-        {/* MODE TOGGLE TABS */}
-        <div style={{ display: "flex", gap: "0", marginBottom: "24px", borderBottom: `1px solid ${COLORS.borderColor}` }}>
-          <button 
-            onClick={() => setEditorMode("code")}
-            style={{
-              padding: "12px 24px",
-              borderBottom: editorMode === "code" ? `2px solid ${COLORS.primary}` : "2px solid transparent",
-              color: editorMode === "code" ? COLORS.primary : COLORS.textSecondary,
-              fontWeight: "600",
-              background: "transparent",
-              borderTop: "none", borderLeft: "none", borderRight: "none",
-              cursor: "pointer"
-            }}
+          {/* Editor Layout */}
+          <div
+            className="editor-layout"
+            style={{ display: "flex", gap: "32px" }}
           >
-            Code Editor
-          </button>
-          <button 
-            onClick={() => setEditorMode("preview")}
-            style={{
-              padding: "12px 24px",
-              borderBottom: editorMode === "preview" ? `2px solid ${COLORS.primary}` : "2px solid transparent",
-              color: editorMode === "preview" ? COLORS.primary : COLORS.textSecondary,
-              fontWeight: "600",
-              background: "transparent",
-              borderTop: "none", borderLeft: "none", borderRight: "none",
-              cursor: "pointer"
-            }}
-          >
-            Visual Preview
-          </button>
-        </div>
-
-        {/* Editor Layout */}
-        <div className="editor-layout" style={{ display: "flex", gap: "32px" }}>
-          <div style={{ flex: 3 }}>
-            
-            {/* SUBJECT INPUT (Always Visible) */}
-            <div style={{marginBottom: "20px"}}>
-               <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: COLORS.textSecondary, fontSize: "14px" }}>
-                Email Subject
-              </label>
-              <input
-                name="subject"
-                value={editFormData.subject}
-                onChange={handleInputChange}
-                className="input-focus"
-                style={styles.editorInput}
-              />
-            </div>
-
-            {/* CONDITIONAL RENDER: CODE vs PREVIEW */}
-            {editorMode === "code" ? (
-              <>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: COLORS.textSecondary, fontSize: "14px" }}>
-                  HTML Code
+            <div style={{ flex: 3 }}>
+              {/* SUBJECT INPUT (Always Visible) */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "600",
+                    color: COLORS.textSecondary,
+                    fontSize: "14px",
+                  }}
+                >
+                  Email Subject
                 </label>
-                <textarea
-                  name="body"
-                  value={editFormData.body}
+                <input
+                  name="subject"
+                  value={editFormData.subject}
                   onChange={handleInputChange}
                   className="input-focus"
-                  style={{...styles.editorTextArea, fontFamily: "'Monaco', monospace", fontSize: "13px"}}
-                  placeholder="Paste your HTML here..."
-                />
-              </>
-            ) : (
-              <div style={{
-                border: `1px solid ${COLORS.borderColor}`,
-                borderRadius: "16px",
-                overflow: "hidden",
-                height: "600px",
-                backgroundColor: "#fff"
-              }}>
-                {/* We use an iframe to safely render the HTML so CSS doesn't bleed 
-                  into your React app 
-                */}
-                <iframe 
-                  title="email-preview"
-                  srcDoc={editFormData.body}
-                  style={{ width: "100%", height: "100%", border: "none" }}
+                  style={{
+                    ...styles.editorInput,
+                    backgroundColor: COLORS.cardBg,
+                    color: COLORS.textPrimary,
+                  }}
                 />
               </div>
-            )}
-          </div>
 
-          {/* Sidebar (Same as before) */}
-          <div className="editor-sidebar" style={{ flex: 1 }}>
-            <div style={{ backgroundColor: "#f8fafc", padding: "24px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}` }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "16px", color: COLORS.textPrimary, display: "flex", alignItems: "center", gap: "8px" }}>
-                <Zap size={16} color={COLORS.orange} />
-                Dynamic Variables
-              </h3>
-              <p style={{ fontSize: "13px", color: COLORS.textSecondary, marginBottom: "16px" }}>
-                Click to copy variables to clipboard.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {selectedTemplate.variables.map((v) => (
-                  <div
-                    key={v}
+              {/* CONDITIONAL RENDER: CODE vs PREVIEW */}
+              {editorMode === "code" ? (
+                <>
+                  <label
                     style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      backgroundColor: "white", padding: "10px 14px", borderRadius: "8px",
-                      border: `1px solid ${COLORS.borderColor}`, fontSize: "13px", fontFamily: "monospace", cursor: "pointer"
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "600",
+                      color: COLORS.textSecondary,
+                      fontSize: "14px",
                     }}
-                    className="secondary-btn"
-                    onClick={() => handleCopyVariable(v)}
                   >
-                    <span style={{ color: COLORS.primaryDark }}>{`{{${v}}}`}</span>
-                    <Copy size={12} color={COLORS.textMuted} />
-                  </div>
-                ))}
+                    HTML Code
+                  </label>
+                  <textarea
+                    name="body"
+                    value={editFormData.body}
+                    onChange={handleInputChange}
+                    className="input-focus"
+                    style={{
+                      ...styles.editorTextArea,
+                      backgroundColor: COLORS.cardBg,
+                      color: COLORS.textPrimary,
+                      fontFamily: "'Monaco', monospace",
+                      fontSize: "13px",
+                    }}
+                    placeholder="Paste your HTML here..."
+                  />
+                </>
+              ) : (
+                <div
+                  style={{
+                    border: `1px solid ${COLORS.borderColor}`,
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    height: "600px",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {/* We use an iframe to safely render the HTML so CSS doesn't bleed 
+                  into your React app 
+                */}
+                  <iframe
+                    title="email-preview"
+                    srcDoc={editFormData.body}
+                    style={{ width: "100%", height: "100%", border: "none" }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar (Same as before) */}
+            <div className="editor-sidebar" style={{ flex: 1 }}>
+              <div
+                style={{
+                  backgroundColor: COLORS.cardBg,
+                  padding: "24px",
+                  borderRadius: "16px",
+                  border: `1px solid ${COLORS.borderColor}`,
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "700",
+                    marginBottom: "16px",
+                    color: COLORS.textPrimary,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Zap size={16} color={COLORS.orange} />
+                  Dynamic Variables
+                </h3>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: COLORS.textSecondary,
+                    marginBottom: "16px",
+                  }}
+                >
+                  Click to copy variables to clipboard.
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  {selectedTemplate.variables.map((v) => (
+                    <div
+                      key={v}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        backgroundColor: "white",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: `1px solid ${COLORS.borderColor}`,
+                        fontSize: "13px",
+                        fontFamily: "monospace",
+                        cursor: "pointer",
+                      }}
+                      className="secondary-btn"
+                      onClick={() => handleCopyVariable(v)}
+                    >
+                      <span
+                        style={{ color: COLORS.primaryDark }}
+                      >{`{{${v}}}`}</span>
+                      <Copy size={12} color={COLORS.textMuted} />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* TOAST (Keep existing toast code) */}
-      {toast && (
-          <div style={{
-            position: "fixed", bottom: "24px", right: "24px", backgroundColor: "#fff",
-            padding: "16px", borderRadius: "12px", boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
-            border: `1px solid ${toast.type === "error" ? COLORS.red : COLORS.primary}`,
-            zIndex: 10001, display: "flex", alignItems: "center", gap: "12px",
-            fontWeight: "600", color: COLORS.textPrimary
-          }}>
-             {toast.type === "error" ? <AlertCircle size={20} color={COLORS.red} /> : <CheckCircle size={20} color={COLORS.primary} />}
-             {toast.message}
+        {/* TOAST (Keep existing toast code) */}
+        {toast && (
+          <div
+            style={{
+              position: "fixed",
+              bottom: "24px",
+              right: "24px",
+              backgroundColor: "#fff",
+              padding: "16px",
+              borderRadius: "12px",
+              boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
+              border: `1px solid ${
+                toast.type === "error" ? COLORS.red : COLORS.primary
+              }`,
+              zIndex: 10001,
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              fontWeight: "600",
+              color: COLORS.textPrimary,
+            }}
+          >
+            {toast.type === "error" ? (
+              <AlertCircle size={20} color={COLORS.red} />
+            ) : (
+              <CheckCircle size={20} color={COLORS.primary} />
+            )}
+            {toast.message}
           </div>
         )}
-    </div>
-  );
-}
+      </div>
+    );
+  }
 
   // -----------------------
   // RENDER: List View
@@ -585,23 +741,75 @@ if (view === "edit" && selectedTemplate) {
       <style>{responsiveStyles}</style>
       <div className="main-wrapper" style={styles.mainWrapperCard}>
         {/* Header */}
-        <div className="header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "48px", borderBottom: `1px solid ${COLORS.borderColor}`, paddingBottom: "40px" }}>
+        <div
+          className="header-flex"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            marginBottom: "48px",
+            borderBottom: `1px solid ${COLORS.borderColor}`,
+            paddingBottom: "40px",
+          }}
+        >
           <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "8px",
+              }}
+            >
               <div style={styles.iconBox(COLORS.primaryLight)}>
                 <LayoutTemplate size={24} color={COLORS.primary} />
               </div>
-              <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0, color: COLORS.textPrimary }}>Email Templates</h1>
+              <h1
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "800",
+                  margin: 0,
+                  color: COLORS.textPrimary,
+                }}
+              >
+                Email Templates
+              </h1>
             </div>
-            <p style={{ color: COLORS.textSecondary, fontSize: "16px", margin: 0, maxWidth: "600px" }}>
-              Manage, edit, and organize the automated emails sent by your application.
+            <p
+              style={{
+                color: COLORS.textSecondary,
+                fontSize: "16px",
+                margin: 0,
+                maxWidth: "600px",
+              }}
+            >
+              Manage, edit, and organize the automated emails sent by your
+              application.
             </p>
           </div>
           <div className="search-container" style={styles.searchWrapper}>
-            <Search size={18} color={COLORS.textMuted} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)" }} />
+            <Search
+              size={18}
+              color={COLORS.textMuted}
+              style={{
+                position: "absolute",
+                left: "16px",
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
+            />
             <input
               className="input-focus"
-              style={{ width: "100%", padding: "14px 16px 14px 48px", borderRadius: "14px", border: `1px solid ${COLORS.borderColor}`, fontSize: "15px", transition: "0.2s" }}
+              style={{
+                width: "100%",
+                padding: "14px 16px 14px 48px",
+                borderRadius: "14px",
+                backgroundColor: COLORS.cardBg,
+                color: COLORS.textPrimary,
+                border: `1px solid ${COLORS.borderColor}`,
+                fontSize: "15px",
+                transition: "0.2s",
+              }}
               placeholder="Search templates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -610,57 +818,195 @@ if (view === "edit" && selectedTemplate) {
         </div>
 
         {/* Stats & Filters */}
-        <div className="stats-container" style={{ display: "flex", gap: "24px", marginBottom: "40px", alignItems: "center" }}>
-          <div className="filters-scroll" style={{ display: "flex", gap: "8px", flex: 1, overflowX: "auto" }}>
+        <div
+          className="stats-container"
+          style={{
+            display: "flex",
+            gap: "24px",
+            marginBottom: "40px",
+            alignItems: "center",
+          }}
+        >
+          <div
+            className="filters-scroll"
+            style={{ display: "flex", gap: "8px", flex: 1, overflowX: "auto" }}
+          >
             {categories.map((cat) => (
-              <button key={cat} style={styles.pill(selectedCategory === cat)} onClick={() => setSelectedCategory(cat)}>
+              <button
+                key={cat}
+                style={styles.pill(selectedCategory === cat)}
+                onClick={() => setSelectedCategory(cat)}
+              >
                 {cat === "All" && <Filter size={14} />} {cat}
               </button>
             ))}
           </div>
-          <div style={{ display: "flex", backgroundColor: "#f1f5f9", borderRadius: "16px", padding: "4px", minWidth: "320px" }}>
-            <StatBadge value={templates.length} label="Total" color={COLORS.primary} />
+          <div
+            style={{
+              display: "flex",
+              backgroundColor: "#f1f5f9",
+              borderRadius: "16px",
+              padding: "4px",
+              minWidth: "320px",
+            }}
+          >
+            <StatBadge
+              value={templates.length}
+              label="Total"
+              color={COLORS.primary}
+            />
             <StatBadge value="12.5k" label="Sent (Mo)" color={COLORS.blue} />
             <StatBadge value="4" label="Drafts" color={COLORS.orange} />
           </div>
         </div>
 
         {/* Grid */}
-        <div className="template-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "24px" }}>
-          {loading && <div style={{gridColumn: "1/-1", textAlign:"center"}}>Loading...</div>}
-          {!loading && filteredTemplates.map((template) => (
-            <div key={template.id} className="hover-card" style={styles.card} onClick={() => handleEdit(template)}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-                <div style={{ display: "flex", gap: "12px" }}>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "10px", backgroundColor: COLORS.blueLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Mail size={20} color={COLORS.blue} />
-                  </div>
-                  <div><span style={styles.tag(template.status === "Active" ? "green" : "orange")}>{template.status}</span></div>
-                </div>
-                <button style={{ background: "transparent", border: "none", cursor: "pointer", color: COLORS.textMuted }}>
-                  <MoreHorizontal size={20} />
-                </button>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: COLORS.secondary, marginBottom: "6px", textTransform: "uppercase" }}>{template.category}</div>
-                <h3 style={{ fontSize: "19px", fontWeight: "800", color: COLORS.textPrimary, marginBottom: "10px", lineHeight: "1.3" }}>{template.name}</h3>
-                <p style={{ fontSize: "14px", color: COLORS.textSecondary, lineHeight: "1.6", marginBottom: "20px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{template.description}</p>
-              </div>
-              <div style={{ borderTop: `1px solid ${COLORS.borderColor}`, paddingTop: "16px", marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: COLORS.textMuted, fontWeight: "600" }}>
-                  <Clock size={12} /> {template.lastUpdated}
-                </div>
-                {template.status === "Active" && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: COLORS.primaryDark, fontWeight: "700" }}>
-                    <Send size={12} /> {template.openRate} Open Rate
-                  </div>
-                )}
-              </div>
+        <div
+          className="template-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
+            gap: "24px",
+          }}
+        >
+          {loading && (
+            <div style={{ gridColumn: "1/-1", textAlign: "center" }}>
+              Loading...
             </div>
-          ))}
+          )}
+          {!loading &&
+            filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className="hover-card"
+                style={styles.card}
+                onClick={() => handleEdit(template)}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "42px",
+                        height: "42px",
+                        borderRadius: "10px",
+                        backgroundColor: COLORS.blueLight,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Mail size={20} color={COLORS.blue} />
+                    </div>
+                    <div>
+                      <span
+                        style={styles.tag(
+                          template.status === "Active" ? "green" : "orange"
+                        )}
+                      >
+                        {template.status}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      color: COLORS.textMuted,
+                    }}
+                  >
+                    <MoreHorizontal size={20} />
+                  </button>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      color: COLORS.secondary,
+                      marginBottom: "6px",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {template.category}
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "19px",
+                      fontWeight: "800",
+                      color: COLORS.textPrimary,
+                      marginBottom: "10px",
+                      lineHeight: "1.3",
+                    }}
+                  >
+                    {template.name}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: COLORS.textSecondary,
+                      lineHeight: "1.6",
+                      marginBottom: "20px",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {template.description}
+                  </p>
+                </div>
+                <div
+                  style={{
+                    borderTop: `1px solid ${COLORS.borderColor}`,
+                    paddingTop: "16px",
+                    marginTop: "8px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      fontSize: "12px",
+                      color: COLORS.textMuted,
+                      fontWeight: "600",
+                    }}
+                  >
+                    <Clock size={12} /> {template.lastUpdated}
+                  </div>
+                  {template.status === "Active" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontSize: "12px",
+                        color: COLORS.primaryDark,
+                        fontWeight: "700",
+                      }}
+                    >
+                      <Send size={12} /> {template.openRate} Open Rate
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
         </div>
         {!loading && filteredTemplates.length === 0 && (
-          <div style={{ textAlign: "center", padding: "80px 0", opacity: 0.6 }}><p>No templates found.</p></div>
+          <div style={{ textAlign: "center", padding: "80px 0", opacity: 0.6 }}>
+            <p>No templates found.</p>
+          </div>
         )}
 
         {/* TOAST NOTIFICATION (List View) */}
@@ -682,11 +1028,15 @@ if (view === "edit" && selectedTemplate) {
               alignItems: "center",
               gap: "12px",
               fontWeight: "600",
-              color: COLORS.textPrimary
+              color: COLORS.textPrimary,
             }}
           >
-             {toast.type === "error" ? <AlertCircle size={20} color={COLORS.red} /> : <CheckCircle size={20} color={COLORS.primary} />}
-             {toast.message}
+            {toast.type === "error" ? (
+              <AlertCircle size={20} color={COLORS.red} />
+            ) : (
+              <CheckCircle size={20} color={COLORS.primary} />
+            )}
+            {toast.message}
           </div>
         )}
       </div>

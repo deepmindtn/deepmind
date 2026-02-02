@@ -267,16 +267,6 @@ const AssessmentChoice = ({ onSelect }) => {
       theme: COLORS.primary,
       bg: COLORS.primaryLight,
     },
-    {
-      id: "template",
-      icon: BookOpen,
-      title: "Library Templates",
-      description:
-        "Choose from our verified library of clinical and performance assessments optimized for your industry.",
-      badge: "Quick Start",
-      theme: COLORS.primary,
-      bg: COLORS.primaryLight,
-    },
   ];
 
   const features = [

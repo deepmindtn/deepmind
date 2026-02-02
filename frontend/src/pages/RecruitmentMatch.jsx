@@ -48,6 +48,7 @@ const COLORS = {
   shadowMd: "var(--shadow-md)",
   shadowLg: "var(--shadow-lg)",
   shadowHuge: "var(--shadow-huge)",
+  tableRow: "var(--table-row)",
 };
 
 // -----------------------
@@ -681,7 +682,8 @@ export default function RecruitmentMatch() {
             style={{
               ...styles.input,
               paddingLeft: "44px",
-              backgroundColor: "#fcfcfd",
+              backgroundColor: COLORS.cardBg,
+              color: COLORS.textPrimary,
             }}
             placeholder="Search candidates by name, email, or role..."
             value={q}
@@ -698,7 +700,6 @@ export default function RecruitmentMatch() {
               display: "flex",
               alignItems: "center",
               gap: "10px",
-              backgroundColor: "#fcfcfd",
             }}
           >
             <Users size={20} color={COLORS.primary} />
@@ -717,7 +718,7 @@ export default function RecruitmentMatch() {
                 textAlign: "left",
               }}
             >
-              <thead style={{ backgroundColor: "#fafafa" }}>
+              <thead style={{ backgroundColor: COLORS.tableRow }}>
                 <tr>
                   <th style={{ padding: "16px 20px", width: "40px" }}>
                     <input
@@ -898,7 +899,10 @@ export default function RecruitmentMatch() {
                 1. Upload CVs
               </h3>
               <div
-                style={styles.dropZone(isDragging)}
+                style={{
+                  ...styles.dropZone(isDragging), // spread the dynamic dropZone styles
+                  backgroundColor: COLORS.cardBg, // override or add your cardBg
+                }}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
@@ -1039,7 +1043,8 @@ export default function RecruitmentMatch() {
                   ...styles.input,
                   minHeight: "180px",
                   resize: "none",
-                  backgroundColor: "#fcfcfd",
+                  backgroundColor: COLORS.cardBg,
+                  color: COLORS.textPrimary,
                 }}
                 placeholder="Paste the job requirements here..."
                 value={jobDescription}
@@ -1440,7 +1445,7 @@ export default function RecruitmentMatch() {
                 style={{
                   padding: "24px 32px",
                   borderBottom: `1px solid ${COLORS.borderColor}`,
-                  backgroundColor: "#fafafa",
+                  backgroundColor: COLORS.tableRow,
                   flexShrink: 0,
                 }}
               >
@@ -1457,6 +1462,7 @@ export default function RecruitmentMatch() {
                         margin: "0 0 8px 0",
                         fontSize: "22px",
                         fontWeight: "700",
+                        color: COLORS.textPrimary,
                       }}
                     >
                       Assessment Overview
@@ -1479,7 +1485,13 @@ export default function RecruitmentMatch() {
                           <Users size={16} color={COLORS.primary} />
                         </div>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 15 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 15,
+                              color: COLORS.textPrimary,
+                            }}
+                          >
                             {viewAssignmentsCandidate.name}
                           </div>
                           <div
@@ -1711,7 +1723,7 @@ export default function RecruitmentMatch() {
                               key={assignment.id}
                               style={{
                                 padding: 20,
-                                backgroundColor: "#fff",
+                                backgroundColor: COLORS.cardBg,
                                 border: `2px solid ${
                                   isCompleted
                                     ? "#05966920"
@@ -1851,7 +1863,7 @@ export default function RecruitmentMatch() {
                   style={{
                     padding: "20px 32px",
                     borderTop: `1px solid ${COLORS.borderColor}`,
-                    backgroundColor: "#fafafa",
+                    backgroundColor: COLORS.tableRow,
                     flexShrink: 0,
                     display: "flex",
                     justifyContent: "space-between",

@@ -378,7 +378,10 @@ const StatBadge = ({ value, label, color }) => (
       borderRight: `1px solid ${COLORS.borderColor}`,
     }}
   >
-    <div className="assessment-library-stat-value" style={{ fontSize: "20px", fontWeight: "800", color: color }}>
+    <div
+      className="assessment-library-stat-value"
+      style={{ fontSize: "20px", fontWeight: "800", color: color }}
+    >
       {value}
     </div>
     <div
@@ -404,7 +407,10 @@ const AssessmentCard = ({
   category,
   icon: Icon,
 }) => (
-  <div className="assessment-hover-card assessment-library-card" style={styles.assessmentCard}>
+  <div
+    className="assessment-hover-card assessment-library-card"
+    style={styles.assessmentCard}
+  >
     <div
       style={{
         display: "flex",
@@ -412,12 +418,19 @@ const AssessmentCard = ({
         alignItems: "flex-start",
       }}
     >
-      <div className="assessment-library-icon-box" style={styles.iconBox(COLORS.primaryLight)}>
+      <div
+        className="assessment-library-icon-box"
+        style={styles.iconBox(COLORS.primaryLight)}
+      >
         <Icon size={26} color={COLORS.primary} />
       </div>
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
         {tags?.map((tag, idx) => (
-          <span key={idx} className="assessment-library-tag" style={styles.tag(tag.tone)}>
+          <span
+            key={idx}
+            className="assessment-library-tag"
+            style={styles.tag(tag.tone)}
+          >
             {tag.label}
           </span>
         ))}
@@ -472,7 +485,10 @@ const AssessmentCard = ({
         alignItems: "center",
       }}
     >
-      <div className="assessment-library-card-meta" style={{ display: "flex", gap: "16px" }}>
+      <div
+        className="assessment-library-card-meta"
+        style={{ display: "flex", gap: "16px" }}
+      >
         <div
           style={{
             display: "flex",
@@ -498,9 +514,6 @@ const AssessmentCard = ({
           <Users size={14} /> {participants.split(" ")[0]}
         </div>
       </div>
-      <button className="primary-btn-emerald assessment-library-btn-take-test">
-        Take Test <ChevronRight size={14} />
-      </button>
     </div>
   </div>
 );
@@ -692,7 +705,10 @@ const AssessmentPage = () => {
     <div className="assessment-library-container" style={styles.container}>
       <style>{responsiveStyles}</style>
 
-      <div className="assessment-library-main-wrapper" style={styles.mainWrapperCard}>
+      <div
+        className="assessment-library-main-wrapper"
+        style={styles.mainWrapperCard}
+      >
         {/* Header Area */}
         <div
           className="assessment-library-header-wrapper"
@@ -749,7 +765,10 @@ const AssessmentPage = () => {
             </p>
           </div>
 
-          <div className="assessment-library-search-wrapper" style={styles.searchWrapper}>
+          <div
+            className="assessment-library-search-wrapper"
+            style={styles.searchWrapper}
+          >
             <Search
               size={18}
               color={COLORS.textMuted}
