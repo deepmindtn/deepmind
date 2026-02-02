@@ -23,7 +23,8 @@ from .models import (
     Question, 
     Assignment, 
     EmailTemplate,
-    EisenhowerTask
+    EisenhowerTask,
+    DailyChallenge
 )
 from .serializers import (
     SignupSerializer,
@@ -37,7 +38,8 @@ from .serializers import (
     EmployeeAssignmentListSerializer,
     EmployeeSurveyTakeSerializer,
     SurveyRetrieveSerializer,
-    EisenhowerTaskSerializer
+    EisenhowerTaskSerializer,
+    DailyChallengeSerializer
 )
 
 User = get_user_model()
@@ -515,3 +517,24 @@ class EisenhowerTaskDetailView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return EisenhowerTask.objects.filter(user=self.request.user)
+
+# --------------------------
+# Daily Challenges Views
+# --------------------------
+class DailyChallengeListCreateView(generics.ListCreateAPIView):
+    serializer_class = DailyChallengeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return DailyChallenge.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class DailyChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """ Allows deleting or toggling completion status """
+    serializer_class = DailyChallengeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return DailyChallenge.objects.filter(user=self.request.user)

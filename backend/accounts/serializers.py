@@ -7,7 +7,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 # Models
-from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment,Response,EisenhowerTask
+from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment,Response,EisenhowerTask,DailyChallenge
 
 User = get_user_model()
 
@@ -383,4 +383,10 @@ class EisenhowerTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = EisenhowerTask
         fields = ['id', 'text', 'quadrant', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+class DailyChallengeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DailyChallenge
+        fields = ['id', 'text', 'is_completed', 'created_at']
         read_only_fields = ['id', 'created_at']
