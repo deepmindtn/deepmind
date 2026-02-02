@@ -391,3 +391,15 @@ class EisenhowerTask(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - Q{self.quadrant} - {self.text[:20]}"
+
+class DailyChallenge(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_challenges')
+    text = models.CharField(max_length=255)
+    is_completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at'] # Newest first
+
+    def __str__(self):
+        return f"{self.user.email} - {self.text} ({'Done' if self.is_completed else 'Pending'})"
