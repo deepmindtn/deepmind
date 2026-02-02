@@ -148,6 +148,7 @@ class Invite(models.Model):
 
     def __str__(self):
         return f"Invite({self.email}) accepted={self.is_accepted}"
+
 # --------------------------
 # Recruitee model (for recruitment assessments)
 # --------------------------
@@ -375,3 +376,18 @@ class EmailTemplate(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.category} - {self.audience_type})"
+
+# --------------------------
+# Eisenhower Task Model
+# --------------------------
+class EisenhowerTask(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='eisenhower_tasks')
+    text = models.CharField(max_length=500)
+    quadrant = models.IntegerField() 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.user.email} - Q{self.quadrant} - {self.text[:20]}"

@@ -6,7 +6,7 @@ from .views import (
     RecruiteeListCreateView, RecruiteeDetailView, ImportEmployeesView,
     DepartmentListCreateView, DepartmentDetailView, ExportDepartmentsView,
     CreateSurveyView, SurveyDetailView, EmployeeMySurveysView, EmployeeTakeSurveyView,
-    EmailTemplateViewSet  # <-- Add this import
+    EmailTemplateViewSet ,EisenhowerTaskListCreateView, EisenhowerTaskDetailView
 )
 
 # --------------------------
@@ -49,6 +49,10 @@ urlpatterns = [
     # Employee Survey Routes
     path("employee/surveys/", EmployeeMySurveysView.as_view(), name="employee-surveys-list"),
     path("employee/surveys/<int:pk>/take/", EmployeeTakeSurveyView.as_view(), name="employee-survey-take"),
+
+    # Eisenhower Matrix
+    path('employee/matrix/', EisenhowerTaskListCreateView.as_view(), name='matrix-list-create'),
+    path('employee/matrix/<int:pk>/', EisenhowerTaskDetailView.as_view(), name='matrix-delete'),
 
     # Include router URLs for Email Templates
     path("", include(router.urls)),
