@@ -7,7 +7,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 # Models
-from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment,Response
+from .models import User, Company, Recruitee, Invite, Department, Survey, Question, Assignment,Response,EisenhowerTask
 
 User = get_user_model()
 
@@ -374,3 +374,13 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
             "company",
         ]
         read_only_fields = ["id", "updated_at"]
+
+# --------------------------
+# Eisenhower Matrix Serializer
+# --------------------------
+class EisenhowerTaskSerializer(serializers.ModelSerializer):
+    # 👇 This block must be indented (4 spaces)
+    class Meta:
+        model = EisenhowerTask
+        fields = ['id', 'text', 'quadrant', 'created_at']
+        read_only_fields = ['id', 'created_at']

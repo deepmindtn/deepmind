@@ -22,7 +22,8 @@ from .models import (
     Response, 
     Question, 
     Assignment, 
-    EmailTemplate 
+    EmailTemplate,
+    EisenhowerTask
 )
 from .serializers import (
     SignupSerializer,
@@ -35,7 +36,8 @@ from .serializers import (
     SurveyCreateSerializer,
     EmployeeAssignmentListSerializer,
     EmployeeSurveyTakeSerializer,
-    SurveyRetrieveSerializer
+    SurveyRetrieveSerializer,
+    EisenhowerTaskSerializer
 )
 
 User = get_user_model()
@@ -492,4 +494,24 @@ from .serializers import EmailTemplateSerializer
 class EmailTemplateViewSet(viewsets.ModelViewSet):
     queryset = EmailTemplate.objects.all()
     serializer_class = EmailTemplateSerializer
-    permission_classes = [permissions.IsAuthenticated]  # Adjust if needed
+    permission_classes = [permissions.IsAuthenticated]  
+
+class EisenhowerTaskListCreateView(generics.ListCreateAPIView):
+    serializer_class = EisenhowerTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return tasks belonging to the logged-in user
+        return EisenhowerTask.objects.filter(user=self.request.user).order_by('created_at')
+
+    def perform_create(self, serializer):
+        # Automatically link the new task to the user
+        serializer.save(user=self.request.user)
+
+class EisenhowerTaskDetailView(generics.DestroyAPIView):
+    """ Allows deleting a specific task """
+    serializer_class = EisenhowerTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return EisenhowerTask.objects.filter(user=self.request.user)
