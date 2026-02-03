@@ -2,6 +2,31 @@ import React, { useState, useMemo } from "react";
 import { Users, Layers, User, Search, Loader2 } from "lucide-react";
 import "./AudienceSelector.css";
 
+const COLORS = {
+  primary: "var(--primary)",
+  primaryLight: "var(--primary-light)",
+  primaryDark: "var(--primary-dark)",
+  secondary: "var(--secondary)",
+  blue: "var(--blue)",
+  blueLight: "var(--blue-light)",
+  purple: "var(--purple)",
+  purpleLight: "var(--purple-light)",
+  orange: "var(--orange)",
+  orangeLight: "var(--orange-light)",
+  red: "var(--red)",
+  dark: "var(--dark)",
+  bgMain: "var(--bg-main)",
+  cardBg: "var(--card-bg)",
+  textPrimary: "var(--text-primary)",
+  textSecondary: "var(--text-secondary)",
+  textMuted: "var(--text-muted)",
+  borderColor: "var(--border-color)",
+  shadowSm: "var(--shadow-sm)",
+  shadowMd: "var(--shadow-md)",
+  shadowLg: "var(--shadow-lg)",
+  shadowHuge: "var(--shadow-huge)",
+};
+
 const AudienceSelector = ({
   value,
   onChange,
@@ -9,34 +34,26 @@ const AudienceSelector = ({
   employees = [],
   loading = false,
 }) => {
-  // Use props directly (Controlled Component)
   const type = value?.type || "all";
   const selected = value?.selected || [];
-
-  // Local state only for searching within the list
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleTypeChange = (newType) => {
-    // Reset selection when changing type
     onChange({ type: newType, selected: [] });
-    setSearchTerm(""); // Reset search
+    setSearchTerm("");
   };
 
   const toggleSelection = (id) => {
     const updated = selected.includes(id)
-      ? selected.filter((i) => i !== id) // Remove if exists
-      : [...selected, id]; // Add if not exists
-
+      ? selected.filter((i) => i !== id)
+      : [...selected, id];
     onChange({ type, selected: updated });
   };
 
-  // Determine which data to display based on type
   const displayData = useMemo(() => {
     let data = [];
     if (type === "departments") data = departments;
     if (type === "employees") data = employees;
-
-    // Filter by search term if exists
     if (searchTerm.trim()) {
       const lower = searchTerm.toLowerCase();
       return data.filter((item) => item.name.toLowerCase().includes(lower));
@@ -45,14 +62,17 @@ const AudienceSelector = ({
   }, [type, departments, employees, searchTerm]);
 
   return (
-    <div className="audience-selector">
-      {/* Header (Hidden visually via CSS usually, but kept for structure) */}
+    <div
+      className="audience-selector"
+      style={{ backgroundColor: COLORS.cardBg, color: COLORS.textPrimary }}
+    >
       <div className="audience-header">
-        <h3>Select Audience</h3>
-        <p>Choose who will receive this assessment</p>
+        <h3 style={{ color: COLORS.textPrimary }}>Select Audience</h3>
+        <p style={{ color: COLORS.textSecondary }}>
+          Choose who will receive this assessment
+        </p>
       </div>
 
-      {/* Audience Type Grid */}
       <div className="audience-type-grid">
         <AudienceTypeCard
           icon={<Users size={20} />}
@@ -60,14 +80,12 @@ const AudienceSelector = ({
           active={type === "all"}
           onClick={() => handleTypeChange("all")}
         />
-
         <AudienceTypeCard
           icon={<Layers size={20} />}
           title="Departments"
           active={type === "departments"}
           onClick={() => handleTypeChange("departments")}
         />
-
         <AudienceTypeCard
           icon={<User size={20} />}
           title="Specific Employees"
@@ -76,24 +94,21 @@ const AudienceSelector = ({
         />
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div
           style={{
             display: "flex",
             justifyContent: "center",
             padding: "20px",
-            color: "var(--text-muted)",
+            color: COLORS.textMuted,
           }}
         >
           <Loader2 className="animate-spin" size={24} />
         </div>
       )}
 
-      {/* Selection Area */}
       {!loading && (type === "departments" || type === "employees") && (
         <div className="audience-selection-area" style={{ marginTop: "20px" }}>
-          {/* Optional Search Bar for long lists */}
           {type === "employees" && (
             <div
               className="audience-search"
@@ -106,7 +121,7 @@ const AudienceSelector = ({
             >
               <Search
                 size={16}
-                color="var(--text-muted)"
+                color={COLORS.textMuted}
                 style={{ position: "absolute", left: "12px" }}
               />
               <input
@@ -118,30 +133,41 @@ const AudienceSelector = ({
                   width: "100%",
                   padding: "10px 10px 10px 36px",
                   borderRadius: "8px",
-                  border: "1px solid var(--border-color)",
+                  border: `1px solid ${COLORS.borderColor}`,
                   outline: "none",
                   fontSize: "13px",
+                  backgroundColor: COLORS.cardBg,
+                  color: COLORS.textPrimary,
                 }}
               />
             </div>
           )}
 
-          {/* Chips Container */}
           <div className="audience-chips">
             {displayData.length > 0 ? (
               displayData.map((item) => (
                 <button
                   key={item.id}
-                  type="button" // Prevent form submission
+                  type="button"
                   className={`chip ${
                     selected.includes(item.id) ? "active" : ""
                   }`}
                   onClick={() => toggleSelection(item.id)}
+                  style={{
+                    backgroundColor: selected.includes(item.id)
+                      ? COLORS.primaryLight
+                      : COLORS.cardBg,
+                    border: `1px solid ${
+                      selected.includes(item.id)
+                        ? COLORS.primary
+                        : COLORS.borderColor
+                    }`,
+                    color: selected.includes(item.id)
+                      ? COLORS.primaryDark
+                      : COLORS.textPrimary,
+                  }}
                 >
-                  {/* Display Name */}
                   <span style={{ fontWeight: 500 }}>{item.name}</span>
-
-                  {/* Optional: Add Department name in small text if viewing employees */}
                   {type === "employees" && item.department && (
                     <span
                       style={{
@@ -158,7 +184,7 @@ const AudienceSelector = ({
             ) : (
               <div
                 style={{
-                  color: "var(--text-muted)",
+                  color: COLORS.textMuted,
                   fontSize: "13px",
                   fontStyle: "italic",
                 }}
@@ -172,7 +198,7 @@ const AudienceSelector = ({
             style={{
               marginTop: "10px",
               fontSize: "12px",
-              color: "var(--text-secondary)",
+              color: COLORS.textSecondary,
               textAlign: "right",
             }}
           >
@@ -189,31 +215,35 @@ const AudienceTypeCard = ({ icon, title, active, onClick }) => (
     className={`audience-type-card ${active ? "active" : ""}`}
     onClick={onClick}
     style={{
-      // Inline styles to match your previous CSS logic if class isn't fully defined
       cursor: "pointer",
       padding: "16px",
       borderRadius: "12px",
-      border: active
-        ? "2px solid var(--primary)"
-        : "1px solid var(--border-color)",
-      backgroundColor: active ? "var(--primary-light)" : "#fff",
+      border: `1px solid ${active ? COLORS.primary : COLORS.borderColor}`,
+      backgroundColor: COLORS.cardBg, // Use cardBg here as requested
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
       gap: "8px",
       transition: "all 0.2s",
-      color: active ? "var(--primary-dark)" : "var(--text-primary)",
+      color: COLORS.textPrimary, // Force primary text
       minHeight: "100px",
     }}
   >
     <div
       className="type-icon"
-      style={{ color: active ? "var(--primary)" : "var(--text-muted)" }}
+      style={{ color: active ? COLORS.primary : COLORS.textMuted }}
     >
       {icon}
     </div>
-    <span style={{ fontWeight: "600", fontSize: "13px", textAlign: "center" }}>
+    <span
+      style={{
+        fontWeight: "600",
+        fontSize: "13px",
+        textAlign: "center",
+        color: active ? COLORS.primary : COLORS.textPrimary,
+      }}
+    >
       {title}
     </span>
   </div>

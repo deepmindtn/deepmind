@@ -35,15 +35,23 @@ const COLORS = {
   primaryLight: "var(--primary-light)",
   primaryDark: "var(--primary-dark)",
   secondary: "var(--secondary)",
+  blue: "var(--blue)",
+  blueLight: "var(--blue-light)",
+  purple: "var(--purple)",
+  purpleLight: "var(--purple-light)",
+  orange: "var(--orange)",
+  orangeLight: "var(--orange-light)",
   red: "var(--red)",
-  green: "#10b981",
-  orange: "#f59e0b",
+  dark: "var(--dark)",
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
   textSecondary: "var(--text-secondary)",
   textMuted: "var(--text-muted)",
   borderColor: "var(--border-color)",
+  shadowSm: "var(--shadow-sm)",
+  shadowMd: "var(--shadow-md)",
+  shadowLg: "var(--shadow-lg)",
   shadowHuge: "var(--shadow-huge)",
 };
 
@@ -213,7 +221,7 @@ const styles = {
     gap: "12px",
     alignItems: "center",
     padding: "16px",
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.cardBg,
     border: `1px solid ${COLORS.borderColor}`,
     borderRadius: "12px",
     marginBottom: "12px",
@@ -1139,6 +1147,7 @@ const CreateSurveyForm = () => {
                           fontWeight: "700",
                           color: COLORS.textMuted,
                           width: "30px",
+                          backgroundColor: COLORS.cardBg,
                         }}
                       >
                         {i + 1}.
@@ -1147,7 +1156,8 @@ const CreateSurveyForm = () => {
                         style={{
                           ...styles.input,
                           border: "none",
-                          backgroundColor: "transparent",
+                          backgroundColor: COLORS.cardBg,
+                          color: COLORS.textPrimary,
                           fontSize: "15px",
                           fontWeight: "500",
                         }}
@@ -1218,7 +1228,7 @@ const CreateSurveyForm = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "#fcfcfd",
+                backgroundColor: COLORS.cardBg,
               }}
             >
               <div
@@ -1253,7 +1263,8 @@ const CreateSurveyForm = () => {
                     padding: "16px 18px",
                     borderRadius: "14px",
                     border: `1px solid ${COLORS.borderColor}`,
-                    backgroundColor: "#fff",
+                    backgroundColor: COLORS.cardBg,
+                    boxSizing: "border-box",
                   }}
                 >
                   <ScheduleSender value={schedule} onChange={setSchedule} />
