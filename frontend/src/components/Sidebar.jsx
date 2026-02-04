@@ -16,6 +16,7 @@ import {
   FileText,
   Mail,
   Settings,
+  Landmark,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Sidebar.css";
@@ -43,6 +44,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
   const hrSystemMenu = [
     { path: "/departments", label: "Departments", icon: Briefcase },
     { path: "/email-templates", label: "Email Templates", icon: Mail },
+    { path: "/company", label: "Company", icon: Landmark },
   ];
 
   const employeeMenu = [

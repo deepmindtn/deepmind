@@ -7,7 +7,7 @@ from .views import (
     DepartmentListCreateView, DepartmentDetailView, ExportDepartmentsView,
     CreateSurveyView, SurveyDetailView, EmployeeMySurveysView, EmployeeTakeSurveyView,
     EmailTemplateViewSet ,EisenhowerTaskListCreateView, EisenhowerTaskDetailView,
-    DailyChallengeListCreateView, DailyChallengeDetailView
+    DailyChallengeListCreateView, DailyChallengeDetailView, CompanyMeView
 )
 
 # --------------------------
@@ -61,4 +61,7 @@ urlpatterns = [
 
     # Include router URLs for Email Templates
     path("", include(router.urls)),
+
+    #Company
+    path("company/me/", CompanyMeView.as_view(), name="company-me"),
 ]

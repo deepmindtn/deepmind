@@ -538,3 +538,24 @@ class DailyChallengeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return DailyChallenge.objects.filter(user=self.request.user)
+    
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.exceptions import PermissionDenied
+
+from .models import Company
+from .serializers import CompanySerializer
+
+class CompanyMeView(RetrieveUpdateAPIView):
+    serializer_class = CompanySerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get_object(self):
+        user = self.request.user
+        
+        if not user.company:
+            raise PermissionDenied("User is not linked to any company.")
+        
+        return user.company
