@@ -390,3 +390,14 @@ class DailyChallengeSerializer(serializers.ModelSerializer):
         model = DailyChallenge
         fields = ['id', 'text', 'is_completed', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+from rest_framework import serializers
+from .models import Company
+
+class CompanySerializer(serializers.ModelSerializer):
+    logo = serializers.ImageField(required=False, allow_null=True)
+
+    class Meta:
+        model = Company
+        fields = "__all__"
+        read_only_fields = ["id", "created_at"]

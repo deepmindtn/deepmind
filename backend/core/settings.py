@@ -114,3 +114,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("MAIL_PASSWORD")
 DEFAULT_FROM_EMAIL = os.environ.get("MAIL_FROM_ADDRESS")
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
+
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

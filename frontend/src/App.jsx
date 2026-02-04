@@ -25,6 +25,7 @@ import SendAssessment from "./pages/Assessement/AssessementPage";
 import MyAssessments from "./pages/MyAssessments";
 import EmployeeSurveys from "./pages/EmployeeSurveys";
 import EmailTemplates from "./pages/emailtemplates";
+import Company from "./pages/company/CompanyProfile";
 
 // Assessment runners
 import BigFiveTest from "./pages/Assessement/BigFiveTest";
@@ -163,6 +164,16 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <Profile />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/company"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <Company />
               </LayoutComponent>
             </ProtectedRoute>
           }

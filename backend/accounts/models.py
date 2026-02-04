@@ -7,6 +7,27 @@ import uuid
 # --------------------------
 class Company(models.Model):
     name = models.CharField(max_length=255, unique=True)
+
+    legal_name = models.CharField(max_length=255, blank=True)
+    industry = models.CharField(max_length=100, blank=True)
+    size = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g. 1-10, 11-50, 51-200, 200+"
+    )
+
+    website = models.URLField(blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+
+    country = models.CharField(max_length=100, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    address = models.TextField(blank=True)
+
+    logo = models.ImageField(upload_to="company_logos/", blank=True, null=True)
+
+    is_active = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
