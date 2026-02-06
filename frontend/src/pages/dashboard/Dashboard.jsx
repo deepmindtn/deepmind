@@ -243,24 +243,31 @@ const responsiveStyles = `
     transform: translateY(-5px);
     border-color: ${COLORS.primary} !important;
   }
+
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: ${COLORS.textMuted};
+  }
 `;
 
 // -----------------------
-// Helper Functions (Restored)
+// Helper Functions
 // -----------------------
 const API_BASE = "http://localhost:8080";
 function useAuthHeader() {
   const access = localStorage.getItem("access");
   return access ? { Authorization: `Bearer ${access}` } : {};
 }
+
 function safeNum(n) {
   const x = Number(n);
   return Number.isFinite(x) ? x : 0;
 }
+
 function takeBigFive(m) {
-  if (!m) return null;
-  const t = m.trait || m.traitScores;
-  if (!t) return null;
+  if (!m || !m.trait) return null;
+  const t = m.trait;
   return {
     N: safeNum(t.N),
     E: safeNum(t.E),
@@ -269,42 +276,62 @@ function takeBigFive(m) {
     C: safeNum(t.C),
   };
 }
+
 function takeKarasek(m) {
-  if (!m) return null;
-  const d = m.dim || m.dimScores;
+  if (!m || !m.dim) return null;
+  const d = m.dim;
   return {
-    D: safeNum(d?.D),
-    C: safeNum(d?.C),
-    S: safeNum(d?.S),
+    D: safeNum(d.D),
+    C: safeNum(d.C),
+    S: safeNum(d.S),
     quadrant: m.quadrant || null,
   };
 }
+
 function takeMaslach(m) {
   if (!m) return null;
-  if (m.burnout)
+  if (m.burnout) {
     return {
       EE: safeNum(m.burnout.exhaustion),
       DP: safeNum(m.burnout.depersonalization),
       PA: safeNum(m.burnout.accomplishment),
     };
-  return { EE: safeNum(m.EE), DP: safeNum(m.DP), PA: safeNum(m.PA) };
+  }
+  if (m.EE !== undefined) {
+    return { 
+      EE: safeNum(m.EE), 
+      DP: safeNum(m.DP), 
+      PA: safeNum(m.PA) 
+    };
+  }
+  return null;
 }
+
 function takeDISC(m) {
-  if (!m) return null;
-  const t = m.trait || m.discScores;
-  if (!t) return null;
-  return { D: safeNum(t.D), I: safeNum(t.I), S: safeNum(t.S), C: safeNum(t.C) };
+  if (!m || !m.trait) return null;
+  const t = m.trait;
+  return { 
+    D: safeNum(t.D), 
+    I: safeNum(t.I), 
+    S: safeNum(t.S), 
+    C: safeNum(t.C) 
+  };
 }
+
 function takeJSS(m) {
-  if (!m) return null;
-  const dim = m.dimScores || m;
+  if (!m || !m.dimScores) return null;
+  const dim = m.dimScores;
   return Object.fromEntries(
     Object.entries(dim).map(([k, v]) => [k, safeNum(v)])
   );
 }
+
 function takeBRS(m) {
-  if (!m) return null;
-  return { avg: safeNum(m.average), level: m.level || "" };
+  if (!m || m.average === undefined) return null;
+  return { 
+    avg: safeNum(m.average), 
+    level: m.level || "" 
+  };
 }
 
 // -----------------------
@@ -415,6 +442,13 @@ const ActivityTimelineItem = ({ main, sub, time }) => (
   </div>
 );
 
+const EmptyChartState = ({ message }) => (
+  <div className="empty-state">
+    <AlertCircle size={48} color={COLORS.textMuted} style={{ marginBottom: "16px" }} />
+    <p style={{ margin: 0, fontSize: "14px" }}>{message}</p>
+  </div>
+);
+
 // -----------------------
 // Main Dashboard
 // -----------------------
@@ -453,32 +487,33 @@ const Dashboard = () => {
     const ACTIVE = new Set(["ASSIGNED", "IN_PROGRESS", "PENDING"]);
     const completed = assignments.filter((a) => a.status === "COMPLETED");
 
-    // Logic for completion by template
+    // Calculate percentages properly
     const totalsByTemplate = {};
     const compsByTemplate = {};
+    
     assignments.forEach((a) => {
-      const code = a.template_code || a.template?.code;
+      const code = a.template_code;
       if (code) {
         totalsByTemplate[code] = (totalsByTemplate[code] || 0) + 1;
-        if (a.status === "COMPLETED")
+        if (a.status === "COMPLETED") {
           compsByTemplate[code] = (compsByTemplate[code] || 0) + 1;
+        }
       }
     });
-    const pct = (num, den) => (den ? Math.round((num * 100) / den) : 0);
+
+    // Calculate percentage with proper handling of division by zero
+    const pct = (num, den) => {
+      if (!den || den === 0) return 0;
+      return Math.round((num / den) * 100);
+    };
 
     // Score Accumulators
-    let bigFiveSum = { N: 0, E: 0, O: 0, A: 0, C: 0 },
-      bfCount = 0;
-    let maslachSum = { EE: 0, DP: 0, PA: 0 },
-      mCount = 0;
-    let karasekSum = { D: 0, C: 0, S: 0 },
-      kCount = 0;
-    let discSum = { D: 0, I: 0, S: 0, C: 0 },
-      dCount = 0;
-    let jssSum = {},
-      jssCount = 0;
-    let brsSum = 0,
-      brsCount = 0;
+    let bigFiveSum = { N: 0, E: 0, O: 0, A: 0, C: 0 }, bfCount = 0;
+    let maslachSum = { EE: 0, DP: 0, PA: 0 }, mCount = 0;
+    let karasekSum = { D: 0, C: 0, S: 0 }, kCount = 0;
+    let discSum = { D: 0, I: 0, S: 0, C: 0 }, dCount = 0;
+    let jssSum = {}, jssCount = 0;
+    let brsSum = 0, brsCount = 0;
     const quadrantCounts = {
       highStrain: 0,
       active: 0,
@@ -487,8 +522,12 @@ const Dashboard = () => {
     };
 
     completed.forEach((a) => {
-      const code = a.template_code || a.template?.code;
-      const m = a.metrics || {};
+      const code = a.template_code;
+      const m = a.metrics;
+      
+      // Skip if no metrics
+      if (!m) return;
+
       if (code === "BIG_FIVE") {
         const t = takeBigFive(m);
         if (t) {
@@ -529,7 +568,7 @@ const Dashboard = () => {
       }
       if (code === "BRS") {
         const t = takeBRS(m);
-        if (t?.avg) {
+        if (t && t.avg) {
           brsSum += t.avg;
           brsCount++;
         }
@@ -547,27 +586,39 @@ const Dashboard = () => {
       activeAssessments: assignments.filter((a) => ACTIVE.has(a.status)).length,
       completedAssessments: completed.length,
       completedByTemplate: {
-        BIG_FIVE: pct(compsByTemplate.BIG_FIVE, totalsByTemplate.BIG_FIVE),
-        MASLACH: pct(compsByTemplate.MASLACH, totalsByTemplate.MASLACH),
-        KARASEK: pct(compsByTemplate.KARASEK, totalsByTemplate.KARASEK),
-        DISC: pct(compsByTemplate.DISC, totalsByTemplate.DISC),
-        JSS: pct(compsByTemplate.JSS, totalsByTemplate.JSS),
+        BIG_FIVE: pct(compsByTemplate.BIG_FIVE || 0, totalsByTemplate.BIG_FIVE || 0),
+        MASLACH: pct(compsByTemplate.MASLACH || 0, totalsByTemplate.MASLACH || 0),
+        KARASEK: pct(compsByTemplate.KARASEK || 0, totalsByTemplate.KARASEK || 0),
+        DISC: pct(compsByTemplate.DISC || 0, totalsByTemplate.DISC || 0),
+        JSS: pct(compsByTemplate.JSS || 0, totalsByTemplate.JSS || 0),
       },
       bigFiveAvg: avg(bigFiveSum, bfCount),
       maslachAvg: avg(maslachSum, mCount),
       karasekAvg: avg(karasekSum, kCount),
       discAvg: avg(discSum, dCount),
       jssAvg: avg(jssSum, jssCount),
-      brsAvg: brsCount ? (brsSum / brsCount).toFixed(2) : 0,
+      brsAvg: brsCount ? (brsSum / brsCount).toFixed(2) : "0.00",
       quadrantCounts,
+      hasCompletedData: completed.length > 0,
+      hasBigFiveData: bfCount > 0,
+      hasMaslachData: mCount > 0,
+      hasKarasekData: kCount > 0,
+      hasDiscData: dCount > 0,
+      hasJssData: jssCount > 0,
     };
   }, [users, assignments]);
 
   const commonOptions = {
-    chart: { toolbar: { show: false }, fontFamily: "Inter" },
+    chart: { 
+      toolbar: { show: false }, 
+      fontFamily: "Inter",
+      background: 'transparent'
+    },
     plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
     colors: CHART_COLORS,
     grid: { borderColor: COLORS.borderColor, strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    theme: { mode: 'light' }
   };
 
   if (loading)
@@ -691,90 +742,93 @@ const Dashboard = () => {
               }}
             >
               <div className="dashboard-chart-card" style={styles.chartCard}>
-  <h3
-    className="dashboard-chart-title"
-    style={{ margin: "0 0 20px 0", fontSize: "18px", color: COLORS.textPrimary }}
-  >
-    Completion Rates
-  </h3>
-  <div
-    className="dashboard-completion-grid"
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
-      gap: "16px",
-    }}
-  >
-    {Object.entries(data.completedByTemplate).map(([key, val]) => (
-      <div
-        key={key}
-        className="dashboard-completion-item"
-        style={{
-          padding: "16px",
-          /* Updated: Now uses the same background as BRS AVG */
-          background: COLORS.primaryLight, 
-          borderRadius: "12px",
-          border: `1px solid ${COLORS.primary}`,
-        }}
-      >
-        <div
-          className="dashboard-completion-label"
-          style={{
-            fontSize: "12px",
-            /* Updated: Using primaryDark for better contrast on the light green bg */
-            color: COLORS.primaryDark, 
-            fontWeight: "700",
-          }}
-        >
-          {key}
-        </div>
-        <div
-          className="dashboard-completion-value"
-          style={{
-            fontSize: "20px",
-            fontWeight: "800",
-            /* Updated: Text color now matches the primary theme */
-            color: COLORS.primaryDark,
-          }}
-        >
-          {val}%
-        </div>
-      </div>
-    ))}
+                <h3
+                  className="dashboard-chart-title"
+                  style={{
+                    margin: "0 0 20px 0",
+                    fontSize: "18px",
+                    color: COLORS.textPrimary,
+                  }}
+                >
+                  Completion Rates
+                </h3>
+                <div
+                  className="dashboard-completion-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "16px",
+                  }}
+                >
+                  {Object.entries(data.completedByTemplate).map(
+                    ([key, val]) => (
+                      <div
+                        key={key}
+                        className="dashboard-completion-item"
+                        style={{
+                          padding: "16px",
+                          background: COLORS.primaryLight,
+                          borderRadius: "12px",
+                          border: `1px solid ${COLORS.primary}`,
+                        }}
+                      >
+                        <div
+                          className="dashboard-completion-label"
+                          style={{
+                            fontSize: "12px",
+                            color: COLORS.primaryDark,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {key}
+                        </div>
+                        <div
+                          className="dashboard-completion-value"
+                          style={{
+                            fontSize: "20px",
+                            fontWeight: "800",
+                            color: COLORS.primaryDark,
+                          }}
+                        >
+                          {val}%
+                        </div>
+                      </div>
+                    )
+                  )}
 
-    {/* BRS AVG Card (Matches the loop above now) */}
-    <div
-      className="dashboard-completion-item"
-      style={{
-        padding: "16px",
-        background: COLORS.primaryLight,
-        borderRadius: "12px",
-        border: `1px solid ${COLORS.primary}`,
-      }}
-    >
-      <div
-        className="dashboard-completion-label"
-        style={{
-          fontSize: "12px",
-          color: COLORS.primaryDark,
-          fontWeight: "700",
-        }}
-      >
-        BRS AVG
-      </div>
-      <div
-        className="dashboard-completion-value"
-        style={{
-          fontSize: "20px",
-          fontWeight: "800",
-          color: COLORS.primaryDark,
-        }}
-      >
-        {data.brsAvg}
-      </div>
-    </div>
-  </div>
-</div>
+                  {/* BRS AVG Card */}
+                  <div
+                    className="dashboard-completion-item"
+                    style={{
+                      padding: "16px",
+                      background: COLORS.primaryLight,
+                      borderRadius: "12px",
+                      border: `1px solid ${COLORS.primary}`,
+                    }}
+                  >
+                    <div
+                      className="dashboard-completion-label"
+                      style={{
+                        fontSize: "12px",
+                        color: COLORS.primaryDark,
+                        fontWeight: "700",
+                      }}
+                    >
+                      BRS AVG
+                    </div>
+                    <div
+                      className="dashboard-completion-value"
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "800",
+                        color: COLORS.primaryDark,
+                      }}
+                    >
+                      {data.brsAvg}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div className="dashboard-chart-card" style={styles.chartCard}>
                 <h3
@@ -783,21 +837,27 @@ const Dashboard = () => {
                 >
                   Recent Activity
                 </h3>
-                <ActivityTimelineItem
-                  main="Assessment Completed"
-                  sub="Employee finalized clinical survey"
-                  time="2 mins ago"
-                />
-                <ActivityTimelineItem
-                  main="New Batch Assigned"
-                  sub="Sent to Department of Operations"
-                  time="1 hour ago"
-                />
-                <ActivityTimelineItem
-                  main="System Audit"
-                  sub="All database metrics synchronized"
-                  time="3 hours ago"
-                />
+                {data.totalAssignments > 0 ? (
+                  <>
+                    <ActivityTimelineItem
+                      main={data.completedAssessments > 0 ? "Assessment Completed" : "Assessment Assigned"}
+                      sub={data.completedAssessments > 0 ? "Employee finalized survey" : "Waiting for completion"}
+                      time={data.completedAssessments > 0 ? "Recently" : "Pending"}
+                    />
+                    <ActivityTimelineItem
+                      main="Batch Created"
+                      sub={`${data.totalAssignments} assessments assigned`}
+                      time="Today"
+                    />
+                    <ActivityTimelineItem
+                      main="System Ready"
+                      sub="Dashboard initialized"
+                      time="Active"
+                    />
+                  </>
+                ) : (
+                  <EmptyChartState message="No activity yet. Assign assessments to see timeline." />
+                )}
               </div>
             </div>
           </div>
@@ -817,18 +877,23 @@ const Dashboard = () => {
               >
                 Big Five (OCEAN) Averages
               </h4>
-              <Chart
-                options={{
-                  ...commonOptions,
-                  xaxis: { categories: ["N", "E", "O", "A", "C"] },
-                }}
-                series={[
-                  { name: "Score", data: Object.values(data.bigFiveAvg) },
-                ]}
-                type="bar"
-                height={300}
-              />
+              {data.hasBigFiveData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    xaxis: { categories: ["Neuroticism", "Extraversion", "Openness", "Agreeableness", "Conscientiousness"] },
+                  }}
+                  series={[
+                    { name: "Score", data: Object.values(data.bigFiveAvg) },
+                  ]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No Big Five assessments completed yet" />
+              )}
             </div>
+            
             <div className="dashboard-chart-card" style={styles.chartCard}>
               <h4
                 className="dashboard-chart-title"
@@ -836,19 +901,24 @@ const Dashboard = () => {
               >
                 Maslach Burnout Averages
               </h4>
-              <Chart
-                options={{
-                  ...commonOptions,
-                  colors: [COLORS.orange],
-                  xaxis: { categories: ["EE", "DP", "PA"] },
-                }}
-                series={[
-                  { name: "Score", data: Object.values(data.maslachAvg) },
-                ]}
-                type="bar"
-                height={300}
-              />
+              {data.hasMaslachData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    colors: [COLORS.orange],
+                    xaxis: { categories: ["Emotional Exhaustion", "Depersonalization", "Personal Accomplishment"] },
+                  }}
+                  series={[
+                    { name: "Score", data: Object.values(data.maslachAvg) },
+                  ]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No Maslach assessments completed yet" />
+              )}
             </div>
+            
             <div className="dashboard-chart-card" style={styles.chartCard}>
               <h4
                 className="dashboard-chart-title"
@@ -856,61 +926,77 @@ const Dashboard = () => {
               >
                 Karasek Strain Factors
               </h4>
-              <Chart
-                options={{
-                  ...commonOptions,
-                  colors: [COLORS.secondary],
-                  xaxis: { categories: ["Demand", "Control", "Support"] },
-                }}
-                series={[
-                  {
-                    name: "Score",
-                    data: [
-                      data.karasekAvg.D,
-                      data.karasekAvg.C,
-                      data.karasekAvg.S,
-                    ],
-                  },
-                ]}
-                type="bar"
-                height={300}
-              />
+              {data.hasKarasekData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    colors: [COLORS.secondary],
+                    xaxis: { categories: ["Demand", "Control", "Support"] },
+                  }}
+                  series={[
+                    {
+                      name: "Score",
+                      data: [
+                        data.karasekAvg.D,
+                        data.karasekAvg.C,
+                        data.karasekAvg.S,
+                      ],
+                    },
+                  ]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No Karasek assessments completed yet" />
+              )}
             </div>
+            
             <div className="dashboard-chart-card" style={styles.chartCard}>
               <h4
                 className="dashboard-chart-title"
                 style={{ margin: "0 0 15px 0" }}
               >
-                Karasek Quadrant
+                Karasek Quadrant Distribution
               </h4>
-              <Chart
-                options={{
-                  ...commonOptions,
-                  labels: ["High Strain", "Active", "Low Strain", "Passive"],
-                }}
-                series={Object.values(data.quadrantCounts)}
-                type="donut"
-                height={300}
-              />
+              {data.hasKarasekData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    labels: ["High Strain", "Active", "Low Strain", "Passive"],
+                    legend: { position: 'bottom' }
+                  }}
+                  series={Object.values(data.quadrantCounts)}
+                  type="donut"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No Karasek assessments completed yet" />
+              )}
             </div>
+            
             <div className="dashboard-chart-card" style={styles.chartCard}>
               <h4
                 className="dashboard-chart-title"
                 style={{ margin: "0 0 15px 0" }}
               >
-                DISC Personality
+                DISC Personality Averages
               </h4>
-              <Chart
-                options={{
-                  ...commonOptions,
-                  colors: [COLORS.purple],
-                  xaxis: { categories: ["D", "I", "S", "C"] },
-                }}
-                series={[{ name: "Score", data: Object.values(data.discAvg) }]}
-                type="bar"
-                height={300}
-              />
+              {data.hasDiscData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    colors: [COLORS.purple],
+                    xaxis: { categories: ["Dominance", "Influence", "Steadiness", "Compliance"] },
+                  }}
+                  series={[{ name: "Score", data: Object.values(data.discAvg) }]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No DISC assessments completed yet" />
+              )}
             </div>
+            
             <div className="dashboard-chart-card" style={styles.chartCard}>
               <h4
                 className="dashboard-chart-title"
@@ -918,16 +1004,20 @@ const Dashboard = () => {
               >
                 Job Satisfaction (JSS)
               </h4>
-              <Chart
-                options={{
-                  ...commonOptions,
-                  plotOptions: { bar: { horizontal: true } },
-                  xaxis: { categories: Object.keys(data.jssAvg) },
-                }}
-                series={[{ name: "Score", data: Object.values(data.jssAvg) }]}
-                type="bar"
-                height={300}
-              />
+              {data.hasJssData && Object.keys(data.jssAvg).length > 0 ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    plotOptions: { bar: { horizontal: true, borderRadius: 6 } },
+                    xaxis: { categories: Object.keys(data.jssAvg) },
+                  }}
+                  series={[{ name: "Score", data: Object.values(data.jssAvg) }]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No JSS assessments completed yet" />
+              )}
             </div>
           </div>
         )}
