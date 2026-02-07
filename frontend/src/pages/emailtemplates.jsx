@@ -17,6 +17,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import "./emailtemplates.css";
 
 // -----------------------
 // Theme Constants
@@ -420,11 +421,12 @@ const EmailTemplateManager = () => {
   // -----------------------
   if (view === "edit" && selectedTemplate) {
     return (
-      <div style={styles.container}>
+      <div className="email-templates-page" style={styles.container}>
         <style>{responsiveStyles}</style>
         <div className="main-wrapper" style={styles.mainWrapperCard}>
           {/* Editor Header */}
           <div
+            className="editor-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -434,7 +436,7 @@ const EmailTemplateManager = () => {
               paddingBottom: "24px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div className="editor-header-left" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <button
                 onClick={handleGoBack}
                 className="secondary-btn"
@@ -453,7 +455,7 @@ const EmailTemplateManager = () => {
               >
                 <ArrowLeft size={18} color={COLORS.textPrimary} /> Back
               </button>
-              <div>
+              <div className="editor-header-title">
                 <div
                   style={{
                     fontSize: "12px",
@@ -476,7 +478,7 @@ const EmailTemplateManager = () => {
                 </h2>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "12px" }}>
+            <div className="editor-header-actions" style={{ display: "flex", gap: "12px" }}>
               <button
                 className="primary-btn"
                 onClick={handleSave}
@@ -495,6 +497,7 @@ const EmailTemplateManager = () => {
 
           {/* MODE TOGGLE TABS */}
           <div
+            className="editor-tabs"
             style={{
               display: "flex",
               gap: "0",
@@ -551,7 +554,7 @@ const EmailTemplateManager = () => {
             className="editor-layout"
             style={{ display: "flex", gap: "32px" }}
           >
-            <div style={{ flex: 3 }}>
+            <div className="editor-main" style={{ flex: 3 }}>
               {/* SUBJECT INPUT (Always Visible) */}
               <div style={{ marginBottom: "20px" }}>
                 <label
@@ -609,6 +612,7 @@ const EmailTemplateManager = () => {
                 </>
               ) : (
                 <div
+                  className="editor-preview-frame"
                   style={{
                     border: `1px solid ${COLORS.borderColor}`,
                     borderRadius: "16px",
@@ -632,6 +636,7 @@ const EmailTemplateManager = () => {
             {/* Sidebar (Same as before) */}
             <div className="editor-sidebar" style={{ flex: 1 }}>
               <div
+                className="variables-card"
                 style={{
                   backgroundColor: COLORS.cardBg,
                   padding: "24px",
@@ -702,6 +707,7 @@ const EmailTemplateManager = () => {
         {/* TOAST (Keep existing toast code) */}
         {toast && (
           <div
+            className="email-templates-toast"
             style={{
               position: "fixed",
               bottom: "24px",
@@ -737,7 +743,7 @@ const EmailTemplateManager = () => {
   // RENDER: List View
   // -----------------------
   return (
-    <div style={styles.container}>
+    <div className="email-templates-page" style={styles.container}>
       <style>{responsiveStyles}</style>
       <div className="main-wrapper" style={styles.mainWrapperCard}>
         {/* Header */}
@@ -752,7 +758,7 @@ const EmailTemplateManager = () => {
             paddingBottom: "40px",
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div className="header-title-block" style={{ flex: 1 }}>
             <div
               style={{
                 display: "flex",
@@ -842,6 +848,7 @@ const EmailTemplateManager = () => {
             ))}
           </div>
           <div
+            className="stats-badges"
             style={{
               display: "flex",
               backgroundColor: "#f1f5f9",
@@ -964,6 +971,7 @@ const EmailTemplateManager = () => {
                   </p>
                 </div>
                 <div
+                  className="template-card-footer"
                   style={{
                     borderTop: `1px solid ${COLORS.borderColor}`,
                     paddingTop: "16px",
@@ -1012,6 +1020,7 @@ const EmailTemplateManager = () => {
         {/* TOAST NOTIFICATION (List View) */}
         {toast && (
           <div
+            className="email-templates-toast"
             style={{
               position: "fixed",
               bottom: "24px",

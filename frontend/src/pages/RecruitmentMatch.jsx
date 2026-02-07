@@ -21,6 +21,7 @@ import {
   Eye,
   Clock,
 } from "lucide-react";
+import "./RecruitmentMatch.css";
 
 // -----------------------
 // Theme Constants
@@ -227,11 +228,12 @@ function StatusBadge({ status }) {
   return <span style={styles.badge(status)}>{status}</span>;
 }
 
-const Modal = ({ open, title, onClose, children, actions }) => {
+const Modal = ({ open, title, onClose, children, actions, contentClassName }) => {
   if (!open) return null;
   return ReactDOM.createPortal(
     <div style={styles.modalOverlay} onClick={onClose}>
       <div
+        className={contentClassName}
         style={{
           ...styles.card,
           width: "100%",
@@ -261,6 +263,7 @@ const Modal = ({ open, title, onClose, children, actions }) => {
         </div>
         {children}
         <div
+          className="modal-actions"
           style={{
             marginTop: "24px",
             display: "flex",
@@ -611,12 +614,13 @@ export default function RecruitmentMatch() {
   }
 
   return (
-    <div style={styles.container}>
+    <div className="recruitment-match" style={styles.container}>
       <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
-      <div style={styles.mainWrapperCard}>
+      <div className="main-wrapper-card" style={styles.mainWrapperCard}>
         {/* Header */}
         <div
+          className="page-header"
           style={{
             ...styles.sectionHeader,
             display: "flex",
@@ -624,7 +628,7 @@ export default function RecruitmentMatch() {
             alignItems: "center",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="header-title-block" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
                 padding: "10px",
@@ -655,20 +659,22 @@ export default function RecruitmentMatch() {
             </div>
           </div>
 
-          {selectedIds.length > 0 ? (
-            <button style={styles.btnBulk} onClick={openBulkAssignModal}>
-              <Mail size={20} /> Send Assessment to {selectedIds.length}{" "}
-              Selected
-            </button>
-          ) : (
-            <button style={styles.btnPrimary} onClick={openAddModal}>
-              <Plus size={20} /> Add Candidate
-            </button>
-          )}
+          <div className="header-actions" style={{ display: "flex" }}>
+            {selectedIds.length > 0 ? (
+              <button style={styles.btnBulk} onClick={openBulkAssignModal}>
+                <Mail size={20} /> Send Assessment to {selectedIds.length}{" "}
+                Selected
+              </button>
+            ) : (
+              <button style={styles.btnPrimary} onClick={openAddModal}>
+                <Plus size={20} /> Add Candidate
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search */}
-        <div style={{ position: "relative", marginBottom: "32px" }}>
+        <div className="search-wrap" style={{ position: "relative", marginBottom: "32px" }}>
           <Search
             size={18}
             style={{
@@ -692,8 +698,9 @@ export default function RecruitmentMatch() {
         </div>
 
         {/* Pipeline Table */}
-        <div style={{ ...styles.card, marginBottom: "56px" }}>
+        <div className="pipeline-card" style={{ ...styles.card, marginBottom: "56px" }}>
           <div
+            className="pipeline-card-header"
             style={{
               padding: "20px",
               borderBottom: `1px solid ${COLORS.borderColor}`,
@@ -710,7 +717,7 @@ export default function RecruitmentMatch() {
               </span>
             )}
           </div>
-          <div style={{ overflowX: "auto" }}>
+          <div className="pipeline-table-wrap" style={{ overflowX: "auto" }}>
             <table
               style={{
                 width: "100%",
@@ -784,7 +791,7 @@ export default function RecruitmentMatch() {
                       <StatusBadge status={c.status} />
                     </td>
                     <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", gap: "8px" }}>
+                      <div className="pipeline-actions" style={{ display: "flex", gap: "8px" }}>
                         <button
                           onClick={() => handleViewAssignments(c)}
                           style={{
@@ -852,6 +859,7 @@ export default function RecruitmentMatch() {
         {/* AI Matcher Section */}
         <div>
           <div
+            className="ai-matcher-section-header"
             style={{
               display: "flex",
               alignItems: "center",
@@ -880,6 +888,7 @@ export default function RecruitmentMatch() {
           </div>
 
           <div
+            className="ai-matcher-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -887,6 +896,7 @@ export default function RecruitmentMatch() {
             }}
           >
             <div
+              className="ai-matcher-upload-card"
               style={{
                 ...styles.card,
                 padding: "24px",
@@ -1028,7 +1038,7 @@ export default function RecruitmentMatch() {
               )}
             </div>
 
-            <div style={{ ...styles.card, padding: "24px" }}>
+            <div className="ai-matcher-job-card" style={{ ...styles.card, padding: "24px" }}>
               <h3
                 style={{
                   fontSize: "16px",
@@ -1051,6 +1061,7 @@ export default function RecruitmentMatch() {
                 onChange={(e) => setJobDescription(e.target.value)}
               />
               <button
+                className="analyze-btn"
                 onClick={analyzeMatches}
                 disabled={matchLoading}
                 style={{
@@ -1084,6 +1095,7 @@ export default function RecruitmentMatch() {
                 Analysis Results
               </h3>
               <div
+                className="analysis-results-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
@@ -1093,6 +1105,7 @@ export default function RecruitmentMatch() {
                 {results.map((r, i) => (
                   <div
                     key={i}
+                    className="analysis-result-card"
                     style={{
                       ...styles.card,
                       padding: "20px",
@@ -1160,6 +1173,7 @@ export default function RecruitmentMatch() {
         open={formOpen}
         title={isEditing ? "Edit Candidate" : "Add New Candidate"}
         onClose={() => setFormOpen(false)}
+        contentClassName="recruitment-match-modal-content"
         actions={
           <button
             style={styles.btnPrimary}
@@ -1182,7 +1196,7 @@ export default function RecruitmentMatch() {
               }
             />
           </div>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div className="form-row-flex" style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>First Name</label>
               <input
@@ -1238,6 +1252,7 @@ export default function RecruitmentMatch() {
         open={deleteOpen}
         title="Delete Candidate?"
         onClose={() => setDeleteOpen(false)}
+        contentClassName="recruitment-match-modal-content"
         actions={
           <>
             <button
@@ -1283,6 +1298,7 @@ export default function RecruitmentMatch() {
             : `Bulk Send (${selectedIds.length} Candidates)`
         }
         onClose={() => setAssignOpen(false)}
+        contentClassName="recruitment-match-modal-content"
         actions={
           <button
             style={styles.btnPrimary}
@@ -1327,7 +1343,7 @@ export default function RecruitmentMatch() {
 
         <label style={styles.label}>Select Assessments</label>
 
-        <div style={{ position: "relative", marginBottom: "120px" }}>
+        <div className="assign-dropdown-wrap" style={{ position: "relative", marginBottom: "120px" }}>
           <div
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             style={{
@@ -1425,23 +1441,25 @@ export default function RecruitmentMatch() {
             style={styles.modalOverlay}
             onClick={() => setViewAssignmentsOpen(false)}
           >
-            <div
-              style={{
-                ...styles.card,
-                width: "90%",
-                maxWidth: "1000px",
-                height: "85vh",
-                maxHeight: "700px",
-                padding: 0,
-                boxShadow: COLORS.shadowLg,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-              }}
+          <div
+            className="view-assignments-modal-content"
+            style={{
+              ...styles.card,
+              width: "90%",
+              maxWidth: "1000px",
+              height: "85vh",
+              maxHeight: "700px",
+              padding: 0,
+              boxShadow: COLORS.shadowLg,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header - Fixed */}
               <div
+                className="view-assignments-header"
                 style={{
                   padding: "24px 32px",
                   borderBottom: `1px solid ${COLORS.borderColor}`,
@@ -1529,7 +1547,7 @@ export default function RecruitmentMatch() {
               </div>
 
               {/* Content - Scrollable */}
-              <div style={{ flex: 1, overflow: "auto", padding: "32px" }}>
+              <div className="view-assignments-body" style={{ flex: 1, overflow: "auto", padding: "32px" }}>
                 {loadingAssignments ? (
                   <div
                     style={{
@@ -1588,6 +1606,7 @@ export default function RecruitmentMatch() {
                   <>
                     {/* Summary Stats */}
                     <div
+                      className="view-assignments-stats"
                       style={{
                         display: "grid",
                         gridTemplateColumns:
@@ -1705,6 +1724,7 @@ export default function RecruitmentMatch() {
                         Assessment History
                       </h4>
                       <div
+                        className="view-assignments-history"
                         style={{
                           display: "grid",
                           gridTemplateColumns:
@@ -1860,6 +1880,7 @@ export default function RecruitmentMatch() {
               {/* Footer - Fixed */}
               {!loadingAssignments && assignments.length > 0 && (
                 <div
+                  className="view-assignments-footer"
                   style={{
                     padding: "20px 32px",
                     borderTop: `1px solid ${COLORS.borderColor}`,
@@ -1893,6 +1914,7 @@ export default function RecruitmentMatch() {
       {/* TOAST NOTIFICATION */}
       {toast && (
         <div
+          className="recruitment-match-toast"
           style={{
             position: "fixed",
             bottom: "32px",
