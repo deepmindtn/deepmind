@@ -1,0 +1,212 @@
+/* Email Templates – responsive only. Desktop layout unchanged. */
+
+/* Tablet and below */
+@media (max-width: 1024px) {
+  .email-templates-page .main-wrapper {
+    padding: 32px 24px !important;
+  }
+
+  .email-templates-page .template-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+  }
+
+  .email-templates-page .editor-layout {
+    flex-direction: column !important;
+  }
+
+  .email-templates-page .editor-sidebar {
+    width: 100% !important;
+    flex: none !important;
+    margin-top: 0 !important;
+  }
+
+  .email-templates-page .editor-main {
+    flex: none !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .email-templates-page .main-wrapper {
+    padding: 16px !important;
+    min-height: auto !important;
+  }
+
+  /* List view: Header */
+  .email-templates-page .header-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    margin-bottom: 32px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .email-templates-page .header-flex .header-title-block h1 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
+  .email-templates-page .header-flex .header-title-block p {
+    font-size: 14px !important;
+    max-width: 100% !important;
+  }
+
+  .email-templates-page .search-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .email-templates-page .search-container input {
+    padding-left: 44px !important;
+    font-size: 16px !important;
+  }
+
+  /* List view: Stats & filters */
+  .email-templates-page .stats-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    margin-bottom: 28px !important;
+  }
+
+  .email-templates-page .filters-scroll {
+    flex: none !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .email-templates-page .stats-badges {
+    min-width: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .email-templates-page .stats-badges > div {
+    flex: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .email-templates-page .stats-badges > div:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Template grid */
+  .email-templates-page .template-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .email-templates-page .hover-card {
+    padding: 20px !important;
+    min-width: 0 !important;
+  }
+
+  .email-templates-page .hover-card .template-card-footer {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Editor view: Header */
+  .email-templates-page .editor-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    margin-bottom: 16px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .email-templates-page .editor-header-left {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  .email-templates-page .editor-header-actions {
+    width: 100% !important;
+    justify-content: stretch !important;
+  }
+
+  .email-templates-page .editor-header-actions .primary-btn,
+  .email-templates-page .editor-header-actions .secondary-btn {
+    flex: 1;
+    justify-content: center !important;
+    min-width: 0 !important;
+  }
+
+  .email-templates-page .editor-header-title h2 {
+    font-size: 20px !important;
+  }
+
+  /* Editor view: Tabs */
+  .email-templates-page .editor-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 20px !important;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .email-templates-page .editor-tabs button {
+    white-space: nowrap !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Editor view: Main content */
+  .email-templates-page .editor-main textarea {
+    min-height: 280px !important;
+  }
+
+  .email-templates-page .editor-preview-frame {
+    height: 400px !important;
+  }
+
+  .email-templates-page .editor-sidebar .variables-card {
+    padding: 20px !important;
+  }
+
+  /* Toast */
+  .email-templates-page .email-templates-toast {
+    left: 16px !important;
+    right: 16px !important;
+    bottom: 16px !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .email-templates-page .main-wrapper {
+    padding: 12px !important;
+  }
+
+  .email-templates-page .header-flex .header-title-block h1 {
+    font-size: 20px !important;
+  }
+
+  .email-templates-page .editor-header-title h2 {
+    font-size: 18px !important;
+  }
+
+  .email-templates-page .editor-header-actions {
+    flex-direction: column !important;
+  }
+
+  .email-templates-page .editor-header-actions .primary-btn,
+  .email-templates-page .editor-header-actions .secondary-btn {
+    width: 100% !important;
+  }
+
+  .email-templates-page .hover-card {
+    padding: 16px !important;
+  }
+
+  .email-templates-page .email-templates-toast {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    padding: 12px !important;
+  }
+}

@@ -1,0 +1,251 @@
+/* RecruitmentMatch – responsive only. Desktop layout unchanged. */
+
+/* Tablet and below */
+@media (max-width: 1024px) {
+  .recruitment-match .main-wrapper-card {
+    padding: 24px !important;
+  }
+
+  .recruitment-match .ai-matcher-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .recruitment-match .main-wrapper-card {
+    padding: 16px !important;
+    min-height: auto !important;
+  }
+
+  .recruitment-match .page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .recruitment-match .page-header .header-title-block {
+    min-width: 0;
+  }
+
+  .recruitment-match .page-header .header-title-block h1 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
+  .recruitment-match .page-header .header-title-block p {
+    font-size: 14px !important;
+  }
+
+  .recruitment-match .header-actions {
+    width: 100%;
+    display: flex !important;
+    justify-content: stretch !important;
+  }
+
+  .recruitment-match .header-actions button {
+    flex: 1;
+    min-width: 0;
+    justify-content: center !important;
+    padding: 12px 16px !important;
+    font-size: 13px !important;
+  }
+
+  .recruitment-match .header-actions button svg {
+    flex-shrink: 0;
+  }
+
+  /* Search */
+  .recruitment-match .search-wrap {
+    margin-bottom: 24px !important;
+  }
+
+  .recruitment-match .search-wrap input {
+    padding-left: 40px !important;
+    font-size: 16px !important; /* avoids zoom on iOS */
+  }
+
+  /* Pipeline card */
+  .recruitment-match .pipeline-card .pipeline-card-header {
+    padding: 16px !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .recruitment-match .pipeline-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recruitment-match .pipeline-table-wrap table {
+    min-width: 640px;
+  }
+
+  .recruitment-match .pipeline-table-wrap th,
+  .recruitment-match .pipeline-table-wrap td {
+    padding: 12px 14px !important;
+    font-size: 13px !important;
+  }
+
+  .recruitment-match .pipeline-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    min-width: 120px;
+  }
+
+  .recruitment-match .pipeline-actions button {
+    padding: 6px !important;
+  }
+
+  /* AI Matcher section */
+  .recruitment-match .ai-matcher-section-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px !important;
+  }
+
+  .recruitment-match .ai-matcher-section-header h2 {
+    font-size: 20px !important;
+  }
+
+  .recruitment-match .ai-matcher-upload-card,
+  .recruitment-match .ai-matcher-job-card {
+    padding: 20px !important;
+    min-width: 0 !important;
+  }
+
+  .recruitment-match .ai-matcher-job-card textarea {
+    min-height: 140px !important;
+  }
+
+  .recruitment-match .ai-matcher-job-card .analyze-btn {
+    width: 100% !important;
+    margin-top: 16px !important;
+    padding: 12px !important;
+  }
+
+  /* Analysis results */
+  .recruitment-match .analysis-results-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .recruitment-match .analysis-result-card {
+    padding: 16px !important;
+    min-width: 0 !important;
+  }
+
+  /* Modals – scoped via body when portal is used */
+  .recruitment-match-modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 12px !important;
+    padding: 20px !important;
+    max-height: calc(100vh - 24px) !important;
+    overflow-y: auto !important;
+  }
+
+  .recruitment-match-modal-content .modal-actions {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .recruitment-match-modal-content .modal-actions button {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+
+  /* Form rows (First / Last name) */
+  .recruitment-match .form-row-flex {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .recruitment-match .form-row-flex > div {
+    flex: none !important;
+  }
+
+  /* Assign modal dropdown */
+  .recruitment-match .assign-dropdown-wrap {
+    margin-bottom: 80px !important;
+  }
+
+  /* View Assignments modal */
+  .view-assignments-modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  .view-assignments-modal-content .view-assignments-header {
+    padding: 16px 20px !important;
+  }
+
+  .view-assignments-modal-content .view-assignments-body {
+    padding: 20px !important;
+  }
+
+  .view-assignments-modal-content .view-assignments-footer {
+    padding: 16px 20px !important;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .view-assignments-modal-content .view-assignments-stats {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .view-assignments-modal-content .view-assignments-history {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Toast */
+  .recruitment-match-toast {
+    left: 16px !important;
+    right: 16px !important;
+    bottom: 16px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .recruitment-match .main-wrapper-card {
+    padding: 12px !important;
+  }
+
+  .recruitment-match .page-header .header-title-block h1 {
+    font-size: 20px !important;
+  }
+
+  .recruitment-match .header-actions {
+    flex-direction: column !important;
+  }
+
+  .recruitment-match .header-actions button {
+    width: 100% !important;
+  }
+
+
+  .recruitment-match .pipeline-table-wrap th,
+  .recruitment-match .pipeline-table-wrap td {
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+
+  .recruitment-match .analysis-result-card {
+    padding: 14px !important;
+  }
+
+  .recruitment-match-modal-content {
+    margin: 8px !important;
+    padding: 16px !important;
+    max-height: calc(100vh - 16px) !important;
+  }
+}
