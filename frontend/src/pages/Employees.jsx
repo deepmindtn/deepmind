@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import ReactDOM from "react-dom";
 import {
   Plus,
   Upload,
@@ -14,6 +15,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Mail,
+  Loader2,
   Layers,
   DollarSign,
   Code,
@@ -264,6 +266,16 @@ const getStyles = (isMobile, isTablet) => ({
       textTransform: "capitalize",
     };
   },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.4)",
+    backdropFilter: "blur(6px)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 9999,
+    padding: 20,
+  },
 });
 
 // -----------------------
@@ -468,6 +480,7 @@ export default function Employees() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
   const [detailAssignments, setDetailAssignments] = useState([]);
+  const [loadingDetailAssignments, setLoadingDetailAssignments] = useState(false);
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignRow, setAssignRow] = useState(null);
@@ -600,6 +613,10 @@ export default function Employees() {
   }, []);
 
   async function viewDetails(r) {
+    setDetailRow(r);
+    setDetailOpen(true);
+    setLoadingDetailAssignments(true);
+    setDetailAssignments([]);
     try {
       const res = await fetch(
         `${API_BASE}/api/assessments/admin/?employee=${r.id}`,
@@ -609,11 +626,13 @@ export default function Employees() {
       );
       if (!res.ok) throw new Error("Failed to load assignments");
       const data = await res.json();
-      setDetailRow(r);
-      setDetailAssignments(data);
-      setDetailOpen(true);
+      const list = Array.isArray(data) ? data : data.results ?? data.assignments ?? [];
+      setDetailAssignments(list);
     } catch (e) {
       setToast({ message: e.message, type: "error" });
+      setDetailAssignments([]);
+    } finally {
+      setLoadingDetailAssignments(false);
     }
   }
 
@@ -768,6 +787,7 @@ export default function Employees() {
 
   return (
     <div style={styles.container}>
+      <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <div style={styles.mainWrapperCard}>
         {/* Header */}
         <div style={styles.sectionHeader}>
@@ -1486,66 +1506,501 @@ export default function Employees() {
         )}
       </Modal>
 
-      {/* Detail Modal */}
-      <Modal
-        open={detailOpen}
-        title={`Employee: ${detailRow?.name}`}
-        onClose={() => setDetailOpen(false)}
-      >
-        {detailRow && (
-          <div>
+      {/* Detail Modal – Assessment Overview (same layout as RecruitmentMatch View Assignments) */}
+      {detailOpen &&
+        ReactDOM.createPortal(
+          <div
+            style={styles.modalOverlay}
+            onClick={() => setDetailOpen(false)}
+          >
             <div
+              className="view-assignments-modal-content"
               style={{
-                padding: "16px",
-                backgroundColor: COLORS.bgMain,
-                borderRadius: "12px",
-                marginBottom: "20px",
+                ...styles.card,
+                width: "90%",
+                maxWidth: "1000px",
+                height: "85vh",
+                maxHeight: "700px",
+                padding: 0,
+                boxShadow: COLORS.shadowLg,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <p style={{ margin: "0 0 8px 0" }}>
-                <strong>Email:</strong> {detailRow.email}
-              </p>
-              <p style={{ margin: "0 0 8px 0" }}>
-                <strong>Role:</strong> {detailRow.role}
-              </p>
-              <p style={{ margin: 0 }}>
-                <strong>Department:</strong> {detailRow.department}
-              </p>
-            </div>
-            <h4
-              style={{
-                fontSize: "16px",
-                fontWeight: "700",
-                marginBottom: "16px",
-              }}
-            >
-              Assessment History
-            </h4>
-            <div style={{ display: "grid", gap: "12px" }}>
-              {detailAssignments.map((a) => (
-                <div key={a.id} style={{ ...styles.card, padding: "16px" }}>
+              {/* Header – Fixed */}
+              <div
+                className="view-assignments-header"
+                style={{
+                  padding: "24px 32px",
+                  borderBottom: `1px solid ${COLORS.borderColor}`,
+                  backgroundColor: COLORS.tableRow,
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div>
+                    <h3
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: "22px",
+                        fontWeight: "700",
+                        color: COLORS.textPrimary,
+                      }}
+                    >
+                      Assessment Overview
+                    </h3>
+                    {detailRow && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: 8,
+                            backgroundColor: COLORS.primaryLight,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Users size={16} color={COLORS.primary} />
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 15,
+                              color: COLORS.textPrimary,
+                            }}
+                          >
+                            {detailRow.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: COLORS.textSecondary,
+                            }}
+                          >
+                            {detailRow.email}
+                          </div>
+                          {(detailRow.role || detailRow.department) && (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: COLORS.textMuted,
+                                marginTop: 4,
+                              }}
+                            >
+                              {[detailRow.role, detailRow.department].filter(Boolean).join(" · ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setDetailOpen(false)}
+                    style={{
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                      padding: 8,
+                      borderRadius: 8,
+                      transition: "background 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.target.style.backgroundColor = "#f1f5f9")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.target.style.backgroundColor = "transparent")
+                    }
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content – Scrollable */}
+              <div
+                className="view-assignments-body"
+                style={{ flex: 1, overflow: "auto", padding: "32px" }}
+              >
+                {loadingDetailAssignments ? (
                   <div
                     style={{
                       display: "flex",
-                      justifyContent: "space-between",
+                      flexDirection: "column",
+                      justifyContent: "center",
                       alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: "8px",
+                      height: "100%",
+                      gap: 16,
                     }}
                   >
-                    <h5
-                      style={{ margin: 0, fontSize: "14px", fontWeight: "600" }}
-                    >
-                      {a.template_name}
-                    </h5>
-                    <StatusBadge status={a.status} styles={styles} />
+                    <Loader2
+                      className="spin"
+                      size={40}
+                      color={COLORS.primary}
+                    />
+                    <p style={{ color: COLORS.textSecondary, margin: 0 }}>
+                      Loading assessments...
+                    </p>
                   </div>
+                ) : detailAssignments.length === 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                      color: COLORS.textSecondary,
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: 24,
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "50%",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <FileText size={48} color={COLORS.textMuted} />
+                    </div>
+                    <h4
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: 18,
+                        color: COLORS.textPrimary,
+                      }}
+                    >
+                      No Assessments Yet
+                    </h4>
+                    <p style={{ margin: 0, fontSize: 14 }}>
+                      This employee hasn't been assigned any assessments.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Stats */}
+                    <div
+                      className="view-assignments-stats"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: 16,
+                        marginBottom: 32,
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: 20,
+                          backgroundColor: "#eff6ff",
+                          borderRadius: 12,
+                          border: `1px solid ${COLORS.blue}30`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: COLORS.blue,
+                            fontWeight: 600,
+                            marginBottom: 8,
+                          }}
+                        >
+                          TOTAL ASSIGNED
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: COLORS.blue,
+                          }}
+                        >
+                          {detailAssignments.length}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          padding: 20,
+                          backgroundColor: "#ecfdf5",
+                          borderRadius: 12,
+                          border: "1px solid #05966930",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#059669",
+                            fontWeight: 600,
+                            marginBottom: 8,
+                          }}
+                        >
+                          COMPLETED
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: "#059669",
+                          }}
+                        >
+                          {detailAssignments.filter(
+                            (a) =>
+                              String(a.status || "").toLowerCase() ===
+                              "completed"
+                          ).length}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          padding: 20,
+                          backgroundColor: "#fffbeb",
+                          borderRadius: 12,
+                          border: "1px solid #d9770630",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#d97706",
+                            fontWeight: 600,
+                            marginBottom: 8,
+                          }}
+                        >
+                          PENDING
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 800,
+                            color: "#d97706",
+                          }}
+                        >
+                          {detailAssignments.filter(
+                            (a) =>
+                              String(a.status || "").toLowerCase() ===
+                              "pending"
+                          ).length}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Assessment Grid */}
+                    <div>
+                      <h4
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: COLORS.textMuted,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          marginBottom: 16,
+                        }}
+                      >
+                        Assessment History
+                      </h4>
+                      <div
+                        className="view-assignments-history"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fill, minmax(280px, 1fr))",
+                          gap: 16,
+                        }}
+                      >
+                        {detailAssignments.map((a) => {
+                          const statusStr = String(a.status || "").toLowerCase();
+                          const isCompleted = statusStr === "completed";
+                          const isPending = statusStr === "pending";
+                          const templateName =
+                            a.template?.name ?? a.template_name ?? "Assessment";
+                          const assignedAt = a.assigned_at;
+                          const completedAt = a.completed_at;
+
+                          return (
+                            <div
+                              key={a.id}
+                              style={{
+                                padding: 20,
+                                backgroundColor: COLORS.cardBg,
+                                border: `2px solid ${
+                                  isCompleted
+                                    ? "#05966920"
+                                    : isPending
+                                    ? "#d9770620"
+                                    : COLORS.borderColor
+                                }`,
+                                borderRadius: 16,
+                                transition: "all 0.2s",
+                                cursor: "default",
+                                position: "relative",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {/* Status indicator stripe */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 4,
+                                  backgroundColor: isCompleted
+                                    ? "#059669"
+                                    : isPending
+                                    ? "#d97706"
+                                    : "#94a3b8",
+                                }}
+                              />
+
+                              <div style={{ marginTop: 8 }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "flex-start",
+                                    marginBottom: 12,
+                                  }}
+                                >
+                                  <div style={{ flex: 1, paddingRight: 8 }}>
+                                    <h5
+                                      style={{
+                                        margin: "0 0 6px 0",
+                                        fontSize: 15,
+                                        fontWeight: 700,
+                                        color: COLORS.textPrimary,
+                                        lineHeight: 1.3,
+                                      }}
+                                    >
+                                      {templateName}
+                                    </h5>
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...styles.badge(statusStr),
+                                      fontSize: 10,
+                                      padding: "4px 10px",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {a.status}
+                                  </span>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 8,
+                                    fontSize: 12,
+                                    color: COLORS.textSecondary,
+                                  }}
+                                >
+                                  {assignedAt && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                      }}
+                                    >
+                                      <Clock
+                                        size={14}
+                                        style={{ flexShrink: 0 }}
+                                      />
+                                      <span>
+                                        Assigned{" "}
+                                        {new Date(
+                                          assignedAt
+                                        ).toLocaleDateString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                          year: "numeric",
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {completedAt && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                      }}
+                                    >
+                                      <CheckCircle
+                                        size={14}
+                                        style={{ flexShrink: 0 }}
+                                        color="#059669"
+                                      />
+                                      <span style={{ color: "#059669" }}>
+                                        Completed{" "}
+                                        {new Date(
+                                          completedAt
+                                        ).toLocaleDateString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer – Fixed */}
+              {!loadingDetailAssignments && detailAssignments.length > 0 && (
+                <div
+                  className="view-assignments-footer"
+                  style={{
+                    padding: "20px 32px",
+                    borderTop: `1px solid ${COLORS.borderColor}`,
+                    backgroundColor: COLORS.tableRow,
+                    flexShrink: 0,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 13, color: COLORS.textSecondary }}
+                  >
+                    Showing {detailAssignments.length} assessment
+                    {detailAssignments.length !== 1 ? "s" : ""}
+                  </div>
+                  <button
+                    style={{
+                      ...styles.btnPrimary,
+                      backgroundColor: COLORS.primary,
+                    }}
+                    onClick={() => setDetailOpen(false)}
+                  >
+                    Close
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
-      </Modal>
 
       {/* Assign Modal */}
       <Modal
