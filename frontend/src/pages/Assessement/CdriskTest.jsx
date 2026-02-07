@@ -26,7 +26,7 @@ const QUESTIONS = [
 export default function CDRISCTest() {
   const [params] = useSearchParams();
   const assignmentId = params.get("assignment");
-  const API_BASE = "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 

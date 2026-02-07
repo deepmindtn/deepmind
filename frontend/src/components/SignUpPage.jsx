@@ -20,7 +20,7 @@ function SignUpPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   // Change this to your backend URL or use an env var
-  const API_BASE = "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
     email: "",

@@ -133,7 +133,7 @@ const styles = {
     gap: "24px",
   },
   historyCard: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.cardBg,
     borderRadius: "16px",
     border: `1px solid ${COLORS.borderColor}`,
     padding: "0",
@@ -145,7 +145,7 @@ const styles = {
   historyHeader: {
     padding: "20px",
     borderBottom: `1px solid ${COLORS.borderColor}`,
-    backgroundColor: "#fafafa",
+    backgroundColor: COLORS.cardBg,
   },
   badge: (type) => ({
     display: "inline-flex",
@@ -692,7 +692,7 @@ const SurveyDetailsView = ({ surveyId, onBack, API_BASE, authHeader }) => {
 
 // --- Main Component ---
 const CreateSurveyForm = () => {
-  const API_BASE = "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
