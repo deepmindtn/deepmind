@@ -340,6 +340,8 @@ const GenerateWithAIForm = () => {
                 resize: "none",
                 fontSize: "16px",
                 lineHeight: "1.6",
+                backgroundColor: COLORS.cardBg, 
+                color: COLORS.textPrimary,
               }}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -456,7 +458,7 @@ const GenerateWithAIForm = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              backgroundColor: "#fcfcfd",
+              backgroundColor: COLORS.cardBg,
             }}
           >
             <div className="ai-form-schedule-header" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -493,7 +495,7 @@ const GenerateWithAIForm = () => {
                   padding: "16px 18px",
                   borderRadius: "14px",
                   border: `1px solid ${COLORS.borderColor}`,
-                  backgroundColor: "#fff",
+                  backgroundColor: COLORS.cardBg,
                   boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
                 }}
               >
