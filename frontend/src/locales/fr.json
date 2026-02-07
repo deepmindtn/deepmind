@@ -107,5 +107,79 @@
     "backHome": "Retour à l'accueil",
     "showPassword": "Afficher le mot de passe",
     "hidePassword": "Masquer le mot de passe"
+  },
+  "howItWorks": {
+    "hero": {
+      "badge": "Architecture de Processus",
+      "title1": "Du Chaos à la",
+      "titleHighlight": "Clarté",
+      "subtitle": "Découvrez comment DeepMind transforme le bruit de communication brut en indicateurs de bien-être clairs et exploitables, sans compromettre la confidentialité."
+    },
+    "steps": {
+      "integration": {
+        "title": "Intégration Transparente",
+        "subtitle": "Connectez votre espace de travail",
+        "description": "DeepMind se connecte directement à vos plateformes de communication (Slack, Teams, Email) via des API en lecture seule. Aucune saisie manuelle de données requise.",
+        "details": {
+          "readonly": "Accès en lecture seule",
+          "zeroConfig": "Configuration zéro",
+          "sso": "SSO d'entreprise"
+        }
+      },
+      "privacy": {
+        "title": "Anonymisation Confidentielle",
+        "subtitle": "Conformité RGPD",
+        "description": "Avant que toute donnée ne touche notre IA, les informations personnellement identifiables (PII) sont supprimées et chiffrées localement. Nous analysons les modèles, pas les conversations privées.",
+        "details": {
+          "redaction": "Suppression des PII",
+          "encryption": "Chiffrement AES-256",
+          "local": "Traitement local"
+        }
+      },
+      "analysis": {
+        "title": "Analyse Cognitive",
+        "subtitle": "Le moteur IA en action",
+        "description": "Nos modèles NLP propriétaires analysent les métadonnées, le sentiment et la fréquence de communication pour détecter les premiers signes d'épuisement, d'isolement et de surcharge de travail.",
+        "details": {
+          "sentiment": "Analyse de sentiment",
+          "network": "Cartographie réseau",
+          "anomaly": "Détection d'anomalies"
+        }
+      },
+      "intelligence": {
+        "title": "Intelligence Exploitable",
+        "subtitle": "Des informations qui comptent",
+        "description": "Les données brutes sont transformées en scores simples et exploitables pour les managers. Recevez des alertes et des recommandations avant que votre équipe n'atteigne le point de rupture.",
+        "details": {
+          "burnout": "Score de risque d'épuisement",
+          "pulse": "Pouls d'équipe",
+          "retention": "Alertes de rétention"
+        }
+      }
+    },
+    "tech": {
+      "title": "Protections",
+      "highlight": "Techniques",
+      "cards": {
+        "zeroRetention": {
+          "title": "Politique de Non-Rétention",
+          "description": "Nous ne stockons pas le contenu des messages. Une fois l'analyse terminée (millisecondes), le texte brut est supprimé. Seuls les scores de métadonnées sont conservés."
+        },
+        "siloedData": {
+          "title": "Architecture de Données Cloisonnée",
+          "description": "Les données de chaque organisation sont logiquement isolées. Les modèles de votre équipe ne seront jamais utilisés pour entraîner des modèles pour d'autres entreprises."
+        },
+        "blindSpots": {
+          "title": "Points Aveugles des Managers",
+          "description": "Les managers voient les données agrégées de l'équipe (min. 5 membres). Les données individuelles sont privées pour l'employé sauf partage explicite."
+        }
+      }
+    },
+    "cta": {
+      "badge": "Commencez Votre Parcours",
+      "title": "Prêt à voir l'invisible ?",
+      "subtitle": "Rejoignez les entreprises avant-gardistes qui utilisent les données pour créer des cultures plus saines.",
+      "button": "Démarrez Votre Essai Gratuit"
+    }
   }
 }

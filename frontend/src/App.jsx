@@ -8,6 +8,7 @@ import "./App.css";
 import WellbeingTechniques from "./pages/WellbeingTechniques";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
+import HowItWorks from "./components/HowItWorks";
 import SignUpPage from "./components/SignUpPage";
 import AcceptInvite from "./components/AcceptInvite";
 
@@ -63,6 +64,7 @@ function App() {
         {/* ------- Public Routes ------- */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
 

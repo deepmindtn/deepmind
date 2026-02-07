@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -27,11 +27,17 @@ import {
   Linkedin,
   Github,
 } from "lucide-react";
+import CalendlyModal from "../components/calendly/Calendlymodal";
 import "./LandingPage.css";
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const [isCalendlyOpen, setIsCalendlyOpen] = useState(false);
+
+  // Replace this with your actual Calendly URL
+  // Example: "https://calendly.com/your-username/30min"
+  const CALENDLY_URL = import.meta.env.VITE_CALENDLY_URL;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -70,6 +76,14 @@ const LandingPage = () => {
       observer.disconnect();
     };
   }, []);
+
+  const openCalendly = () => {
+    setIsCalendlyOpen(true);
+  };
+
+  const closeCalendly = () => {
+    setIsCalendlyOpen(false);
+  };
 
   /* ------------------ DATA ------------------ */
 
@@ -160,7 +174,7 @@ const LandingPage = () => {
                 className="lang-btn"
                 onClick={() => {
                   i18n.changeLanguage("en");
-                  localStorage.setItem("lang", "en"); // store selection
+                  localStorage.setItem("lang", "en");
                 }}
                 title="English"
               >
@@ -172,7 +186,7 @@ const LandingPage = () => {
                 className="lang-btn"
                 onClick={() => {
                   i18n.changeLanguage("fr");
-                  localStorage.setItem("lang", "fr"); // store selection
+                  localStorage.setItem("lang", "fr");
                 }}
                 title="Français"
               >
@@ -218,14 +232,14 @@ const LandingPage = () => {
           <div className="hero-buttons animate-fade-in-up">
             <button
               className="btn btn-primary btn-large"
-              onClick={() => navigate("/signup")}
+              onClick={openCalendly}
             >
               {t("hero.bookDemo")}
               <ArrowRight size={20} />
             </button>
             <button
               className="btn btn-secondary btn-large"
-              onClick={() => (window.location.hash = "#how-it-works")}
+              onClick={() => navigate("/how-it-works")}
             >
               {t("hero.seeHow")}
             </button>
@@ -305,7 +319,7 @@ const LandingPage = () => {
                 </button>
                 <button
                   className="btn btn-secondary btn-large"
-                  onClick={() => navigate("/contact")}
+                  onClick={openCalendly}
                 >
                   <Calendar size={20} />
                   {t("hero.bookDemo")}
@@ -344,6 +358,13 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Calendly Modal */}
+      <CalendlyModal
+        isOpen={isCalendlyOpen}
+        onClose={closeCalendly}
+        calendlyUrl={CALENDLY_URL}
+      />
     </div>
   );
 };

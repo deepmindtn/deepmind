@@ -107,5 +107,79 @@
     "backHome": "Back to Home",
     "showPassword": "Show password",
     "hidePassword": "Hide password"
+  },
+  "howItWorks": {
+    "hero": {
+      "badge": "Process Architecture",
+      "title1": "From Chaos to",
+      "titleHighlight": "Clarity",
+      "subtitle": "See how DeepMind transforms raw communication noise into clear, actionable well-being metrics—without compromising privacy."
+    },
+    "steps": {
+      "integration": {
+        "title": "Seamless Integration",
+        "subtitle": "Connect your workspace",
+        "description": "DeepMind connects directly to your communication platforms (Slack, Teams, Email) via read-only APIs. No manual data entry required.",
+        "details": {
+          "readonly": "Read-only access",
+          "zeroConfig": "Zero-config setup",
+          "sso": "Enterprise SSO"
+        }
+      },
+      "privacy": {
+        "title": "Privacy Sanitization",
+        "subtitle": "GDPR-compliant anonymization",
+        "description": "Before any data touches our AI, personally identifiable information (PII) is stripped and encrypted locally. We analyze patterns, not private conversations.",
+        "details": {
+          "redaction": "PII Redaction",
+          "encryption": "AES-256 Encryption",
+          "local": "Local Processing"
+        }
+      },
+      "analysis": {
+        "title": "Cognitive Analysis",
+        "subtitle": "The AI engine at work",
+        "description": "Our proprietary NLP models analyze metadata, sentiment, and communication frequency to detect early markers of burnout, isolation, and overwork.",
+        "details": {
+          "sentiment": "Sentiment Analysis",
+          "network": "Network Mapping",
+          "anomaly": "Anomaly Detection"
+        }
+      },
+      "intelligence": {
+        "title": "Actionable Intelligence",
+        "subtitle": "Insights that matter",
+        "description": "Raw data is transformed into simple, actionable scores for managers. Receive alerts and recommendations before your team reaches the breaking point.",
+        "details": {
+          "burnout": "Burnout Risk Score",
+          "pulse": "Team Pulse",
+          "retention": "Retention Alerts"
+        }
+      }
+    },
+    "tech": {
+      "title": "Technical",
+      "highlight": "Safeguards",
+      "cards": {
+        "zeroRetention": {
+          "title": "Zero-Retention Policy",
+          "description": "We do not store message bodies. Once analysis is complete (milliseconds), the raw text is discarded. Only the metadata scores are kept."
+        },
+        "siloedData": {
+          "title": "Siloed Data Architecture",
+          "description": "Every organization's data is logically isolated. Your team's patterns will never be used to train models for other companies."
+        },
+        "blindSpots": {
+          "title": "Manager Blind-Spots",
+          "description": "Managers see aggregated team data (min. 5 members). Individual data is private to the employee unless explicitly shared."
+        }
+      }
+    },
+    "cta": {
+      "badge": "Start Your Journey",
+      "title": "Ready to see the unseen?",
+      "subtitle": "Join forward-thinking companies using data to build healthier cultures.",
+      "button": "Start Your Free Trial"
+    }
   }
 }
