@@ -24,7 +24,7 @@ class Command(BaseCommand):
             self.stdout.write("No pending surveys to process.")
             return
 
-        frontend_url = "http://localhost:5173"
+        frontend_url = settings.FRONTEND_URL
 
         for survey in pending_surveys:
             self.stdout.write(f"🚀 Processing Survey: {survey.title}")

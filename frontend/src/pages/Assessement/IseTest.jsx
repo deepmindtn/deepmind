@@ -222,7 +222,7 @@ export default function ISETest() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
-  const API_BASE = "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // 1. Auth & Context Logic
   const isCandidate = sessionStorage.getItem("isCandidate") === "true";

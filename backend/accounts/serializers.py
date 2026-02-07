@@ -225,7 +225,7 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
 
     def _send_emails(self, survey, users, request):
         """ Renders the HTML template and sends emails to all target users """
-        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
+        origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
         
         try:
             # 1. Fetch the template from the database

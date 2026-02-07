@@ -48,7 +48,7 @@ class AssignAssessmentView(generics.CreateAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        origin = request.META.get("HTTP_ORIGIN") or "http://localhost:5173"
+        origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
 
         assigned_count = 0
         errors = []
@@ -1269,7 +1269,7 @@ class AssignCandidateAssessmentView(APIView):
         if isinstance(candidate_emails, str):
             candidate_emails = [candidate_emails]
 
-        origin = request.META.get("HTTP_ORIGIN") or "http://localhost:5173"
+        origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
         assigned_count = 0
         errors = []
 

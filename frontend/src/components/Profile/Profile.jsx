@@ -241,7 +241,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [editData, setEditData] = useState({});
-  const API_BASE = "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const token = localStorage.getItem("access");
 
   useEffect(() => {

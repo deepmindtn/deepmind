@@ -254,7 +254,7 @@ const responsiveStyles = `
 // -----------------------
 // Helper Functions
 // -----------------------
-const API_BASE = "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 function useAuthHeader() {
   const access = localStorage.getItem("access");
   return access ? { Authorization: `Bearer ${access}` } : {};

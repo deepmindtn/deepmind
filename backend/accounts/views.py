@@ -95,7 +95,7 @@ class InviteCreateView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         invite = serializer.save()
 
-        origin = request.META.get('HTTP_ORIGIN') or "http://localhost:5173"
+        origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
         invite_link = f"{origin}/accept-invite?token={invite.id}"
 
         email_sent = False
@@ -233,7 +233,7 @@ class ImportEmployeesView(APIView):
             "Other": "other",
         }
 
-        origin = request.META.get("HTTP_ORIGIN") or "http://localhost:5173"
+        origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
         base_url = f"{origin}/accept-invite"
 
         added_count = 0

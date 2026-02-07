@@ -170,7 +170,7 @@ const CompanyProfile = () => {
   const [logoPreview, setLogoPreview] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const API_BASE = "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const token = localStorage.getItem("access");
 
   useEffect(() => {
