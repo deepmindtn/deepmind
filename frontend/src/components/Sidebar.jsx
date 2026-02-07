@@ -44,7 +44,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
   const hrSystemMenu = [
     { path: "/departments", label: "Departments", icon: Briefcase },
     { path: "/email-templates", label: "Email Templates", icon: Mail },
-    { path: "/company", label: "Company", icon: Landmark },
+    { path: "/company", label: "Company Profile", icon: Landmark },
   ];
 
   const employeeMenu = [

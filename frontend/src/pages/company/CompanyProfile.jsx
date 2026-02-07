@@ -29,27 +29,149 @@ const COLORS = {
   shadowHuge: "var(--shadow-huge)",
 };
 
+/* -----------------------
+   CSS & Responsive Styles
+----------------------- */
+const responsiveStyles = `
+  /* --- Desktop Layout (Default) --- */
+  .profile-container {
+    padding: 5px 14px;
+    background-color: ${COLORS.bgMain};
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .main-card {
+    background-color: ${COLORS.cardBg};
+    border-radius: 24px;
+    border: 1px solid ${COLORS.borderColor};
+    box-shadow: ${COLORS.shadowHuge};
+    margin: 0 auto;
+    overflow: hidden;
+    min-height: calc(100vh - 40px);
+  }
+
+  .hero-section {
+    background: linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%);
+    padding: 40px;
+    border-bottom: 1px solid ${COLORS.borderColor};
+  }
+
+  .hero-content {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .hero-info {
+    flex: 1;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    padding: 40px;
+  }
+
+  .info-field-row {
+    display: flex;
+    margin-bottom: 24px;
+  }
+
+  /* --- Buttons --- */
+  .btn-primary {
+    background: ${COLORS.primary};
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-cancel {
+    background: white;
+    color: ${COLORS.red};
+    border: 1px solid ${COLORS.borderColor};
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  /* --- Mobile / Responsive Overrides --- */
+  @media (max-width: 900px) {
+    .profile-grid {
+      grid-template-columns: 1fr; /* Stack columns */
+      padding: 24px;
+      gap: 30px;
+    }
+    
+    .hero-section {
+      padding: 24px; /* Reduce padding */
+    }
+
+    .hero-content {
+      flex-direction: column; /* Stack logo, title, buttons */
+      text-align: center;
+      gap: 20px;
+    }
+
+    .hero-info {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .hero-info input {
+      text-align: center;
+    }
+
+    .hero-actions {
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap; /* Allow buttons to wrap if very small screen */
+    }
+
+    .btn-primary, .btn-cancel {
+      flex: 1; /* Make buttons equal width */
+      min-width: 120px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .profile-container {
+      padding: 0; /* Full bleed on small mobile */
+    }
+    .main-card {
+      border-radius: 0;
+      min-height: 100vh;
+      border: none;
+    }
+  }
+`;
+
 const styles = {
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  mainWrapperCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    margin: "0 auto",
-    overflow: "hidden",
-    minHeight: "calc(100vh - 40px)",
-  },
-  gradientHero: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "40px",
-    borderBottom: `1px solid ${COLORS.borderColor}`,
-  },
   sectionTitle: {
     fontSize: "18px",
     fontWeight: "700",
@@ -71,53 +193,11 @@ const styles = {
   },
 };
 
-const responsiveStyles = `
-  .profile-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    padding: 40px;
-  }
-
-  @media (max-width: 900px) {
-    .profile-grid {
-      grid-template-columns: 1fr;
-      padding: 24px;
-    }
-  }
-
-  .btn-primary {
-    background: ${COLORS.primary};
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-cancel {
-    background: white;
-    color: ${COLORS.red};
-    border: 1px solid ${COLORS.borderColor};
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-`;
-
 /* -----------------------
    Helper Component
 ----------------------- */
 const InfoField = ({ label, value, icon: Icon, isEditing, onChange }) => (
-  <div style={{ display: "flex", marginBottom: "24px" }}>
+  <div className="info-field-row">
     <div
       style={{
         width: 36,
@@ -130,11 +210,12 @@ const InfoField = ({ label, value, icon: Icon, isEditing, onChange }) => (
         border: `1px solid ${COLORS.borderColor}`,
         marginRight: 12,
         color: COLORS.primary,
+        flexShrink: 0,
       }}
     >
       <Icon size={18} />
     </div>
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
       <label
         style={{
           display: "block",
@@ -154,7 +235,9 @@ const InfoField = ({ label, value, icon: Icon, isEditing, onChange }) => (
           onChange={(e) => onChange(e.target.value)}
         />
       ) : (
-        <div style={{ fontSize: 15 }}>{value || "Not set"}</div>
+        <div style={{ fontSize: 15, wordBreak: "break-word" }}>
+          {value || "Not set"}
+        </div>
       )}
     </div>
   </div>
@@ -203,21 +286,14 @@ const CompanyProfile = () => {
     try {
       const formData = new FormData();
 
-      // Append all fields except logo and read-only fields
       Object.entries(editData).forEach(([key, value]) => {
-        // Skip logo field - we'll handle it separately
         if (key === "logo") return;
-
-        // Skip id and created_at (read-only fields)
         if (key === "id" || key === "created_at") return;
-
-        // Only append non-empty values
         if (value !== null && value !== undefined && value !== "") {
           formData.append(key, value);
         }
       });
 
-      // Only append logo if it's a new File object (not the existing URL string)
       if (editData.logo && editData.logo instanceof File) {
         formData.append("logo", editData.logo);
       }
@@ -226,10 +302,7 @@ const CompanyProfile = () => {
         `${API_BASE}/api/company/me/`,
         formData,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            // Don't set Content-Type - let axios handle it for FormData
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
@@ -247,23 +320,20 @@ const CompanyProfile = () => {
         error.response?.data?.message ||
         error.response?.data?.detail ||
         "Failed to save changes. Please try again.";
-      setToast({
-        message: errorMessage,
-        type: "error",
-      });
+      setToast({ message: errorMessage, type: "error" });
     }
   };
 
   if (!company) return <div style={{ padding: 40 }}>Loading...</div>;
 
   return (
-    <div style={styles.container}>
+    <div className="profile-container">
       <style>{responsiveStyles}</style>
 
-      <div style={styles.mainWrapperCard}>
+      <div className="main-card">
         {/* Hero */}
-        <div style={styles.gradientHero}>
-          <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+        <div className="hero-section">
+          <div className="hero-content">
             <div
               style={{
                 width: 90,
@@ -272,6 +342,7 @@ const CompanyProfile = () => {
                 background: COLORS.primary,
                 position: "relative",
                 overflow: "hidden",
+                flexShrink: 0,
               }}
             >
               {logoPreview || company.logo ? (
@@ -294,6 +365,7 @@ const CompanyProfile = () => {
                     padding: 8,
                     borderRadius: "50%",
                     cursor: "pointer",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
                   }}
                 >
                   <input
@@ -308,12 +380,12 @@ const CompanyProfile = () => {
                       }
                     }}
                   />
-                  <Edit3 size={14} />
+                  <Edit3 size={14} color="black" />
                 </label>
               )}
             </div>
 
-            <div style={{ flex: 1 }}>
+            <div className="hero-info">
               {isEditing ? (
                 <input
                   style={{ ...styles.input, fontSize: 22, fontWeight: 700 }}
@@ -323,34 +395,38 @@ const CompanyProfile = () => {
                   }
                 />
               ) : (
-                <h1 style={{ margin: 0 }}>{company.name}</h1>
+                <h1 style={{ margin: 0, fontSize: "clamp(1.5rem, 4vw, 2.2rem)" }}>
+                  {company.name}
+                </h1>
               )}
             </div>
 
-            {!isEditing ? (
-              <button
-                className="btn-primary"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit3 size={16} /> Edit
-              </button>
-            ) : (
-              <>
+            <div className="hero-actions">
+              {!isEditing ? (
                 <button
-                  className="btn-cancel"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditData(company); // Reset to original data
-                    setLogoPreview(null);
-                  }}
+                  className="btn-primary"
+                  onClick={() => setIsEditing(true)}
                 >
-                  <X size={16} /> Cancel
+                  <Edit3 size={16} /> Edit
                 </button>
-                <button className="btn-primary" onClick={handleSave}>
-                  <Save size={16} /> Save
-                </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button
+                    className="btn-cancel"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditData(company);
+                      setLogoPreview(null);
+                    }}
+                  >
+                    <X size={16} /> Cancel
+                  </button>
+                  <button className="btn-primary" onClick={handleSave}>
+                    <Save size={16} /> Save
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -412,6 +488,7 @@ const CompanyProfile = () => {
             position: "fixed",
             bottom: "24px",
             right: "24px",
+            left: "24px", // Ensure it doesn't go off screen on mobile
             backgroundColor: COLORS.cardBg,
             padding: "16px 20px",
             borderRadius: "12px",
@@ -423,8 +500,8 @@ const CompanyProfile = () => {
             display: "flex",
             alignItems: "center",
             gap: "12px",
-            minWidth: "300px",
             maxWidth: "500px",
+            margin: "0 auto", // Center on mobile
           }}
         >
           <div
