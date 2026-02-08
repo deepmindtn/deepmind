@@ -1,13 +1,13 @@
 import React from "react";
-import { 
-  Wind, 
-  Dumbbell, 
-  Heart, 
-  CalendarCheck, 
-  Smile, 
-  ArrowRight, 
-  Zap, 
-  Clock 
+import {
+  Wind,
+  Dumbbell,
+  Heart,
+  CalendarCheck,
+  Smile,
+  ArrowRight,
+  Zap,
+  Clock,
 } from "lucide-react";
 
 // -----------------------
@@ -33,6 +33,12 @@ const COLORS = {
 };
 
 const styles = {
+  container: {
+    padding: "5px 14px",
+    backgroundColor: COLORS.bgMain,
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
   // ROOT ELEMENT
   mainWrapperCard: {
     backgroundColor: COLORS.cardBg,
@@ -40,7 +46,7 @@ const styles = {
     border: `1px solid ${COLORS.borderColor}`,
     boxShadow: COLORS.shadowHuge,
     width: "100%",
-    margin: "0 auto", 
+    margin: "0 auto",
     overflow: "hidden",
     fontFamily: "'Inter', system-ui, sans-serif",
     display: "flex",
@@ -120,7 +126,7 @@ const styles = {
     color: COLORS.textMuted,
     marginTop: "auto",
     textTransform: "uppercase",
-    letterSpacing: "0.5px"
+    letterSpacing: "0.5px",
   },
 };
 
@@ -169,7 +175,7 @@ const WellBeingChoice = ({ onSelect }) => {
       color: COLORS.blue,
       bg: COLORS.blueLight,
       time: "5-10 MIN",
-      type: "Relaxation"
+      type: "Relaxation",
     },
     {
       id: "physical",
@@ -179,7 +185,7 @@ const WellBeingChoice = ({ onSelect }) => {
       color: COLORS.orange,
       bg: COLORS.orangeLight,
       time: "2-5 MIN",
-      type: "Activity"
+      type: "Activity",
     },
     {
       id: "emotional",
@@ -189,7 +195,7 @@ const WellBeingChoice = ({ onSelect }) => {
       color: COLORS.purple,
       bg: COLORS.purpleLight,
       time: "10-15 MIN",
-      type: "Journaling"
+      type: "Journaling",
     },
     {
       id: "daily",
@@ -199,62 +205,90 @@ const WellBeingChoice = ({ onSelect }) => {
       color: COLORS.primary,
       bg: COLORS.primaryLight,
       time: "DAILY",
-      type: "Habit"
+      type: "Habit",
     },
   ];
 
   return (
-    <div className="wb-main-wrapper" style={styles.mainWrapperCard}>
-      <style>{responsiveStyles}</style>
-      
-      {/* Header Section */}
-      <div className="wb-hero" style={styles.heroSection}>
-        <div style={styles.heroIconBox}>
-          <Smile size={36} color="white" strokeWidth={2.5} />
+    <div className="assessment-library-container" style={styles.container}>
+      <div className="wb-main-wrapper" style={styles.mainWrapperCard}>
+        <style>{responsiveStyles}</style>
+
+        {/* Header Section */}
+        <div className="wb-hero" style={styles.heroSection}>
+          <div style={styles.heroIconBox}>
+            <Smile size={36} color="white" strokeWidth={2.5} />
+          </div>
+          <div>
+            <h1
+              style={{
+                fontSize: "32px",
+                fontWeight: "800",
+                color: COLORS.textPrimary,
+                margin: "0 0 8px 0",
+              }}
+            >
+              Well-Being Center
+            </h1>
+            <p
+              style={{
+                fontSize: "16px",
+                color: COLORS.textSecondary,
+                margin: "0",
+                maxWidth: "600px",
+                lineHeight: "1.6",
+              }}
+            >
+              Select a technique below to start your journey towards a
+              healthier, more balanced work life.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 style={{ 
-            fontSize: "32px", fontWeight: "800", color: COLORS.textPrimary, margin: "0 0 8px 0" 
-          }}>
-            Well-Being Center
-          </h1>
-          <p style={{ 
-            fontSize: "16px", color: COLORS.textSecondary, margin: "0", maxWidth: "600px", lineHeight: "1.6" 
-          }}>
-            Select a technique below to start your journey towards a healthier, more balanced work life.
-          </p>
+
+        {/* Grid of Choices */}
+        <div className="wb-grid" style={styles.grid}>
+          {choices.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onSelect(item.id)}
+              className="wb-option-card"
+              style={styles.card}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  width: "100%",
+                }}
+              >
+                <div style={styles.iconWrapper(item.bg, item.color)}>
+                  <item.icon size={24} strokeWidth={2.5} />
+                </div>
+                <ArrowRight
+                  className="action-arrow"
+                  size={20}
+                  color={COLORS.textMuted}
+                />
+              </div>
+
+              <h3 style={styles.cardTitle}>{item.title}</h3>
+              <p style={styles.cardDesc}>{item.desc}</p>
+
+              <div style={styles.cardFooter}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <Clock size={14} /> {item.time}
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <Zap size={14} /> {item.type}
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
-      </div>
-
-      {/* Grid of Choices */}
-      <div className="wb-grid" style={styles.grid}>
-        {choices.map((item) => (
-          <button 
-            key={item.id}
-            onClick={() => onSelect(item.id)}
-            className="wb-option-card"
-            style={styles.card}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-              <div style={styles.iconWrapper(item.bg, item.color)}>
-                <item.icon size={24} strokeWidth={2.5} />
-              </div>
-              <ArrowRight className="action-arrow" size={20} color={COLORS.textMuted} />
-            </div>
-
-            <h3 style={styles.cardTitle}>{item.title}</h3>
-            <p style={styles.cardDesc}>{item.desc}</p>
-
-            <div style={styles.cardFooter}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Clock size={14} /> {item.time}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Zap size={14} /> {item.type}
-              </div>
-            </div>
-          </button>
-        ))}
       </div>
     </div>
   );
