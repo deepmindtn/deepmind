@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react'; // 👈 import icon
 import './AssessementPage.css';
-import AssessmentChoice from '../../components/AssessementTypeSelector/AssessementChoice';
-import GenerateWithAIForm from '../../components/AssessementTypeSelector/GenerateWithAIForm';
-import CreateSurveyForm from '../../components/AssessementTypeSelector/CreateSurveyForm';
+import AssessmentChoice from '../../../components/AssessementTypeSelector/AssessementChoice';
+import GenerateWithAIForm from '../../../components/AssessementTypeSelector/GenerateWithAIForm';
+import CreateSurveyForm from '../../../components/AssessementTypeSelector/CreateSurveyForm';
 
 const AssessementPage = () => {
   const [mode, setMode] = useState('');

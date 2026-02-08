@@ -25,7 +25,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import bigFiveImage from "../../assets/big-five-personality.png";
+import bigFiveImage from "../../../assets/big-five-personality.png";
 // -----------------------
 // Theme Configuration
 // -----------------------

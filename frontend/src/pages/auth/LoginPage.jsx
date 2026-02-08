@@ -7,7 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 import "./AuthPages.css";
 
 // ✅ correct import path (relative to src/)
-import { apiFetch } from "../utils/apiFetch";
+import { apiFetch } from "../../utils/apiFetch";
 
 function LoginPage() {
   const navigate = useNavigate();

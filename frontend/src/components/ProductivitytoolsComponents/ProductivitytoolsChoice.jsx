@@ -1,5 +1,5 @@
 import React from "react";
-import "../../pages/WellBeingPage.css";
+import "../../../pages/hr/WellbeingPage.css";
 const WellBeingChoice = ({ onSelect }) => {
   return (
     <div className="assessment-choice">

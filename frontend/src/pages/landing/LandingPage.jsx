@@ -27,7 +27,7 @@ import {
   Linkedin,
   Github,
 } from "lucide-react";
-import CalendlyModal from "../components/calendly/Calendlymodal";
+import CalendlyModal from "../../components/calendly/Calendlymodal";
 import "./LandingPage.css";
 
 const LandingPage = () => {
