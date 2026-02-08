@@ -1,6 +1,5 @@
 /* Container for the whole page */
 .wellbeing-page-container {
-  padding: 10px;
   min-height: 100vh;
   background-color: var(--bg-main);
 }
@@ -15,7 +14,8 @@
   position: absolute;
   top: 24px;
   left: 24px;
-  z-index: 105; /* Above everything */
+  z-index: 105;
+  /* Above everything */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -58,7 +58,8 @@
   gap: 8px;
   padding: 8px 14px;
   background: white;
-  border: 1px solid #e5e7eb; /* Light border matching your design */
+  border: 1px solid #e5e7eb;
+  /* Light border matching your design */
   border-radius: 10px;
   color: #374151;
   font-weight: 600;

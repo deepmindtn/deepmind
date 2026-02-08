@@ -15,7 +15,7 @@ import {
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary: "#4f46e5", // Indigo Hub
+  primary: "#10b981", // Indigo Hub
   success: "#10b981",
   warning: "#f59e0b",
   bgMain: "var(--bg-main)",
@@ -28,6 +28,12 @@ const COLORS = {
 };
 
 const styles = {
+  container: {
+    padding: "5px 14px",
+    backgroundColor: COLORS.bgMain,
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
   mainWrapper: {
     backgroundColor: COLORS.cardBg,
     borderRadius: "24px",
@@ -190,172 +196,177 @@ export default function MyAssessments() {
   }
 
   return (
-    <div style={styles.mainWrapper}>
-      <style>{animationStyles}</style>
+    <div className="assessment-library-container" style={styles.container}>
+      <div style={styles.mainWrapper}>
+        <style>{animationStyles}</style>
 
-      {/* Hero Header */}
-      <div style={styles.heroSection}>
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-          <div style={styles.heroIconBox}>
-            <ClipboardCheck size={36} strokeWidth={2.5} />
-          </div>
-          <div>
-            <h1
-              style={{
-                fontSize: "32px",
-                fontWeight: "800",
-                color: COLORS.textPrimary,
-                margin: "0 0 4px 0",
-              }}
-            >
-              My Assessments
-            </h1>
-            <p
-              style={{
-                fontSize: "16px",
-                color: COLORS.textSecondary,
-                margin: "0",
-              }}
-            >
-              Track your progress and view psychometric insights.
-            </p>
+        {/* Hero Header */}
+        <div style={styles.heroSection}>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <div style={styles.heroIconBox}>
+              <ClipboardCheck size={36} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "800",
+                  color: COLORS.textPrimary,
+                  margin: "0 0 4px 0",
+                }}
+              >
+                My Assessments
+              </h1>
+              <p
+                style={{
+                  fontSize: "16px",
+                  color: COLORS.textSecondary,
+                  margin: "0",
+                }}
+              >
+                Track your progress and view psychometric insights.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div style={styles.contentBody}>
-        {loading ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "100px 0",
-              color: COLORS.textMuted,
-            }}
-          >
-            <Loader2
-              className="animate-spin"
-              size={40}
-              style={{ marginBottom: "16px", color: COLORS.primary }}
-            />
-            <p style={{ fontWeight: "600" }}>Fetching your assignments...</p>
-          </div>
-        ) : items.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "100px 0",
-              color: COLORS.textMuted,
-            }}
-          >
+        <div style={styles.contentBody}>
+          {loading ? (
             <div
               style={{
-                background: `${COLORS.primary}08`,
-                width: "80px",
-                height: "80px",
-                borderRadius: "50%",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 24px",
+                padding: "100px 0",
+                color: COLORS.textMuted,
               }}
             >
-              <Inbox size={40} opacity={0.3} />
+              <Loader2
+                className="animate-spin"
+                size={40}
+                style={{ marginBottom: "16px", color: COLORS.primary }}
+              />
+              <p style={{ fontWeight: "600" }}>Fetching your assignments...</p>
             </div>
-            <h3 style={{ color: COLORS.textPrimary, marginBottom: "8px" }}>
-              No Assessments Found
-            </h3>
-            <p>You don't have any assignments at the moment.</p>
-          </div>
-        ) : (
-          <div style={styles.grid}>
-            {items.map((a) => (
+          ) : items.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "100px 0",
+                color: COLORS.textMuted,
+              }}
+            >
               <div
-                key={a.id}
-                className="assessment-card-hover"
-                style={styles.assessmentCard}
+                style={{
+                  background: `${COLORS.primary}08`,
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 24px",
+                }}
               >
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: "16px",
-                    }}
-                  >
-                    <span style={styles.statusBadge(a.status)}>
-                      {a.status === "PENDING" ? (
-                        <PlayCircle size={14} />
-                      ) : (
-                        <FileText size={14} />
-                      )}
-                      {a.status}
-                    </span>
-                    <div style={{ color: COLORS.textMuted }}>
-                      <Calendar size={18} />
+                <Inbox size={40} opacity={0.3} />
+              </div>
+              <h3 style={{ color: COLORS.textPrimary, marginBottom: "8px" }}>
+                No Assessments Found
+              </h3>
+              <p>You don't have any assignments at the moment.</p>
+            </div>
+          ) : (
+            <div style={styles.grid}>
+              {items.map((a) => (
+                <div
+                  key={a.id}
+                  className="assessment-card-hover"
+                  style={styles.assessmentCard}
+                >
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <span style={styles.statusBadge(a.status)}>
+                        {a.status === "PENDING" ? (
+                          <PlayCircle size={14} />
+                        ) : (
+                          <FileText size={14} />
+                        )}
+                        {a.status}
+                      </span>
+                      <div style={{ color: COLORS.textMuted }}>
+                        <Calendar size={18} />
+                      </div>
                     </div>
+
+                    <h3
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "700",
+                        color: COLORS.textPrimary,
+                        margin: "0 0 8px 0",
+                        lineHeight: "1.4",
+                      }}
+                    >
+                      {a.template_name}
+                    </h3>
+
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        color: COLORS.textSecondary,
+                        margin: "0 0 24px 0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      Assigned on{" "}
+                      {new Date(a.assigned_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
                   </div>
 
-                  <h3
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: "700",
-                      color: COLORS.textPrimary,
-                      margin: "0 0 8px 0",
-                      lineHeight: "1.4",
-                    }}
-                  >
-                    {a.template_name}
-                  </h3>
-
-                  <p
-                    style={{
-                      fontSize: "14px",
-                      color: COLORS.textSecondary,
-                      margin: "0 0 24px 0",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    Assigned on{" "}
-                    {new Date(a.assigned_at).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
+                  <div style={{ marginTop: "auto" }}>
+                    {a.status === "PENDING" ? (
+                      <button
+                        className="btn-action btn-start"
+                        style={{ width: "100%" }}
+                        onClick={() => start(a)}
+                      >
+                        <PlayCircle size={18} />
+                        Start Assessment
+                      </button>
+                    ) : (
+                      <Link
+                        to={`/report/${a.id}`}
+                        className="btn-action btn-report"
+                        style={{ width: "100%" }}
+                      >
+                        <FileText size={18} />
+                        View Detailed Report
+                        <ChevronRight
+                          size={16}
+                          style={{ marginLeft: "auto" }}
+                        />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-
-                <div style={{ marginTop: "auto" }}>
-                  {a.status === "PENDING" ? (
-                    <button
-                      className="btn-action btn-start"
-                      style={{ width: "100%" }}
-                      onClick={() => start(a)}
-                    >
-                      <PlayCircle size={18} />
-                      Start Assessment
-                    </button>
-                  ) : (
-                    <Link
-                      to={`/report/${a.id}`}
-                      className="btn-action btn-report"
-                      style={{ width: "100%" }}
-                    >
-                      <FileText size={18} />
-                      View Detailed Report
-                      <ChevronRight size={16} style={{ marginLeft: "auto" }} />
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

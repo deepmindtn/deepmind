@@ -7,7 +7,7 @@ import {
   Minimize,
   ArrowRight,
   Target,
-  BarChart // Visual replacement for 'Type' icon
+  BarChart, // Visual replacement for 'Type' icon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -34,6 +34,12 @@ const COLORS = {
 
 const styles = {
   // ROOT ELEMENT - Dynamic to handle Zen Mode vs Standard Mode
+  container: {
+    padding: "5px 14px",
+    backgroundColor: COLORS.bgMain,
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
   mainWrapperCard: (isZen) => ({
     backgroundColor: isZen ? "#0f172a" : COLORS.cardBg, // Dark navy if Zen, else variable
     borderRadius: isZen ? "0" : "24px",
@@ -215,119 +221,136 @@ const ProductivityTools = () => {
   ];
 
   return (
-    <div
-      ref={containerRef}
-      className="wb-main-wrapper"
-      style={styles.mainWrapperCard(isZen)}
-    >
-      <style>{animationStyles}</style>
-
-      {/* Zen Mode Toggle - Floating (Kept separate from layout flow) */}
+    <div className="assessment-library-container" style={styles.container}>
       <div
-        style={{
-          position: "absolute",
-          top: "24px",
-          right: "24px",
-          display: "flex",
-          gap: "12px",
-          zIndex: 101,
-        }}
+        ref={containerRef}
+        className="wb-main-wrapper"
+        style={styles.mainWrapperCard(isZen)}
       >
-        <button
-          onClick={toggleFullscreen}
+        <style>{animationStyles}</style>
+
+        {/* Zen Mode Toggle - Floating (Kept separate from layout flow) */}
+        <div
           style={{
-            background: isZen ? "rgba(255,255,255,0.1)" : COLORS.bgMain,
-            border: isZen ? "1px solid rgba(255,255,255,0.2)" : `1px solid ${COLORS.borderColor}`,
-            color: isZen ? "#fff" : COLORS.textSecondary,
-            padding: "10px",
-            borderRadius: "12px",
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
+            position: "absolute",
+            top: "24px",
+            right: "24px",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: isZen ? "none" : "0 2px 5px rgba(0,0,0,0.05)"
+            gap: "12px",
+            zIndex: 101,
           }}
         >
-          {isZen ? <Minimize size={20} /> : <Maximize size={20} />}
-        </button>
-      </div>
-
-      {/* Header - Styled like Reference */}
-      {!isZen && (
-        <div className="wb-hero" style={styles.heroSection}>
-          <div style={styles.heroIconBox}>
-            <Zap size={36} color="white" strokeWidth={2.5} />
-          </div>
-          <div>
-            <h1
-              style={{
-                fontSize: "32px",
-                fontWeight: "800",
-                color: COLORS.textPrimary,
-                margin: "0 0 8px 0",
-              }}
-            >
-              Productivity Lab
-            </h1>
-            <p
-              style={{
-                fontSize: "16px",
-                color: COLORS.textSecondary,
-                margin: "0",
-                maxWidth: "600px",
-                lineHeight: "1.6",
-              }}
-            >
-              Science-backed frameworks to optimize your workflow and maximize output.
-            </p>
-          </div>
+          <button
+            onClick={toggleFullscreen}
+            style={{
+              background: isZen ? "rgba(255,255,255,0.1)" : COLORS.bgMain,
+              border: isZen
+                ? "1px solid rgba(255,255,255,0.2)"
+                : `1px solid ${COLORS.borderColor}`,
+              color: isZen ? "#fff" : COLORS.textSecondary,
+              padding: "10px",
+              borderRadius: "12px",
+              cursor: "pointer",
+              backdropFilter: "blur(10px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: isZen ? "none" : "0 2px 5px rgba(0,0,0,0.05)",
+            }}
+          >
+            {isZen ? <Minimize size={20} /> : <Maximize size={20} />}
+          </button>
         </div>
-      )}
 
-      {/* Main Grid Content */}
-      <div className="content-scroll" style={styles.contentBody}>
-        <div style={styles.grid}>
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              className="tool-card-hover"
-              style={styles.toolCard}
-              onClick={() => navigate(tool.path)}
-            >
-              {/* Card Header: Icon + Arrow */}
-              <div
+        {/* Header - Styled like Reference */}
+        {!isZen && (
+          <div className="wb-hero" style={styles.heroSection}>
+            <div style={styles.heroIconBox}>
+              <Zap size={36} color="white" strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
+                  fontSize: "32px",
+                  fontWeight: "800",
+                  color: COLORS.textPrimary,
+                  margin: "0 0 8px 0",
                 }}
               >
-                <div style={styles.iconWrapper(tool.bg, tool.color)}>
-                  {tool.icon}
-                </div>
-                <ArrowRight
-                  className="action-arrow"
-                  size={20}
-                  color={COLORS.textMuted}
-                />
-              </div>
+                Productivity Lab
+              </h1>
+              <p
+                style={{
+                  fontSize: "16px",
+                  color: COLORS.textSecondary,
+                  margin: "0",
+                  maxWidth: "600px",
+                  lineHeight: "1.6",
+                }}
+              >
+                Science-backed frameworks to optimize your workflow and maximize
+                output.
+              </p>
+            </div>
+          </div>
+        )}
 
-              {/* Card Body: Title + Desc */}
-              <h3 style={styles.cardTitle}>{tool.title}</h3>
-              <p style={styles.cardDesc}>{tool.desc}</p>
+        {/* Main Grid Content */}
+        <div className="content-scroll" style={styles.contentBody}>
+          <div style={styles.grid}>
+            {tools.map((tool) => (
+              <button
+                key={tool.id}
+                className="tool-card-hover"
+                style={styles.toolCard}
+                onClick={() => navigate(tool.path)}
+              >
+                {/* Card Header: Icon + Arrow */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    width: "100%",
+                  }}
+                >
+                  <div style={styles.iconWrapper(tool.bg, tool.color)}>
+                    {tool.icon}
+                  </div>
+                  <ArrowRight
+                    className="action-arrow"
+                    size={20}
+                    color={COLORS.textMuted}
+                  />
+                </div>
 
-              {/* Card Footer: Metadata */}
-              <div style={styles.cardFooter}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Target size={14} /> {tool.type}
+                {/* Card Body: Title + Desc */}
+                <h3 style={styles.cardTitle}>{tool.title}</h3>
+                <p style={styles.cardDesc}>{tool.desc}</p>
+
+                {/* Card Footer: Metadata */}
+                <div style={styles.cardFooter}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Target size={14} /> {tool.type}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Clock size={14} /> {tool.time}
+                  </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Clock size={14} /> {tool.time}
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

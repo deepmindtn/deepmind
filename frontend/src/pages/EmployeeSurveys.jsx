@@ -16,7 +16,7 @@ import {
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary:"#10b981", // Indigo Hub
+  primary: "#10b981", // Indigo Hub
   primaryLight: "var(--primary-light)",
   primaryDark: "var(--primary-dark)",
   secondary: "var(--secondary)",
@@ -43,6 +43,12 @@ const COLORS = {
 };
 
 const styles = {
+  container: {
+    padding: "5px 14px",
+    backgroundColor: COLORS.bgMain,
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  },
   mainWrapper: {
     backgroundColor: COLORS.cardBg,
     borderRadius: "24px",
@@ -406,289 +412,291 @@ const EmployeeSurveys = () => {
   };
 
   return (
-    <div style={styles.mainWrapper}>
-      <style>{animationStyles}</style>
+    <div className="assessment-library-container" style={styles.container}>
+      <div style={styles.mainWrapper}>
+        <style>{animationStyles}</style>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
 
-      {/* Hero Header */}
-      <div style={styles.heroSection} className="hero-section-mobile">
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-          <div style={styles.heroIconBox} className="hero-icon-box-mobile">
-            <ClipboardList size={36} strokeWidth={2.5} />
-          </div>
-          <div>
-            <h1
-              className="hero-title-mobile"
-              style={{
-                fontSize: "32px",
-                fontWeight: "800",
-                color: COLORS.textPrimary,
-                margin: "0 0 4px 0",
-              }}
-            >
-              Assigned Surveys
-            </h1>
-            <p
-              className="hero-subtitle-mobile"
-              style={{
-                fontSize: "16px",
-                color: COLORS.textSecondary,
-                margin: "0",
-              }}
-            >
-              Pending assessments assigned by HR.
-            </p>
+        {/* Hero Header */}
+        <div style={styles.heroSection} className="hero-section-mobile">
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <div style={styles.heroIconBox} className="hero-icon-box-mobile">
+              <ClipboardList size={36} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1
+                className="hero-title-mobile"
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "800",
+                  color: COLORS.textPrimary,
+                  margin: "0 0 4px 0",
+                }}
+              >
+                Assigned Surveys
+              </h1>
+              <p
+                className="hero-subtitle-mobile"
+                style={{
+                  fontSize: "16px",
+                  color: COLORS.textSecondary,
+                  margin: "0",
+                }}
+              >
+                Pending assessments assigned by HR.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Content Body */}
-      <div style={styles.contentBody} className="content-body-mobile">
-        {loading ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "100px 0",
-              color: COLORS.textMuted,
-            }}
-          >
-            <Loader2
-              className="animate-spin"
-              size={40}
-              style={{ marginBottom: "16px", color: COLORS.primary }}
-            />
-            <p style={{ fontWeight: "600" }}>Loading your surveys...</p>
-          </div>
-        ) : surveys.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "100px 0",
-              color: COLORS.textMuted,
-            }}
-          >
+        {/* Content Body */}
+        <div style={styles.contentBody} className="content-body-mobile">
+          {loading ? (
             <div
               style={{
-                background: `${COLORS.primary}08`,
-                width: "80px",
-                height: "80px",
-                borderRadius: "50%",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 24px",
+                padding: "100px 0",
+                color: COLORS.textMuted,
               }}
             >
-              <Inbox size={40} opacity={0.3} />
+              <Loader2
+                className="animate-spin"
+                size={40}
+                style={{ marginBottom: "16px", color: COLORS.primary }}
+              />
+              <p style={{ fontWeight: "600" }}>Loading your surveys...</p>
             </div>
-            <h3
+          ) : surveys.length === 0 ? (
+            <div
               style={{
-                color: COLORS.textPrimary,
-                marginBottom: "8px",
-                fontSize: "20px",
+                textAlign: "center",
+                padding: "100px 0",
+                color: COLORS.textMuted,
               }}
             >
-              No Surveys Found
-            </h3>
-            <p>You don't have any assigned surveys at the moment.</p>
-          </div>
-        ) : (
-          <div style={styles.grid} className="grid-mobile">
-            {surveys.map((item) => (
               <div
-                key={item.id}
-                className="survey-card-hover card-mobile"
-                style={styles.card}
+                style={{
+                  background: `${COLORS.primary}08`,
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 24px",
+                }}
               >
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: "16px",
-                      flexWrap: "wrap",
-                      gap: "8px",
-                    }}
-                  >
-                    <span style={styles.statusBadge(item.status)}>
-                      {item.status === "pending" ? (
-                        <PlayCircle size={14} />
-                      ) : (
-                        <CheckCircle2 size={14} />
-                      )}
-                      {item.status}
-                    </span>
+                <Inbox size={40} opacity={0.3} />
+              </div>
+              <h3
+                style={{
+                  color: COLORS.textPrimary,
+                  marginBottom: "8px",
+                  fontSize: "20px",
+                }}
+              >
+                No Surveys Found
+              </h3>
+              <p>You don't have any assigned surveys at the moment.</p>
+            </div>
+          ) : (
+            <div style={styles.grid} className="grid-mobile">
+              {surveys.map((item) => (
+                <div
+                  key={item.id}
+                  className="survey-card-hover card-mobile"
+                  style={styles.card}
+                >
+                  <div>
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "12px",
-                        color: COLORS.textMuted,
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: "16px",
+                        flexWrap: "wrap",
+                        gap: "8px",
                       }}
                     >
-                      <Calendar size={14} />
-                      {new Date(item.assigned_at).toLocaleDateString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        }
-                      )}
+                      <span style={styles.statusBadge(item.status)}>
+                        {item.status === "pending" ? (
+                          <PlayCircle size={14} />
+                        ) : (
+                          <CheckCircle2 size={14} />
+                        )}
+                        {item.status}
+                      </span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "12px",
+                          color: COLORS.textMuted,
+                        }}
+                      >
+                        <Calendar size={14} />
+                        {new Date(item.assigned_at).toLocaleDateString(
+                          undefined,
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          }
+                        )}
+                      </div>
+                    </div>
+
+                    <h3
+                      className="card-title-mobile"
+                      style={{
+                        fontSize: "20px",
+                        fontWeight: "700",
+                        color: COLORS.textPrimary,
+                        margin: "0 0 12px 0",
+                        lineHeight: "1.4",
+                      }}
+                    >
+                      {item.survey_title}
+                    </h3>
+
+                    <div style={{ marginBottom: "20px" }}>
+                      <span style={styles.typeBadge(item.survey_response_type)}>
+                        {item.survey_response_type === "anonymous" ? (
+                          <Shield size={14} />
+                        ) : (
+                          <User size={14} />
+                        )}
+                        {item.survey_response_type === "anonymous"
+                          ? "Anonymous"
+                          : "Named"}
+                      </span>
                     </div>
                   </div>
 
-                  <h3
-                    className="card-title-mobile"
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: "700",
-                      color: COLORS.textPrimary,
-                      margin: "0 0 12px 0",
-                      lineHeight: "1.4",
-                    }}
-                  >
-                    {item.survey_title}
-                  </h3>
-
-                  <div style={{ marginBottom: "20px" }}>
-                    <span style={styles.typeBadge(item.survey_response_type)}>
-                      {item.survey_response_type === "anonymous" ? (
-                        <Shield size={14} />
-                      ) : (
-                        <User size={14} />
-                      )}
-                      {item.survey_response_type === "anonymous"
-                        ? "Anonymous"
-                        : "Named"}
-                    </span>
+                  <div style={{ marginTop: "auto" }}>
+                    {item.status === "completed" ? (
+                      <button
+                        disabled
+                        className="btn-primary"
+                        style={styles.btnPrimary}
+                      >
+                        <CheckCircle2 size={18} /> Completed
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleStartSurvey(item.id)}
+                        className="btn-primary"
+                        style={styles.btnPrimary}
+                      >
+                        <PlayCircle size={18} /> Start Survey
+                      </button>
+                    )}
                   </div>
-                </div>
-
-                <div style={{ marginTop: "auto" }}>
-                  {item.status === "completed" ? (
-                    <button
-                      disabled
-                      className="btn-primary"
-                      style={styles.btnPrimary}
-                    >
-                      <CheckCircle2 size={18} /> Completed
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleStartSurvey(item.id)}
-                      className="btn-primary"
-                      style={styles.btnPrimary}
-                    >
-                      <PlayCircle size={18} /> Start Survey
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Modal for Taking Survey */}
-      {activeSurvey && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent} className="modal-content-mobile">
-            <div
-              className="modal-header-mobile"
-              style={{
-                padding: "20px",
-                borderBottom: `1px solid ${COLORS.borderColor}`,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h2 style={{ fontSize: "20px", margin: 0, fontWeight: "700" }}>
-                {activeSurvey.survey_title}
-              </h2>
-              <button
-                onClick={() => setActiveSurvey(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "24px",
-                  color: COLORS.textMuted,
-                  padding: "0",
-                  lineHeight: "1",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <div
-              className="modal-body-mobile"
-              style={{ padding: "24px", overflowY: "auto", flex: 1 }}
-            >
-              {activeSurvey.questions.map((q, idx) => (
-                <div key={q.id} style={{ marginBottom: "24px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "15px",
-                      fontWeight: "600",
-                      color: COLORS.textPrimary,
-                      marginBottom: "8px",
-                    }}
-                  >
-                    {idx + 1}. {q.text}
-                  </label>
-                  <textarea
-                    style={styles.textarea}
-                    placeholder="Type your answer here..."
-                    value={answers[q.id] || ""}
-                    onChange={(e) =>
-                      setAnswers({ ...answers, [q.id]: e.target.value })
-                    }
-                  />
                 </div>
               ))}
             </div>
-            <div
-              className="modal-footer-mobile"
-              style={{
-                padding: "20px",
-                borderTop: `1px solid ${COLORS.borderColor}`,
-                backgroundColor: COLORS.cardBg,
-              }}
-            >
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="btn-primary"
-                style={styles.btnPrimary}
+          )}
+        </div>
+
+        {/* Modal for Taking Survey */}
+        {activeSurvey && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalContent} className="modal-content-mobile">
+              <div
+                className="modal-header-mobile"
+                style={{
+                  padding: "20px",
+                  borderBottom: `1px solid ${COLORS.borderColor}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="animate-spin" size={18} />
-                    Submitting...
-                  </>
-                ) : (
-                  <>Submit Assessment</>
-                )}
-              </button>
+                <h2 style={{ fontSize: "20px", margin: 0, fontWeight: "700" }}>
+                  {activeSurvey.survey_title}
+                </h2>
+                <button
+                  onClick={() => setActiveSurvey(null)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "24px",
+                    color: COLORS.textMuted,
+                    padding: "0",
+                    lineHeight: "1",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div
+                className="modal-body-mobile"
+                style={{ padding: "24px", overflowY: "auto", flex: 1 }}
+              >
+                {activeSurvey.questions.map((q, idx) => (
+                  <div key={q.id} style={{ marginBottom: "24px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "15px",
+                        fontWeight: "600",
+                        color: COLORS.textPrimary,
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {idx + 1}. {q.text}
+                    </label>
+                    <textarea
+                      style={styles.textarea}
+                      placeholder="Type your answer here..."
+                      value={answers[q.id] || ""}
+                      onChange={(e) =>
+                        setAnswers({ ...answers, [q.id]: e.target.value })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <div
+                className="modal-footer-mobile"
+                style={{
+                  padding: "20px",
+                  borderTop: `1px solid ${COLORS.borderColor}`,
+                  backgroundColor: COLORS.cardBg,
+                }}
+              >
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="btn-primary"
+                  style={styles.btnPrimary}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>Submit Assessment</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
