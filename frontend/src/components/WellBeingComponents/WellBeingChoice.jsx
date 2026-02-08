@@ -32,67 +32,131 @@ const COLORS = {
   orange: "var(--orange)",
 };
 
+/* -----------------------
+   CSS & Responsive Styles
+----------------------- */
+const responsiveStyles = `
+  /* --- Desktop / Default Styles --- */
+  .wb-container {
+    padding: 5px 14px;
+    background-color: ${COLORS.bgMain};
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .wb-main-wrapper {
+    background-color: ${COLORS.cardBg};
+    border-radius: 24px;
+    border: 1px solid ${COLORS.borderColor};
+    box-shadow: ${COLORS.shadowHuge};
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 40px);
+    position: relative;
+  }
+
+  .wb-hero {
+    background: linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%);
+    padding: 48px;
+    border-bottom: 1px solid ${COLORS.borderColor};
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    text-align: left;
+  }
+
+  .wb-hero-icon-box {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background-color: ${COLORS.primary};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+  }
+
+  .wb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    padding: 40px;
+  }
+
+  .wb-card {
+    background-color: ${COLORS.bgMain};
+    border: 1px solid ${COLORS.borderColor};
+    border-radius: 20px;
+    padding: 32px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Hover Effects */
+  .wb-card:hover {
+    transform: translateY(-8px);
+    border-color: ${COLORS.primary};
+    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1);
+  }
+  
+  .wb-card:hover .action-arrow {
+    transform: translateX(4px);
+    color: ${COLORS.primary};
+  }
+
+  .action-arrow {
+    transition: transform 0.2s, color 0.2s;
+  }
+
+  /* --- Mobile / Responsive Overrides --- */
+  @media (max-width: 768px) {
+    .wb-container {
+      padding: 10px; /* Slight padding to ensure border radius is visible */
+    }
+
+    .wb-main-wrapper {
+      border-radius: 24px;
+      min-height: calc(100vh - 20px);
+      height: auto;
+    }
+
+    .wb-hero {
+      flex-direction: column;
+      text-align: center;
+      padding: 32px 20px;
+      gap: 16px;
+    }
+
+    .wb-hero-icon-box {
+      margin-bottom: 8px;
+    }
+
+    .wb-grid {
+      grid-template-columns: 1fr; /* Force single column */
+      gap: 16px;
+      padding: 24px 16px;
+    }
+
+    .wb-card {
+      padding: 24px;
+    }
+  }
+`;
+
 const styles = {
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  // ROOT ELEMENT
-  mainWrapperCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    width: "100%",
-    margin: "0 auto",
-    overflow: "hidden",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "calc(100vh - 40px)", // Adjusted for page padding
-  },
-  heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "48px",
-    borderBottom: `1px solid ${COLORS.borderColor}`,
-    display: "flex",
-    alignItems: "center",
-    gap: "24px",
-    textAlign: "left",
-  },
-  heroIconBox: {
-    width: "72px",
-    height: "72px",
-    borderRadius: "20px",
-    backgroundColor: COLORS.primary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    boxShadow: "0 10px 25px -5px rgba(16, 185, 129, 0.4)",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: "24px",
-    padding: "40px",
-  },
-  card: {
-    backgroundColor: COLORS.bgMain,
-    border: `1px solid ${COLORS.borderColor}`,
-    borderRadius: "20px",
-    padding: "32px",
-    cursor: "pointer",
-    transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
-    position: "relative",
-    overflow: "hidden",
-    textAlign: "left",
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-  },
+  // Helper for dynamic icon backgrounds
   iconWrapper: (bg, color) => ({
     width: "48px",
     height: "48px",
@@ -129,41 +193,6 @@ const styles = {
     letterSpacing: "0.5px",
   },
 };
-
-const responsiveStyles = `
-  .wb-option-card:hover {
-    transform: translateY(-8px);
-    border-color: ${COLORS.primary};
-    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1);
-  }
-  
-  .wb-option-card:hover .action-arrow {
-    transform: translateX(4px);
-    color: ${COLORS.primary};
-  }
-
-  .action-arrow {
-    transition: transform 0.2s, color 0.2s;
-  }
-
-  @media (max-width: 768px) {
-    .wb-main-wrapper {
-      margin: 0 !important;
-      border-radius: 0 !important;
-      border: none !important;
-      min-height: 100vh !important;
-    }
-    .wb-hero {
-      flex-direction: column !important;
-      text-align: center !important;
-      padding: 40px 24px !important;
-    }
-    .wb-grid {
-      grid-template-columns: 1fr !important;
-      padding: 24px !important;
-    }
-  }
-`;
 
 const WellBeingChoice = ({ onSelect }) => {
   const choices = [
@@ -210,13 +239,13 @@ const WellBeingChoice = ({ onSelect }) => {
   ];
 
   return (
-    <div className="assessment-library-container" style={styles.container}>
-      <div className="wb-main-wrapper" style={styles.mainWrapperCard}>
-        <style>{responsiveStyles}</style>
+    <div className="wb-container">
+      <style>{responsiveStyles}</style>
 
+      <div className="wb-main-wrapper">
         {/* Header Section */}
-        <div className="wb-hero" style={styles.heroSection}>
-          <div style={styles.heroIconBox}>
+        <div className="wb-hero">
+          <div className="wb-hero-icon-box">
             <Smile size={36} color="white" strokeWidth={2.5} />
           </div>
           <div>
@@ -226,6 +255,7 @@ const WellBeingChoice = ({ onSelect }) => {
                 fontWeight: "800",
                 color: COLORS.textPrimary,
                 margin: "0 0 8px 0",
+                lineHeight: "1.2",
               }}
             >
               Well-Being Center
@@ -239,20 +269,19 @@ const WellBeingChoice = ({ onSelect }) => {
                 lineHeight: "1.6",
               }}
             >
-              Select a technique below to start your journey towards a
-              healthier, more balanced work life.
+              Select a technique below to start your journey towards a healthier,
+              more balanced work life.
             </p>
           </div>
         </div>
 
         {/* Grid of Choices */}
-        <div className="wb-grid" style={styles.grid}>
+        <div className="wb-grid">
           {choices.map((item) => (
             <button
               key={item.id}
               onClick={() => onSelect(item.id)}
-              className="wb-option-card"
-              style={styles.card}
+              className="wb-card"
             >
               <div
                 style={{
