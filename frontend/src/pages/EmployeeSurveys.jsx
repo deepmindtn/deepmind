@@ -16,98 +16,228 @@ import {
 // Theme Constants
 // -----------------------
 const COLORS = {
-  primary: "#10b981", // Indigo Hub
-  primaryLight: "var(--primary-light)",
-  primaryDark: "var(--primary-dark)",
-  secondary: "var(--secondary)",
-  blue: "var(--blue)",
-  blueLight: "var(--blue-light)",
-  purple: "var(--purple)",
-  purpleLight: "var(--purple-light)",
-  orange: "var(--orange)",
-  orangeLight: "var(--orange-light)",
-  red: "var(--red)",
+  primary: "#10b981", // Indigo Hub Green
   success: "#10b981",
   warning: "#f59e0b",
-  dark: "var(--dark)",
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
   textSecondary: "var(--text-secondary)",
   textMuted: "var(--text-muted)",
   borderColor: "var(--border-color)",
-  shadowSm: "var(--shadow-sm)",
-  shadowMd: "var(--shadow-md)",
-  shadowLg: "var(--shadow-lg)",
   shadowHuge: "var(--shadow-huge)",
 };
 
+/* -----------------------
+   CSS & Responsive Styles
+----------------------- */
+const responsiveStyles = `
+  /* --- Desktop / Default Styles --- */
+  .es-container {
+    padding: 5px 14px;
+    background-color: ${COLORS.bgMain};
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .main-wrapper {
+    background-color: ${COLORS.cardBg};
+    border-radius: 24px;
+    border: 1px solid ${COLORS.borderColor};
+    box-shadow: ${COLORS.shadowHuge};
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 40px);
+    position: relative;
+  }
+
+  .hero-section {
+    background: linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.cardBg} 100%);
+    padding: 48px;
+    border-bottom: 1px solid ${COLORS.borderColor};
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hero-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .hero-icon-box {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background-color: ${COLORS.primary};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 10px 25px -5px ${COLORS.primary}60;
+    color: #fff;
+  }
+
+  .content-body {
+    flex: 1;
+    padding: 40px;
+    background-color: ${COLORS.bgMain};
+  }
+
+  .survey-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .survey-card {
+    background-color: ${COLORS.cardBg};
+    border-radius: 20px;
+    padding: 24px;
+    border: 1px solid ${COLORS.borderColor};
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+  }
+
+  .survey-card:hover {
+    transform: translateY(-5px);
+    border-color: ${COLORS.primary}60;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+  }
+
+  /* --- Buttons --- */
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: ${COLORS.primary};
+    color: white;
+    box-shadow: 0 4px 12px ${COLORS.primary}40;
+    width: 100%;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
+
+  .btn-primary:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* --- Modal Styles --- */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    background-color: ${COLORS.cardBg};
+    width: 100%;
+    max-width: 600px;
+    border-radius: 20px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: slideIn 0.3s ease-out;
+  }
+
+  /* Animations */
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .animate-spin { animation: spin 1s linear infinite; }
+  
+  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes toastSlide { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* --- Mobile / Responsive Overrides --- */
+  @media (max-width: 768px) {
+    .es-container {
+      padding: 10px; /* Crucial for visible border radius */
+    }
+
+    .main-wrapper {
+      border-radius: 24px;
+      min-height: calc(100vh - 20px);
+      border: 1px solid ${COLORS.borderColor};
+    }
+
+    .hero-section {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 32px 24px;
+      gap: 20px;
+    }
+
+    .hero-content {
+      flex-direction: column;
+      align-items: center; /* Center align on mobile */
+      text-align: center;
+      width: 100%;
+    }
+
+    .hero-icon-box {
+      margin-bottom: 8px;
+    }
+
+    .content-body {
+      padding: 24px 16px;
+    }
+
+    .survey-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .survey-card {
+      padding: 20px;
+    }
+
+    /* Modal Mobile */
+    .modal-overlay {
+      padding: 10px;
+    }
+    .modal-content {
+      max-height: calc(100vh - 20px);
+    }
+  }
+`;
+
 const styles = {
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  mainWrapper: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    width: "100%",
-    margin: "0 auto",
-    overflow: "hidden",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "calc(100vh - 40px)",
-    position: "relative",
-  },
-  heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primary}1A 0%, ${COLORS.cardBg} 100%)`,
-    padding: "48px",
-    borderBottom: `1px solid ${COLORS.borderColor}`,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  heroIconBox: {
-    width: "72px",
-    height: "72px",
-    borderRadius: "20px",
-    backgroundColor: COLORS.primary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    boxShadow: `0 10px 25px -5px ${COLORS.primary}60`,
-    color: "#fff",
-  },
-  contentBody: {
-    flex: 1,
-    padding: "40px",
-    backgroundColor: COLORS.bgMain,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-    gap: "24px",
-    maxWidth: "1200px",
-    margin: "0 auto",
-  },
-  card: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "20px",
-    padding: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    transition: "all 0.3s ease",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    position: "relative",
-    overflow: "hidden",
-    minHeight: "200px",
-  },
   statusBadge: (status) => ({
     padding: "6px 12px",
     borderRadius: "8px",
@@ -136,30 +266,6 @@ const styles = {
     borderRadius: "8px",
     fontWeight: "600",
   }),
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 50,
-    padding: "20px",
-  },
-  modalContent: {
-    backgroundColor: COLORS.cardBg,
-    width: "100%",
-    maxWidth: "600px",
-    borderRadius: "20px",
-    maxHeight: "90vh",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-  },
   textarea: {
     width: "100%",
     padding: "12px",
@@ -174,107 +280,7 @@ const styles = {
     fontFamily: "'Inter', system-ui, sans-serif",
     resize: "vertical",
   },
-  btnPrimary: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    padding: "12px 20px",
-    borderRadius: "12px",
-    font: "700 14px 'Inter', system-ui, sans-serif",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    border: "none",
-    background: COLORS.primary,
-    color: "white",
-    boxShadow: `0 4px 12px ${COLORS.primary}40`,
-    width: "100%",
-  },
 };
-
-const animationStyles = `
-  .survey-card-hover:hover {
-    transform: translateY(-5px);
-    border-color: ${COLORS.primary}60;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-  }
-  .btn-primary:hover:not(:disabled) { 
-    transform: scale(1.02); 
-    opacity: 0.9; 
-  }
-  .btn-primary:disabled {
-    background: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
-  @keyframes spin { 
-    from { transform: rotate(0deg); } 
-    to { transform: rotate(360deg); } 
-  }
-  .animate-spin { 
-    animation: spin 1s linear infinite; 
-  }
-  @keyframes slideIn { 
-    from { transform: translateY(100%); opacity: 0; } 
-    to { transform: translateY(0); opacity: 1; } 
-  }
-
-  /* Mobile Responsive Styles */
-  @media (max-width: 768px) {
-    .hero-section-mobile {
-      padding: 32px 24px !important;
-      flex-direction: column;
-      align-items: flex-start !important;
-      gap: 20px;
-    }
-    .hero-icon-box-mobile {
-      width: 56px !important;
-      height: 56px !important;
-    }
-    .hero-title-mobile {
-      font-size: 24px !important;
-    }
-    .hero-subtitle-mobile {
-      font-size: 14px !important;
-    }
-    .content-body-mobile {
-      padding: 24px 16px !important;
-    }
-    .grid-mobile {
-      grid-template-columns: 1fr !important;
-      gap: 16px !important;
-    }
-    .modal-content-mobile {
-      margin: 16px;
-      max-height: calc(100vh - 32px) !important;
-    }
-    .modal-header-mobile {
-      padding: 16px !important;
-    }
-    .modal-body-mobile {
-      padding: 16px !important;
-    }
-    .modal-footer-mobile {
-      padding: 16px !important;
-    }
-    .card-mobile {
-      padding: 20px !important;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .hero-section-mobile {
-      padding: 24px 16px !important;
-    }
-    .hero-title-mobile {
-      font-size: 20px !important;
-    }
-    .card-title-mobile {
-      font-size: 16px !important;
-    }
-  }
-`;
 
 // --- Toast Component ---
 const Toast = ({ message, type, onClose }) => {
@@ -295,8 +301,8 @@ const Toast = ({ message, type, onClose }) => {
         alignItems: "center",
         gap: "12px",
         zIndex: 9999,
-        animation: "slideIn 0.3s ease-out",
-        maxWidth: "400px",
+        animation: "toastSlide 0.3s ease-out",
+        maxWidth: "90%",
       }}
     >
       {isError ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
@@ -343,11 +349,19 @@ const EmployeeSurveys = () => {
   }, [toast]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/employee/surveys/`, { headers: authHeader })
-      .then((res) => res.json())
-      .then((data) => setSurveys(Array.isArray(data) ? data : []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/employee/surveys/`, {
+          headers: authHeader,
+        });
+        const data = await res.json();
+        setSurveys(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const handleStartSurvey = async (assignmentId) => {
@@ -412,10 +426,10 @@ const EmployeeSurveys = () => {
   };
 
   return (
-    <div className="assessment-library-container" style={styles.container}>
-      <div style={styles.mainWrapper}>
-        <style>{animationStyles}</style>
+    <div className="es-container">
+      <style>{responsiveStyles}</style>
 
+      <div className="main-wrapper">
         {toast && (
           <Toast
             message={toast.message}
@@ -425,25 +439,24 @@ const EmployeeSurveys = () => {
         )}
 
         {/* Hero Header */}
-        <div style={styles.heroSection} className="hero-section-mobile">
-          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-            <div style={styles.heroIconBox} className="hero-icon-box-mobile">
+        <div className="hero-section">
+          <div className="hero-content">
+            <div className="hero-icon-box">
               <ClipboardList size={36} strokeWidth={2.5} />
             </div>
             <div>
               <h1
-                className="hero-title-mobile"
                 style={{
                   fontSize: "32px",
                   fontWeight: "800",
                   color: COLORS.textPrimary,
                   margin: "0 0 4px 0",
+                  lineHeight: "1.2",
                 }}
               >
                 Assigned Surveys
               </h1>
               <p
-                className="hero-subtitle-mobile"
                 style={{
                   fontSize: "16px",
                   color: COLORS.textSecondary,
@@ -457,7 +470,7 @@ const EmployeeSurveys = () => {
         </div>
 
         {/* Content Body */}
-        <div style={styles.contentBody} className="content-body-mobile">
+        <div className="content-body">
           {loading ? (
             <div
               style={{
@@ -510,13 +523,9 @@ const EmployeeSurveys = () => {
               <p>You don't have any assigned surveys at the moment.</p>
             </div>
           ) : (
-            <div style={styles.grid} className="grid-mobile">
+            <div className="survey-grid">
               {surveys.map((item) => (
-                <div
-                  key={item.id}
-                  className="survey-card-hover card-mobile"
-                  style={styles.card}
-                >
+                <div key={item.id} className="survey-card">
                   <div>
                     <div
                       style={{
@@ -558,7 +567,6 @@ const EmployeeSurveys = () => {
                     </div>
 
                     <h3
-                      className="card-title-mobile"
                       style={{
                         fontSize: "20px",
                         fontWeight: "700",
@@ -586,18 +594,13 @@ const EmployeeSurveys = () => {
 
                   <div style={{ marginTop: "auto" }}>
                     {item.status === "completed" ? (
-                      <button
-                        disabled
-                        className="btn-primary"
-                        style={styles.btnPrimary}
-                      >
+                      <button disabled className="btn-primary">
                         <CheckCircle2 size={18} /> Completed
                       </button>
                     ) : (
                       <button
                         onClick={() => handleStartSurvey(item.id)}
                         className="btn-primary"
-                        style={styles.btnPrimary}
                       >
                         <PlayCircle size={18} /> Start Survey
                       </button>
@@ -611,10 +614,9 @@ const EmployeeSurveys = () => {
 
         {/* Modal for Taking Survey */}
         {activeSurvey && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modalContent} className="modal-content-mobile">
+          <div className="modal-overlay">
+            <div className="modal-content">
               <div
-                className="modal-header-mobile"
                 style={{
                   padding: "20px",
                   borderBottom: `1px solid ${COLORS.borderColor}`,
@@ -642,11 +644,17 @@ const EmployeeSurveys = () => {
                 </button>
               </div>
               <div
-                className="modal-body-mobile"
-                style={{ padding: "24px", overflowY: "auto", flex: 1 }}
+                style={{
+                  padding: "24px",
+                  overflowY: "auto",
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "24px",
+                }}
               >
                 {activeSurvey.questions.map((q, idx) => (
-                  <div key={q.id} style={{ marginBottom: "24px" }}>
+                  <div key={q.id}>
                     <label
                       style={{
                         display: "block",
@@ -670,7 +678,6 @@ const EmployeeSurveys = () => {
                 ))}
               </div>
               <div
-                className="modal-footer-mobile"
                 style={{
                   padding: "20px",
                   borderTop: `1px solid ${COLORS.borderColor}`,
@@ -681,7 +688,6 @@ const EmployeeSurveys = () => {
                   onClick={handleSubmit}
                   disabled={submitting}
                   className="btn-primary"
-                  style={styles.btnPrimary}
                 >
                   {submitting ? (
                     <>

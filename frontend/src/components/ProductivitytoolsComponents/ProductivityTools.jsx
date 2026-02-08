@@ -7,7 +7,6 @@ import {
   Minimize,
   ArrowRight,
   Target,
-  BarChart, // Visual replacement for 'Type' icon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -17,7 +16,6 @@ import { useNavigate } from "react-router-dom";
 const COLORS = {
   primary: "var(--primary)",
   primaryLight: "var(--primary-light)",
-  primaryDark: "var(--primary-dark)",
   bgMain: "var(--bg-main)",
   cardBg: "var(--card-bg)",
   textPrimary: "var(--text-primary)",
@@ -25,147 +23,171 @@ const COLORS = {
   textMuted: "var(--text-muted)",
   borderColor: "var(--border-color)",
   shadowHuge: "var(--shadow-huge)",
-  // Tool specific colors mapped to variables
   purple: "var(--purple)",
   purpleLight: "var(--purple-light)",
   orange: "var(--orange)",
   orangeLight: "var(--orange-light)",
 };
 
-const styles = {
-  // ROOT ELEMENT - Dynamic to handle Zen Mode vs Standard Mode
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  mainWrapperCard: (isZen) => ({
-    backgroundColor: isZen ? "#0f172a" : COLORS.cardBg, // Dark navy if Zen, else variable
-    borderRadius: isZen ? "0" : "24px",
-    border: isZen ? "none" : `1px solid ${COLORS.borderColor}`,
-    boxShadow: isZen ? "none" : COLORS.shadowHuge,
-    width: "100%",
-    margin: isZen ? "0" : "0 auto",
-    overflow: "hidden",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    height: isZen ? "100vh" : "calc(100vh - 40px)",
-    position: "relative",
-    transition: "all 0.5s ease",
-  }),
-  // HERO SECTION - Matches Reference
-  heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "48px",
-    borderBottom: `1px solid ${COLORS.borderColor}`,
-    display: "flex",
-    alignItems: "center",
-    gap: "24px",
-    textAlign: "left",
-  },
-  heroIconBox: {
-    width: "72px",
-    height: "72px",
-    borderRadius: "20px",
-    backgroundColor: COLORS.primary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    boxShadow: "0 10px 25px -5px rgba(6, 182, 212, 0.4)", // Adjusted shadow color for productivity theme
-  },
-  // GRID LAYOUT
-  contentBody: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "40px",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: "24px",
-    maxWidth: "1200px",
-    margin: "0 auto",
-    width: "100%",
-  },
-  // CARD STYLING - Matches Reference
-  toolCard: {
-    backgroundColor: COLORS.bgMain,
-    border: `1px solid ${COLORS.borderColor}`,
-    borderRadius: "20px",
-    padding: "32px",
-    cursor: "pointer",
-    transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
-    position: "relative",
-    overflow: "hidden",
-    textAlign: "left",
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-  },
-  iconWrapper: (bg, color) => ({
-    width: "48px",
-    height: "48px",
-    borderRadius: "14px",
-    backgroundColor: bg,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: color,
-    marginBottom: "20px",
-  }),
-  cardTitle: {
-    fontSize: "20px",
-    fontWeight: "800",
-    color: COLORS.textPrimary,
-    marginBottom: "8px",
-  },
-  cardDesc: {
-    fontSize: "14px",
-    color: COLORS.textSecondary,
-    lineHeight: "1.6",
-    marginBottom: "24px",
-    flex: 1,
-  },
-  cardFooter: {
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    fontSize: "12px",
-    fontWeight: "700",
-    color: COLORS.textMuted,
-    marginTop: "auto",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-};
+/* -----------------------
+   CSS & Responsive Styles
+----------------------- */
+const responsiveStyles = `
+  /* --- Desktop / Default Styles --- */
+  .prod-container {
+    padding: 5px 14px;
+    background-color: ${COLORS.bgMain};
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
 
-const animationStyles = `
-  .tool-card-hover:hover {
+  .main-wrapper {
+    background-color: ${COLORS.cardBg};
+    border-radius: 24px;
+    border: 1px solid ${COLORS.borderColor};
+    box-shadow: ${COLORS.shadowHuge};
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 40px);
+    position: relative;
+    transition: all 0.5s ease;
+  }
+
+  /* Zen Mode Overrides */
+  .main-wrapper.zen-active {
+    background-color: #0f172a; /* Dark Navy for focus */
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    height: 100vh;
+  }
+
+  .hero-section {
+    background: linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%);
+    padding: 48px;
+    border-bottom: 1px solid ${COLORS.borderColor};
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    text-align: left;
+  }
+
+  .hero-icon-box {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background-color: ${COLORS.primary};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.4);
+    color: white;
+  }
+
+  .content-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px;
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .tool-card {
+    background-color: ${COLORS.bgMain};
+    border: 1px solid ${COLORS.borderColor};
+    border-radius: 20px;
+    padding: 32px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+  }
+
+  .tool-card:hover {
     transform: translateY(-8px);
     border-color: ${COLORS.primary};
     box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1);
   }
-  .tool-card-hover:hover .action-arrow {
+
+  .tool-card:hover .action-arrow {
     transform: translateX(4px);
     color: ${COLORS.primary};
   }
+  
   .action-arrow {
     transition: transform 0.2s, color 0.2s;
   }
-  
-  /* Scrollbar refinement for the content body */
-  .content-scroll::-webkit-scrollbar {
+
+  /* Scrollbar Polish */
+  .content-body::-webkit-scrollbar {
     width: 6px;
   }
-  .content-scroll::-webkit-scrollbar-track {
+  .content-body::-webkit-scrollbar-track {
     background: transparent;
   }
-  .content-scroll::-webkit-scrollbar-thumb {
+  .content-body::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
     border-radius: 10px;
+  }
+
+  /* --- Mobile / Responsive Overrides --- */
+  @media (max-width: 768px) {
+    .prod-container {
+      padding: 10px; /* Slight padding to show border radius */
+    }
+    
+    .main-wrapper {
+      border-radius: 24px;
+      min-height: calc(100vh - 20px);
+      /* Ensure height isn't fixed on mobile to allow scrolling if needed */
+      height: auto; 
+    }
+    
+    .main-wrapper.zen-active {
+      height: 100vh; /* Zen mode still needs fixed height */
+    }
+
+    .hero-section {
+      flex-direction: column;
+      text-align: center;
+      padding: 32px 20px;
+      gap: 16px;
+    }
+
+    .hero-icon-box {
+      margin-bottom: 8px;
+    }
+
+    .content-body {
+      padding: 24px 16px;
+    }
+
+    .tools-grid {
+      grid-template-columns: 1fr; /* Stack cards */
+      gap: 16px;
+    }
+
+    .tool-card {
+      padding: 24px; /* Less padding inside cards */
+    }
   }
 `;
 
@@ -221,15 +243,14 @@ const ProductivityTools = () => {
   ];
 
   return (
-    <div className="assessment-library-container" style={styles.container}>
+    <div className="prod-container">
+      <style>{responsiveStyles}</style>
+      
       <div
         ref={containerRef}
-        className="wb-main-wrapper"
-        style={styles.mainWrapperCard(isZen)}
+        className={`main-wrapper ${isZen ? "zen-active" : ""}`}
       >
-        <style>{animationStyles}</style>
-
-        {/* Zen Mode Toggle - Floating (Kept separate from layout flow) */}
+        {/* Zen Mode Toggle */}
         <div
           style={{
             position: "absolute",
@@ -262,10 +283,10 @@ const ProductivityTools = () => {
           </button>
         </div>
 
-        {/* Header - Styled like Reference */}
+        {/* Hero Section */}
         {!isZen && (
-          <div className="wb-hero" style={styles.heroSection}>
-            <div style={styles.heroIconBox}>
+          <div className="hero-section">
+            <div className="hero-icon-box">
               <Zap size={36} color="white" strokeWidth={2.5} />
             </div>
             <div>
@@ -275,6 +296,7 @@ const ProductivityTools = () => {
                   fontWeight: "800",
                   color: COLORS.textPrimary,
                   margin: "0 0 8px 0",
+                  lineHeight: "1.2",
                 }}
               >
                 Productivity Lab
@@ -295,25 +317,36 @@ const ProductivityTools = () => {
           </div>
         )}
 
-        {/* Main Grid Content */}
-        <div className="content-scroll" style={styles.contentBody}>
-          <div style={styles.grid}>
+        {/* Content Body */}
+        <div className="content-body">
+          <div className="tools-grid">
             {tools.map((tool) => (
               <button
                 key={tool.id}
-                className="tool-card-hover"
-                style={styles.toolCard}
+                className="tool-card"
                 onClick={() => navigate(tool.path)}
               >
-                {/* Card Header: Icon + Arrow */}
+                {/* Card Header */}
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     width: "100%",
+                    marginBottom: "20px",
                   }}
                 >
-                  <div style={styles.iconWrapper(tool.bg, tool.color)}>
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "14px",
+                      backgroundColor: tool.bg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: tool.color,
+                    }}
+                  >
                     {tool.icon}
                   </div>
                   <ArrowRight
@@ -323,28 +356,47 @@ const ProductivityTools = () => {
                   />
                 </div>
 
-                {/* Card Body: Title + Desc */}
-                <h3 style={styles.cardTitle}>{tool.title}</h3>
-                <p style={styles.cardDesc}>{tool.desc}</p>
+                {/* Card Body */}
+                <h3
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: "800",
+                    color: COLORS.textPrimary,
+                    marginBottom: "8px",
+                  }}
+                >
+                  {tool.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: COLORS.textSecondary,
+                    lineHeight: "1.6",
+                    marginBottom: "24px",
+                    flex: 1,
+                  }}
+                >
+                  {tool.desc}
+                </p>
 
-                {/* Card Footer: Metadata */}
-                <div style={styles.cardFooter}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
+                {/* Card Footer */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    color: COLORS.textMuted,
+                    marginTop: "auto",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <Target size={14} /> {tool.type}
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <Clock size={14} /> {tool.time}
                   </div>
                 </div>
