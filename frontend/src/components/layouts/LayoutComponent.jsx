@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
-import Sidebar from "../Sidebar";
+import Sidebar from "../sidebars/Sidebar";
 import { Menu, Sun, Moon } from "lucide-react";
 
 const LayoutComponent = ({ children }) => {

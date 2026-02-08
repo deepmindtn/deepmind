@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import "./WellbeingPage.css"; 
 
-import WellBeingChoice from "../components/WellBeingComponents/WellBeingChoice";
-import Mindfulness from "../components/WellBeingComponents/Mindfulness";
-import Physical from "../components/WellBeingComponents/Physical";
-import Emotional from "../components/WellBeingComponents/Emotional";
-import DailyChallenges from "../components/WellBeingComponents/DailyChallenges";
+import WellBeingChoice from "../../components/WellBeingComponents/WellBeingChoice";
+import Mindfulness from "../../components/WellBeingComponents/Mindfulness";
+import Physical from "../../components/WellBeingComponents/Physical";
+import Emotional from "../../components/WellBeingComponents/Emotional";
+import DailyChallenges from "../../components/WellBeingComponents/DailyChallenges";
 
 const WellBeingPage = () => {
   const [mode, setMode] = useState("");

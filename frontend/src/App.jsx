@@ -5,52 +5,52 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import "./App.css";
 
 // Public pages
-import WellbeingTechniques from "./pages/WellbeingTechniques";
-import LandingPage from "./components/LandingPage";
-import LoginPage from "./components/LoginPage";
-import HowItWorks from "./components/HowItWorks";
-import SignUpPage from "./components/SignUpPage";
-import AcceptInvite from "./components/AcceptInvite";
+import WellbeingTechniques from "./pages/hr/WellbeingTechniques";
+import LandingPage from "./pages/landing/LandingPage";
+import LoginPage from "./pages/auth/LoginPage";
+import HowItWorks from "./pages/landing/HowItWorks";
+import SignUpPage from "./pages/auth/SignUpPage";
+import AcceptInvite from "./pages/auth/AcceptInvite";
 
 // Layout / auth guard
 import ProtectedRoute from "./components/ProtectedRoute";
-import LayoutComponent from "./components/LayoutModel/LayoutComponent";
-import CandidateLayout from "./components/LayoutModel/CandidateLayout";
+import LayoutComponent from "./components/layouts/LayoutComponent";
+import CandidateLayout from "./components/layouts/CandidateLayout";
 
 // Dashboard & pages
-import Dashboard from "./pages/dashboard/Dashboard";
-import Profile from "./components/Profile/Profile";
-import Employees from "./pages/Employees";
-import Scheduling from "./pages/Scheduling";
-import SendAssessment from "./pages/Assessement/AssessementPage";
-import MyAssessments from "./pages/MyAssessments";
-import EmployeeSurveys from "./pages/EmployeeSurveys";
-import EmailTemplates from "./pages/emailtemplates";
-import Company from "./pages/company/CompanyProfile";
+import Dashboard from "./pages/hr/dashboard/Dashboard";
+import Profile from "./pages/hr/Profile";
+import Employees from "./pages/hr/Employees";
+import Scheduling from "./pages/hr/Scheduling";
+import SendAssessment from "./pages/hr/assessments/AssessementPage";
+import MyAssessments from "./pages/hr/MyAssessments";
+import EmployeeSurveys from "./pages/hr/EmployeeSurveys";
+import EmailTemplates from "./pages/hr/emailtemplates";
+import Company from "./pages/hr/company/CompanyProfile";
 
 // Assessment runners
-import BigFiveTest from "./pages/Assessement/BigFiveTest";
-import KarasekTest from "./pages/Assessement/KarasekTest";
-import MaslachTest from "./pages/Assessement/MaslachTest";
-import DiscTest from "./pages/Assessement/DiscTest";
-import JssTest from "./pages/Assessement/JssTest";
-import BrsTest from "./pages/Assessement/BrsTest";
+import BigFiveTest from "./pages/hr/assessments/BigFiveTest";
+import KarasekTest from "./pages/hr/assessments/KarasekTest";
+import MaslachTest from "./pages/hr/assessments/MaslachTest";
+import DiscTest from "./pages/hr/assessments/DiscTest";
+import JssTest from "./pages/hr/assessments/JssTest";
+import BrsTest from "./pages/hr/assessments/BrsTest";
 
 // New Assessments
-import ReportPage from "./pages/ReportPage";
-import CDRISCTest from "./pages/Assessement/CdriskTest";
-import WSESTest from "./pages/Assessement/WsesTest";
-import GCOSTest from "./pages/Assessement/GcosTest";
-import RIBSTest from "./pages/Assessement/RibsTest";
-import CAQTest from "./pages/Assessement/CaqTest";
-import ISETest from "./pages/Assessement/IseTest";
-import RecruitmentMatch from "./pages/RecruitmentMatch";
-import AssessmentDescription from "./components/AssessmentDescription";
-import Departments from "./pages/Departments";
+import ReportPage from "./pages/hr/ReportPage";
+import CDRISCTest from "./pages/hr/assessments/CdriskTest";
+import WSESTest from "./pages/hr/assessments/WsesTest";
+import GCOSTest from "./pages/hr/assessments/GcosTest";
+import RIBSTest from "./pages/hr/assessments/RibsTest";
+import CAQTest from "./pages/hr/assessments/CaqTest";
+import ISETest from "./pages/hr/assessments/IseTest";
+import RecruitmentMatch from "./pages/hr/RecruitmentMatch";
+import AssessmentDescription from "./pages/hr/AssessmentDescription";
+import Departments from "./pages/hr/Departments";
 import ProductivityTools from "./components/ProductivitytoolsComponents/ProductivityTools";
 import EisenhowerMatrix from "./components/ProductivitytoolsComponents/EisenhowerMatrix";
 import PomodoroTimer from "./components/ProductivitytoolsComponents/Promodorotechnik";
-import TakeAssessment from "./pages/Assessement/TakeAssessment";
+import TakeAssessment from "./pages/hr/assessments/TakeAssessment";
 
 // Temporary stubs
 const Analytics = () => <h1>Mental Health Analytics Page</h1>;
