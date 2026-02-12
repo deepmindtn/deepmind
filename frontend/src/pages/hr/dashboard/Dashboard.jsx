@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Chart from "react-apexcharts";
+import "./Dashboardpage.css";
 
 // -----------------------
 // Theme Constants
@@ -50,206 +51,6 @@ const CHART_COLORS = [
   COLORS.orange,
   COLORS.red,
 ];
-
-const styles = {
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  mainWrapperCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    margin: "0 auto",
-    padding: "48px",
-  },
-  header: { marginBottom: "40px" },
-  tabNav: {
-    display: "flex",
-    gap: "8px",
-    backgroundColor: "#f1f5f9",
-    padding: "6px",
-    borderRadius: "14px",
-    width: "fit-content",
-    marginBottom: "32px",
-  },
-  tabBtn: (active) => ({
-    padding: "10px 24px",
-    borderRadius: "10px",
-    border: "none",
-    fontSize: "14px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    backgroundColor: active ? COLORS.cardBg : "transparent",
-    color: active ? COLORS.textPrimary : COLORS.textSecondary,
-    boxShadow: active ? "0 4px 6px -1px rgba(0, 0, 0, 0.1)" : "none",
-  }),
-  statCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "20px",
-    border: `1px solid ${COLORS.borderColor}`,
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-    transition: "all 0.3s ease",
-  },
-  iconBox: (bgColor) => ({
-    width: "48px",
-    height: "48px",
-    borderRadius: "12px",
-    backgroundColor: bgColor,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  }),
-  chartCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "20px",
-    border: `1px solid ${COLORS.borderColor}`,
-    padding: "28px",
-    height: "100%",
-  },
-};
-
-// Add responsive styles
-const responsiveStyles = `
-  @media (max-width: 1280px) {
-    .dashboard-content-grid {
-      grid-template-columns: 1fr !important;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    .dashboard-main-wrapper {
-      padding: 32px 24px !important;
-    }
-    .dashboard-stats-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-    }
-    .dashboard-metrics-grid {
-      grid-template-columns: 1fr !important;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .dashboard-container {
-      padding: 5px 10px !important;
-    }
-    .dashboard-main-wrapper {
-      padding: 24px 16px !important;
-      border-radius: 20px !important;
-    }
-    .dashboard-header-title {
-      font-size: 24px !important;
-    }
-    .dashboard-header-subtitle {
-      font-size: 14px !important;
-    }
-    .dashboard-stats-grid {
-      grid-template-columns: 1fr !important;
-      gap: 16px !important;
-    }
-    .dashboard-tab-nav {
-      width: 100% !important;
-    }
-    .dashboard-tab-btn {
-      flex: 1;
-      padding: 10px 16px !important;
-      font-size: 13px !important;
-      text-align: center;
-    }
-    .dashboard-completion-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-    }
-    .dashboard-chart-card {
-      padding: 20px !important;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .dashboard-container {
-      padding: 5px 8px !important;
-    }
-    .dashboard-main-wrapper {
-      padding: 20px 12px !important;
-      border-radius: 16px !important;
-    }
-    .dashboard-header {
-      margin-bottom: 24px !important;
-    }
-    .dashboard-header-title {
-      font-size: 20px !important;
-    }
-    .dashboard-header-subtitle {
-      font-size: 13px !important;
-    }
-    .dashboard-header-icon-wrapper {
-      padding: 8px !important;
-    }
-    .dashboard-header-icon-wrapper svg {
-      width: 20px !important;
-      height: 20px !important;
-    }
-    .dashboard-icon-box {
-      width: 40px !important;
-      height: 40px !important;
-    }
-    .dashboard-icon-box svg {
-      width: 20px !important;
-      height: 20px !important;
-    }
-    .dashboard-stat-value {
-      font-size: 24px !important;
-    }
-    .dashboard-stat-label {
-      font-size: 13px !important;
-    }
-    .dashboard-completion-grid {
-      grid-template-columns: 1fr !important;
-    }
-    .dashboard-completion-item {
-      padding: 12px !important;
-    }
-    .dashboard-completion-label {
-      font-size: 11px !important;
-    }
-    .dashboard-completion-value {
-      font-size: 18px !important;
-    }
-    .dashboard-tab-nav {
-      flex-direction: column;
-      padding: 4px !important;
-    }
-    .dashboard-tab-btn {
-      width: 100%;
-      padding: 8px 12px !important;
-      font-size: 12px !important;
-    }
-    .dashboard-chart-card {
-      padding: 16px !important;
-    }
-    .dashboard-chart-title {
-      font-size: 16px !important;
-      margin-bottom: 12px !important;
-    }
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-5px);
-    border-color: ${COLORS.primary} !important;
-  }
-
-  .empty-state {
-    padding: 40px 20px;
-    text-align: center;
-    color: ${COLORS.textMuted};
-  }
-`;
 
 // -----------------------
 // Helper Functions
@@ -338,55 +139,23 @@ function takeBRS(m) {
 // Sub-Components
 // -----------------------
 const PremiumStatCard = ({ label, value, icon, color, bg, detail }) => (
-  <div className="hover-lift" style={styles.statCard}>
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-      }}
-    >
-      <div className="dashboard-icon-box" style={styles.iconBox(bg)}>
+  <div className="hover-lift dashboard-stat-card">
+    <div className="dashboard-stat-header">
+      <div className="dashboard-icon-box">
         {React.cloneElement(icon, { color: color, size: 24 })}
       </div>
       <TrendingUp size={16} color={COLORS.primary} />
     </div>
     <div>
-      <div
-        className="dashboard-stat-value"
-        style={{
-          fontSize: "28px",
-          fontWeight: "800",
-          color: COLORS.textPrimary,
-        }}
-      >
+      <div className="dashboard-stat-value">
         {value}
       </div>
-      <div
-        className="dashboard-stat-label"
-        style={{
-          fontSize: "14px",
-          fontWeight: "600",
-          color: COLORS.textSecondary,
-          marginTop: "4px",
-        }}
-      >
+      <div className="dashboard-stat-label">
         {label}
       </div>
     </div>
     {detail && (
-      <div
-        style={{
-          marginTop: "8px",
-          paddingTop: "12px",
-          borderTop: `1px solid ${COLORS.borderColor}`,
-          fontSize: "12px",
-          color: COLORS.textMuted,
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-        }}
-      >
+      <div className="dashboard-stat-detail">
         <Info size={12} /> {detail}
       </div>
     )}
@@ -394,48 +163,17 @@ const PremiumStatCard = ({ label, value, icon, color, bg, detail }) => (
 );
 
 const ActivityTimelineItem = ({ main, sub, time }) => (
-  <div style={{ display: "flex", gap: "16px", paddingBottom: "24px" }}>
-    <div
-      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
-    >
-      <div
-        style={{
-          width: "12px",
-          height: "12px",
-          borderRadius: "50%",
-          backgroundColor: COLORS.primary,
-          border: `3px solid ${COLORS.primaryLight}`,
-          zIndex: 2,
-        }}
-      />
-      <div
-        style={{
-          width: "2px",
-          flex: 1,
-          backgroundColor: COLORS.borderColor,
-          margin: "4px 0",
-        }}
-      />
+  <div className="dashboard-activity-item">
+    <div className="dashboard-activity-indicator">
+      <div className="dashboard-activity-dot" />
+      <div className="dashboard-activity-line" />
     </div>
-    <div style={{ flex: 1 }}>
-      <div
-        style={{
-          fontSize: "14px",
-          fontWeight: "700",
-          color: COLORS.textPrimary,
-        }}
-      >
+    <div className="dashboard-activity-content">
+      <div className="dashboard-activity-main">
         {main}
       </div>
-      <div style={{ fontSize: "13px", color: COLORS.textSecondary }}>{sub}</div>
-      <div
-        style={{
-          fontSize: "11px",
-          fontWeight: "700",
-          color: COLORS.primary,
-          marginTop: "4px",
-        }}
-      >
+      <div className="dashboard-activity-sub">{sub}</div>
+      <div className="dashboard-activity-time">
         {time}
       </div>
     </div>
@@ -444,8 +182,12 @@ const ActivityTimelineItem = ({ main, sub, time }) => (
 
 const EmptyChartState = ({ message }) => (
   <div className="empty-state">
-    <AlertCircle size={48} color={COLORS.textMuted} style={{ marginBottom: "16px" }} />
-    <p style={{ margin: 0, fontSize: "14px" }}>{message}</p>
+    <AlertCircle
+      className="empty-state-icon"
+      size={48}
+      color={COLORS.textMuted}
+    />
+    <p className="empty-state-text">{message}</p>
   </div>
 );
 
@@ -623,64 +365,44 @@ const Dashboard = () => {
 
   if (loading)
     return (
-      <div className="dashboard-container" style={styles.container}>
-        <div className="dashboard-main-wrapper" style={styles.mainWrapperCard}>
+      <div className="dashboard-container">
+        <div className="dashboard-main-wrapper">
           Loading Analytics...
         </div>
       </div>
     );
 
   return (
-    <div className="dashboard-container" style={styles.container}>
-      <style>{responsiveStyles}</style>
-
-      <div className="dashboard-main-wrapper" style={styles.mainWrapperCard}>
-        <div style={styles.header}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "8px",
-            }}
-          >
-            <div
-              className="dashboard-header-icon-wrapper"
-              style={{
-                padding: "10px",
-                backgroundColor: COLORS.primaryLight,
-                borderRadius: "12px",
-              }}
-            >
+    <div className="dashboard-container">
+      <div className="dashboard-main-wrapper">
+        <div className="dashboard-header">
+          <div className="dashboard-header-row">
+            <div className="dashboard-header-icon-wrapper">
               <BarChart2 size={24} color={COLORS.primary} />
             </div>
-            <h1
-              className="dashboard-header-title"
-              style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}
-            >
+            <h1 className="dashboard-header-title">
               Analytical Dashboard
             </h1>
           </div>
-          <p
-            className="dashboard-header-subtitle"
-            style={{ color: COLORS.textSecondary, fontSize: "16px" }}
-          >
+          <p className="dashboard-header-subtitle">
             Comprehensive overview of organization health and assessment
             performance.
           </p>
         </div>
 
-        <div className="dashboard-tab-nav" style={styles.tabNav}>
+        <div className="dashboard-tab-nav">
           <button
-            className="dashboard-tab-btn"
-            style={styles.tabBtn(activeTab === "Overview")}
+            className={`dashboard-tab-btn ${
+              activeTab === "Overview" ? "dashboard-tab-btn-active" : ""
+            }`}
             onClick={() => setActiveTab("Overview")}
           >
             Overview
           </button>
           <button
-            className="dashboard-tab-btn"
-            style={styles.tabBtn(activeTab === "Metrics")}
+            className={`dashboard-tab-btn ${
+              activeTab === "Metrics" ? "dashboard-tab-btn-active" : ""
+            }`}
             onClick={() => setActiveTab("Metrics")}
           >
             Deep Dive Metrics
@@ -688,16 +410,9 @@ const Dashboard = () => {
         </div>
 
         {activeTab === "Overview" ? (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "32px" }}
-          >
+          <div className="dashboard-overview">
             <div
               className="dashboard-stats-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: "24px",
-              }}
             >
               <PremiumStatCard
                 label="Total Employees"
@@ -735,60 +450,24 @@ const Dashboard = () => {
 
             <div
               className="dashboard-content-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1.5fr 1fr",
-                gap: "32px",
-              }}
             >
-              <div className="dashboard-chart-card" style={styles.chartCard}>
-                <h3
-                  className="dashboard-chart-title"
-                  style={{
-                    margin: "0 0 20px 0",
-                    fontSize: "18px",
-                    color: COLORS.textPrimary,
-                  }}
-                >
+              <div className="dashboard-chart-card">
+                <h3 className="dashboard-chart-title">
                   Completion Rates
                 </h3>
                 <div
                   className="dashboard-completion-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "16px",
-                  }}
                 >
                   {Object.entries(data.completedByTemplate).map(
                     ([key, val]) => (
-                      <div
-                        key={key}
-                        className="dashboard-completion-item"
-                        style={{
-                          padding: "16px",
-                          background: COLORS.primaryLight,
-                          borderRadius: "12px",
-                          border: `1px solid ${COLORS.primary}`,
-                        }}
-                      >
+                      <div key={key} className="dashboard-completion-item">
                         <div
                           className="dashboard-completion-label"
-                          style={{
-                            fontSize: "12px",
-                            color: COLORS.primaryDark,
-                            fontWeight: "700",
-                          }}
                         >
                           {key}
                         </div>
                         <div
                           className="dashboard-completion-value"
-                          style={{
-                            fontSize: "20px",
-                            fontWeight: "800",
-                            color: COLORS.primaryDark,
-                          }}
                         >
                           {val}%
                         </div>
@@ -797,32 +476,14 @@ const Dashboard = () => {
                   )}
 
                   {/* BRS AVG Card */}
-                  <div
-                    className="dashboard-completion-item"
-                    style={{
-                      padding: "16px",
-                      background: COLORS.primaryLight,
-                      borderRadius: "12px",
-                      border: `1px solid ${COLORS.primary}`,
-                    }}
-                  >
+                  <div className="dashboard-completion-item">
                     <div
                       className="dashboard-completion-label"
-                      style={{
-                        fontSize: "12px",
-                        color: COLORS.primaryDark,
-                        fontWeight: "700",
-                      }}
                     >
                       BRS AVG
                     </div>
                     <div
                       className="dashboard-completion-value"
-                      style={{
-                        fontSize: "20px",
-                        fontWeight: "800",
-                        color: COLORS.primaryDark,
-                      }}
                     >
                       {data.brsAvg}
                     </div>
@@ -830,11 +491,8 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="dashboard-chart-card" style={styles.chartCard}>
-                <h3
-                  className="dashboard-chart-title"
-                  style={{ margin: "0 0 20px 0", fontSize: "18px" }}
-                >
+              <div className="dashboard-chart-card">
+                <h3 className="dashboard-chart-title">
                   Recent Activity
                 </h3>
                 {data.totalAssignments > 0 ? (
@@ -862,19 +520,9 @@ const Dashboard = () => {
             </div>
           </div>
         ) : (
-          <div
-            className="dashboard-metrics-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "32px",
-            }}
-          >
-            <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4
-                className="dashboard-chart-title"
-                style={{ margin: "0 0 15px 0" }}
-              >
+          <div className="dashboard-metrics-grid">
+            <div className="dashboard-chart-card">
+              <h4 className="dashboard-chart-title">
                 Big Five (OCEAN) Averages
               </h4>
               {data.hasBigFiveData ? (
@@ -894,11 +542,8 @@ const Dashboard = () => {
               )}
             </div>
             
-            <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4
-                className="dashboard-chart-title"
-                style={{ margin: "0 0 15px 0" }}
-              >
+            <div className="dashboard-chart-card">
+              <h4 className="dashboard-chart-title">
                 Maslach Burnout Averages
               </h4>
               {data.hasMaslachData ? (
@@ -919,11 +564,8 @@ const Dashboard = () => {
               )}
             </div>
             
-            <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4
-                className="dashboard-chart-title"
-                style={{ margin: "0 0 15px 0" }}
-              >
+            <div className="dashboard-chart-card">
+              <h4 className="dashboard-chart-title">
                 Karasek Strain Factors
               </h4>
               {data.hasKarasekData ? (
@@ -951,11 +593,8 @@ const Dashboard = () => {
               )}
             </div>
             
-            <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4
-                className="dashboard-chart-title"
-                style={{ margin: "0 0 15px 0" }}
-              >
+            <div className="dashboard-chart-card">
+              <h4 className="dashboard-chart-title">
                 Karasek Quadrant Distribution
               </h4>
               {data.hasKarasekData ? (
@@ -974,11 +613,8 @@ const Dashboard = () => {
               )}
             </div>
             
-            <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4
-                className="dashboard-chart-title"
-                style={{ margin: "0 0 15px 0" }}
-              >
+            <div className="dashboard-chart-card">
+              <h4 className="dashboard-chart-title">
                 DISC Personality Averages
               </h4>
               {data.hasDiscData ? (
@@ -997,11 +633,8 @@ const Dashboard = () => {
               )}
             </div>
             
-            <div className="dashboard-chart-card" style={styles.chartCard}>
-              <h4
-                className="dashboard-chart-title"
-                style={{ margin: "0 0 15px 0" }}
-              >
+            <div className="dashboard-chart-card">
+              <h4 className="dashboard-chart-title">
                 Job Satisfaction (JSS)
               </h4>
               {data.hasJssData && Object.keys(data.jssAvg).length > 0 ? (

@@ -153,6 +153,10 @@
   transition: transform 0.3s;
 }
 
+.logo-icon-img {
+  object-fit: contain;
+}
+
 .logo:hover .logo-icon {
   transform: rotate(-12deg) scale(1.05);
 }

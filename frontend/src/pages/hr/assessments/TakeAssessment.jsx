@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import "./TakeAssessment.css";
 
 // -----------------------
 // Design System (Synced with Big Five)
@@ -25,86 +26,6 @@ const VARS = {
   shadowHuge: "var(--shadow-huge, 0 20px 25px -5px rgba(0, 0, 0, 0.1))",
 };
 
-const styles = {
-  container: {
-    padding: "40px 20px",
-    backgroundColor: VARS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: "flex",
-    justifyContent: "center",
-    color: VARS.textPrimary,
-  },
-  mainWrapperCard: {
-    backgroundColor: VARS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${VARS.borderColor}`,
-    boxShadow: VARS.shadowHuge,
-    width: "100%",
-    maxWidth: "1100px",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-  },
-  heroSection: {
-    background: `linear-gradient(135deg, ${VARS.primaryLight} 0%, ${VARS.cardBg} 100%)`,
-    padding: "48px",
-    borderBottom: `1px solid ${VARS.borderColor}`,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  heroIconBox: {
-    width: "72px",
-    height: "72px",
-    borderRadius: "20px",
-    backgroundColor: VARS.primary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 10px 25px -5px rgba(99, 102, 241, 0.4)",
-    color: "#fff",
-  },
-  contentBody: {
-    padding: "48px",
-    display: "flex",
-    gap: "48px",
-    flexWrap: "wrap", // Added for responsiveness
-  },
-  sidebar: {
-    flex: "0 0 320px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "24px",
-    width: "100%", // Ensures full width on mobile wrap
-  },
-  mainContent: {
-    flex: 1,
-    minWidth: "300px",
-  },
-  infoCard: {
-    padding: "24px",
-    borderRadius: "16px",
-    border: `1px solid ${VARS.borderColor}`,
-    backgroundColor: VARS.cardBg,
-  },
-  btn: (variant) => ({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "10px",
-    padding: "16px 32px",
-    borderRadius: "12px",
-    border: variant === "outline" ? `1px solid ${VARS.borderColor}` : "none",
-    backgroundColor: variant === "primary" ? VARS.primary : "transparent",
-    color: variant === "primary" ? "#fff" : VARS.textSecondary,
-    fontWeight: "700",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    width: "100%",
-  }),
-};
 
 const TakeAssessment = () => {
   const { token } = useParams();
@@ -152,20 +73,13 @@ const TakeAssessment = () => {
 
   if (loading)
     return (
-      <div style={styles.container}>
-        <div style={{ textAlign: "center", marginTop: "100px" }}>
+      <div className="take-assessment-container">
+        <div className="take-assessment-loading-container">
           <Loader2
             size={48}
-            className="spin"
-            style={{ color: VARS.primary, margin: "0 auto" }}
+            className="spin take-assessment-loading-spinner"
           />
-          <p
-            style={{
-              marginTop: "16px",
-              color: VARS.textSecondary,
-              fontWeight: "600",
-            }}
-          >
+          <p className="take-assessment-loading-text">
             Preparing assessment portal...
           </p>
         </div>
@@ -174,40 +88,21 @@ const TakeAssessment = () => {
 
   if (error || !assignment)
     return (
-      <div style={styles.container}>
-        <div
-          style={{
-            ...styles.mainWrapperCard,
-            maxWidth: "500px",
-            padding: "48px",
-            textAlign: "center",
-          }}
-        >
+      <div className="take-assessment-container">
+        <div className="take-assessment-wrapper take-assessment-error-card">
           <AlertCircle
             size={64}
             color="#ef4444"
-            style={{ margin: "0 auto 24px" }}
+            className="take-assessment-error-icon"
           />
-          <h2
-            style={{
-              fontSize: "24px",
-              fontWeight: "800",
-              marginBottom: "12px",
-            }}
-          >
+          <h2 className="take-assessment-error-title">
             Access Denied
           </h2>
-          <p
-            style={{
-              color: VARS.textSecondary,
-              marginBottom: "32px",
-              lineHeight: "1.6",
-            }}
-          >
+          <p className="take-assessment-error-text">
             {error}
           </p>
           <button
-            style={styles.btn("outline")}
+            className="take-assessment-btn take-assessment-btn-outline"
             onClick={() => window.location.reload()}
           >
             Try Refreshing
@@ -218,46 +113,19 @@ const TakeAssessment = () => {
 
   if (assignment.status === "COMPLETED")
     return (
-      <div style={styles.container}>
-        <div
-          style={{
-            ...styles.mainWrapperCard,
-            maxWidth: "500px",
-            padding: "48px",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              ...styles.heroIconBox,
-              backgroundColor: "#10b981",
-              margin: "0 auto 24px",
-            }}
-          >
+      <div className="take-assessment-container">
+        <div className="take-assessment-wrapper take-assessment-completed-card">
+          <div className="take-assessment-icon-box take-assessment-icon-box-success">
             <CheckCircle2 size={40} />
           </div>
-          <h2
-            style={{
-              fontSize: "24px",
-              fontWeight: "800",
-              marginBottom: "12px",
-            }}
-          >
+          <h2 className="take-assessment-completed-title">
             Assessment Completed
           </h2>
-          <p style={{ color: VARS.textSecondary, marginBottom: "32px" }}>
+          <p className="take-assessment-completed-text">
             This assessment was submitted on{" "}
             <b>{new Date(assignment.completed_at).toLocaleDateString()}</b>.
           </p>
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: "12px",
-              background: VARS.bgMain,
-              fontSize: "14px",
-              color: VARS.textSecondary,
-            }}
-          >
+          <div className="take-assessment-completed-info">
             The results have been sent to the hiring team.
           </div>
         </div>
@@ -309,109 +177,48 @@ const TakeAssessment = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-
-      <div style={styles.mainWrapperCard}>
+    <div className="take-assessment-container">
+      <div className="take-assessment-wrapper">
         {/* Hero Banner */}
-        <div style={styles.heroSection}>
-          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-            <div style={styles.heroIconBox}>
+        <div className="take-assessment-hero">
+          <div className="take-assessment-hero-left">
+            <div className="take-assessment-icon-box">
               <ClipboardCheck size={36} strokeWidth={2.5} />
             </div>
             <div>
-              <h1
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "800",
-                  color: VARS.textPrimary,
-                  margin: "0 0 4px 0",
-                }}
-              >
+              <h1 className="take-assessment-hero-title">
                 {assignment.template.name}
               </h1>
-              <p
-                style={{
-                  fontSize: "16px",
-                  color: VARS.textSecondary,
-                  margin: "0",
-                }}
-              >
+              <p className="take-assessment-hero-subtitle">
                 Invitation from the Recruitment Team
               </p>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: "800",
-                color: VARS.primary,
-                background: `${VARS.primary}15`,
-                padding: "6px 12px",
-                borderRadius: "8px",
-                textTransform: "uppercase",
-              }}
-            >
+          <div className="take-assessment-hero-right">
+            <span className="take-assessment-ref-badge">
               Ref: {assignment.template.code}
             </span>
           </div>
         </div>
 
-        <div style={styles.contentBody}>
+        <div className="take-assessment-content-body">
           {/* Left Column: Instructions */}
-          <div style={styles.mainContent}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "20px",
-              }}
-            >
+          <div className="take-assessment-main-content">
+            <h2 className="take-assessment-welcome-title">
               Welcome, {assignment.recruitee.first_name || "Candidate"}
             </h2>
-            <p
-              style={{
-                fontSize: "16px",
-                color: VARS.textSecondary,
-                lineHeight: "1.8",
-                marginBottom: "32px",
-              }}
-            >
+            <p className="take-assessment-welcome-text">
               You have been invited to participate in a psychometric evaluation.
               This tool helps us understand your unique working style and
               strengths to ensure a great fit for the team. The process is
               intuitive and typically takes 5-10 minutes.
             </p>
 
-            <div
-              style={{
-                ...styles.infoCard,
-                borderLeft: `4px solid ${VARS.primary}`,
-                background: `${VARS.primary}05`,
-                marginBottom: "40px",
-              }}
-            >
-              <h4
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontWeight: "700",
-                  marginBottom: "12px",
-                }}
-              >
+            <div className="take-assessment-info-card take-assessment-info-card-highlight">
+              <h4 className="take-assessment-info-card-title">
                 <Clock size={18} color={VARS.primary} /> Before you begin:
               </h4>
-              <ul
-                style={{
-                  margin: 0,
-                  paddingLeft: "20px",
-                  color: VARS.textSecondary,
-                  fontSize: "14px",
-                  lineHeight: "2",
-                }}
-              >
+              <ul className="take-assessment-info-list">
                 <li>
                   Ensure you are in a quiet environment without distractions.
                 </li>
@@ -423,100 +230,51 @@ const TakeAssessment = () => {
               </ul>
             </div>
 
-            <button style={styles.btn("primary")} onClick={startAssessment}>
+            <button className="take-assessment-btn take-assessment-btn-primary" onClick={startAssessment}>
               Get Started <ArrowRight size={20} />
             </button>
           </div>
 
           {/* Right Column: Sidebar Meta */}
-          <div style={styles.sidebar}>
-            <div style={styles.infoCard}>
-              <h4
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "14px",
-                  fontWeight: "800",
-                  textTransform: "uppercase",
-                  color: VARS.textSecondary,
-                  marginBottom: "20px",
-                }}
-              >
+          <div className="take-assessment-sidebar">
+            <div className="take-assessment-info-card">
+              <h4 className="take-assessment-section-title">
                 <User size={16} /> Candidate Profile
               </h4>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "16px",
-                }}
-              >
+              <div className="take-assessment-field-group">
                 <div>
-                  <label
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: "700",
-                      color: "#94a3b8",
-                      textTransform: "uppercase",
-                    }}
-                  >
+                  <label className="take-assessment-field-label">
                     Full Name
                   </label>
-                  <p style={{ margin: 0, fontWeight: "600" }}>
+                  <p className="take-assessment-field-value">
                     {assignment.recruitee.first_name}{" "}
                     {assignment.recruitee.last_name}
                   </p>
                 </div>
                 <div>
-                  <label
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: "700",
-                      color: "#94a3b8",
-                      textTransform: "uppercase",
-                    }}
-                  >
+                  <label className="take-assessment-field-label">
                     Invitation Date
                   </label>
-                  <p style={{ margin: 0, fontWeight: "600" }}>
+                  <p className="take-assessment-field-value">
                     {new Date(assignment.assigned_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div style={styles.infoCard}>
-              <h4
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "14px",
-                  fontWeight: "800",
-                  textTransform: "uppercase",
-                  color: VARS.textSecondary,
-                  marginBottom: "16px",
-                }}
-              >
+            <div className="take-assessment-info-card">
+              <h4 className="take-assessment-section-title take-assessment-section-title-small">
                 <ShieldCheck size={16} /> Privacy & Trust
               </h4>
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: VARS.textSecondary,
-                  lineHeight: "1.6",
-                  margin: 0,
-                }}
-              >
+              <p className="take-assessment-privacy-text">
                 This link is unique to your application. Results are
                 confidential and only shared with authorized recruitment
                 personnel.
               </p>
             </div>
 
-            <div style={{ textAlign: "center", opacity: 0.5 }}>
-              <p style={{ fontSize: "11px" }}>
+            <div className="take-assessment-footer">
+              <p className="take-assessment-footer-text">
                 Powered by Psychometric Assessment Suite
               </p>
             </div>

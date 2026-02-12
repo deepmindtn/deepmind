@@ -21,6 +21,7 @@ import {
   Activity,
   BrainCircuit,
 } from "lucide-react";
+import "./IseTest.css";
 
 // -----------------------
 // 1. DATA & CONSTANTS
@@ -58,155 +59,6 @@ const COLORS = {
   blue: "var(--blue)",
 };
 
-// -----------------------
-// 2. STYLES (CSS-in-JS using CSS Vars)
-// -----------------------
-const styles = {
-  mainWrapper: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    width: "100%",
-    margin: "0 auto",
-    overflow: "hidden",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "calc(100vh - 40px)",
-    position: "relative",
-  },
-  heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "32px 48px",
-    borderBottom: `1px solid ${COLORS.borderColor}`,
-  },
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "24px",
-  },
-  heroIconBox: {
-    width: "56px",
-    height: "56px",
-    borderRadius: "16px",
-    backgroundColor: COLORS.primary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#fff",
-    boxShadow: COLORS.shadowMd,
-    marginRight: "20px",
-  },
-  progressContainer: {
-    height: "8px",
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: "4px",
-    overflow: "hidden",
-    marginTop: "8px",
-  },
-  progressBar: (pct) => ({
-    height: "100%",
-    width: `${pct}%`,
-    backgroundColor: COLORS.primary,
-    transition: "width 0.4s ease-in-out",
-  }),
-  contentBody: {
-    flex: 1,
-    padding: "40px 48px",
-    backgroundColor: COLORS.bgMain,
-  },
-  // Cards
-  questionCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "20px",
-    padding: "32px",
-    border: `1px solid ${COLORS.borderColor}`,
-    marginBottom: "24px",
-    boxShadow: COLORS.shadowMd,
-  },
-  questionTitle: {
-    fontSize: "18px",
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-    marginBottom: "20px",
-    display: "flex",
-    gap: "12px",
-  },
-  optionGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", // Adaptive grid for Likert
-    gap: "12px",
-  },
-  optionLabel: (isSelected) => ({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "16px",
-    borderRadius: "12px",
-    border: `2px solid ${isSelected ? COLORS.primary : COLORS.borderColor}`,
-    backgroundColor: isSelected ? COLORS.primaryLight : COLORS.cardBg,
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-    textAlign: "center",
-    height: "100%",
-  }),
-  // Buttons
-  navBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "32px",
-  },
-  btn: (variant) => ({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    padding: "12px 24px",
-    borderRadius: "12px",
-    fontWeight: "600",
-    fontSize: "14px",
-    cursor: "pointer",
-    border: variant === "primary" ? "none" : `1px solid ${COLORS.borderColor}`,
-    backgroundColor: variant === "primary" ? COLORS.primary : "transparent",
-    color: variant === "primary" ? "#ffffff" : COLORS.textPrimary,
-    transition: "all 0.2s",
-    opacity: variant === "disabled" ? 0.5 : 1,
-    pointerEvents: variant === "disabled" ? "none" : "auto",
-    boxShadow: variant === "primary" ? COLORS.shadowMd : "none",
-  }),
-  // Results
-  resultsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
-    gap: "24px",
-  },
-  aiReportBox: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "16px",
-    border: `1px solid ${COLORS.borderColor}`,
-    padding: "24px",
-    whiteSpace: "pre-wrap",
-    lineHeight: "1.6",
-    color: COLORS.textSecondary,
-    fontSize: "15px",
-    maxHeight: "500px",
-    overflowY: "auto",
-    boxShadow: COLORS.shadowMd,
-  },
-};
-
-const animationStyles = `
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-  .option-hover:hover { border-color: var(--primary); transform: translateY(-2px); }
-  .btn-hover:hover { opacity: 0.9; transform: scale(1.02); }
-  .btn-ghost:hover { background-color: var(--primary-light); color: var(--primary); border-color: var(--primary); }
-  .loading-spin { animation: spin 1s linear infinite; }
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-`;
 
 function computeMetrics(answers) {
   const vals = Object.values(answers).map((v) => Number(v));
@@ -346,64 +198,61 @@ export default function ISETest() {
 
   if (fetching) {
     return (
-      <div style={{ ...styles.mainWrapper, alignItems: "center", justifyContent: "center" }}>
+      <div className="ise-main-wrapper ise-main-wrapper-loading">
         <Loader2 className="loading-spin" size={40} color={COLORS.primary} />
-        <p style={{ marginTop: 16, color: COLORS.textSecondary }}>Chargement du test ISE...</p>
+        <p className="ise-loading-text">Chargement du test ISE...</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.mainWrapper}>
-      <style>{animationStyles}</style>
-
+    <div className="ise-main-wrapper">
       {/* --- HERO SECTION --- */}
-      <div style={styles.heroSection}>
-        <div style={styles.headerRow}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div style={styles.heroIconBox}>
+      <div className="ise-hero-section">
+        <div className="ise-header-row">
+          <div className="ise-header-left">
+            <div className="ise-hero-icon-box">
               <Lightbulb size={32} />
             </div>
             <div>
-              <h1 style={{ fontSize: "28px", fontWeight: "800", color: COLORS.textPrimary, margin: 0 }}>
+              <h1 className="ise-hero-title">
                 Test ISE
               </h1>
-              <p style={{ margin: "4px 0 0", color: COLORS.textSecondary }}>
+              <p className="ise-hero-subtitle">
                 Auto-efficacité en Innovation
               </p>
             </div>
           </div>
           
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: "14px", fontWeight: "600", color: COLORS.primary }}>
+          <div className="ise-header-right">
+            <span className="ise-progress-label">
                {Math.round(progressPct)}% Complété
             </span>
           </div>
         </div>
         
-        <div style={styles.progressContainer}>
-          <div style={styles.progressBar(progressPct)} />
+        <div className="ise-progress-container">
+          <div className="ise-progress-bar" style={{ width: `${progressPct}%` }} />
         </div>
       </div>
 
       {/* --- CONTENT SECTION --- */}
-      <div style={styles.contentBody}>
+      <div className="ise-content-body">
 
         {/* STEP 0: INTRO */}
         {step === 0 && (
-          <div className="animate-fade-in" style={{ textAlign: "center", padding: "40px 0" }}>
-            <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-              <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "16px", color: COLORS.textPrimary }}>
+          <div className="animate-fade-in ise-intro-container">
+            <div className="ise-intro-content">
+              <h2 className="ise-intro-title">
                 Bienvenue
               </h2>
-              <p style={{ fontSize: "16px", color: COLORS.textSecondary, lineHeight: "1.6", marginBottom: "32px" }}>
+              <p className="ise-intro-text">
                 Ce questionnaire évalue votre confiance en vos capacités d'innovation.
                 Indiquez votre niveau d’accord pour chaque affirmation sur une échelle de 1 à 5.
               </p>
               
               <button 
-                style={styles.btn("primary")} 
-                className="btn-hover"
+                className="ise-btn ise-btn-primary btn-hover"
                 onClick={() => setStep(1)}
               >
                 Commencer le test <ChevronRight size={18} />
@@ -416,37 +265,31 @@ export default function ISETest() {
         {step > 0 && step <= totalPages && (
           <div className="animate-fade-in">
             {pageQuestions.map((q) => (
-              <div key={q.id} style={styles.questionCard}>
-                <div style={styles.questionTitle}>
-                  <span style={{ color: COLORS.primary, opacity: 0.8, marginRight: "8px" }}>Q{q.id}.</span>
+              <div key={q.id} className="ise-question-card">
+                <div className="ise-question-title">
+                  <span className="ise-question-number">Q{q.id}.</span>
                   {q.text}
                 </div>
                 
-                <div style={styles.optionGrid}>
+                <div className="ise-option-grid">
                   {SCALE.map((opt) => {
                     const isSelected = answers[q.id] === opt.val;
                     return (
                       <label 
                         key={opt.val} 
-                        style={styles.optionLabel(isSelected)}
-                        className="option-hover"
+                        className={`ise-option-label ${isSelected ? "ise-option-label-selected" : ""} option-hover`}
                       >
                         <input
                           type="radio"
                           name={`q-${q.id}`}
-                          style={{ display: "none" }}
+                          className="ise-hidden-input"
                           checked={isSelected}
                           onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt.val }))}
                         />
-                        <div style={{ 
-                          fontSize: "18px", 
-                          fontWeight: "700", 
-                          color: isSelected ? COLORS.primary : COLORS.textMuted,
-                          marginBottom: "4px"
-                        }}>
+                        <div className={`ise-option-value ${isSelected ? "ise-option-value-selected" : ""}`}>
                           {opt.val}
                         </div>
-                        <span style={{ fontSize: "13px", color: isSelected ? COLORS.primary : COLORS.textSecondary, fontWeight: isSelected ? "600" : "400" }}>
+                        <span className={`ise-option-text ${isSelected ? "ise-option-text-selected" : ""}`}>
                            {opt.label}
                         </span>
                       </label>
@@ -457,10 +300,9 @@ export default function ISETest() {
             ))}
 
             {/* NAVIGATION FOOTER */}
-            <div style={styles.navBar}>
+            <div className="ise-nav-bar">
               <button
-                style={styles.btn(step === 1 ? "disabled" : "ghost")}
-                className="btn-ghost"
+                className={`ise-btn ${step === 1 ? "ise-btn-disabled" : "ise-btn-ghost"} btn-ghost`}
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
               >
                 <ChevronLeft size={18} /> Précédent
@@ -468,16 +310,14 @@ export default function ISETest() {
 
               {step < totalPages ? (
                 <button
-                  style={styles.btn(canNext ? "primary" : "disabled")}
-                  className={canNext ? "btn-hover" : ""}
+                  className={`ise-btn ${canNext ? "ise-btn-primary btn-hover" : "ise-btn-disabled"}`}
                   onClick={() => canNext && setStep((s) => s + 1)}
                 >
                   Suivant <ChevronRight size={18} />
                 </button>
               ) : (
                 <button
-                  style={styles.btn(loading ? "disabled" : "primary")}
-                  className={!loading ? "btn-hover" : ""}
+                  className={`ise-btn ${loading ? "ise-btn-disabled" : "ise-btn-primary"} ${!loading ? "btn-hover" : ""}`}
                   onClick={submit}
                 >
                   {loading ? (
@@ -497,40 +337,35 @@ export default function ISETest() {
 
         {/* STEP END: RESULTS */}
         {step > totalPages && (
-          <div className="animate-fade-in" style={{ paddingBottom: "40px" }}>
-            <div style={styles.headerRow}>
-              <h2 style={{ fontSize: "24px", fontWeight: "700", color: COLORS.textPrimary }}>
+          <div className="animate-fade-in ise-results-container">
+            <div className="ise-header-row ise-results-header">
+              <h2 className="ise-results-title">
                 Résultats ISE
               </h2>
-              <div style={{ display: "flex", gap: "12px" }}>
-                <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
+              <div className="ise-results-actions">
+                <button className="ise-btn ise-btn-ghost btn-ghost" onClick={() => {
                    setAnswers({});
                    setStep(1);
                    setAiReport("");
                 }}>
                   <RotateCcw size={16} /> Recommencer
                 </button>
-                <button style={styles.btn("primary")} className="btn-hover" onClick={downloadReport}>
+                <button className="ise-btn ise-btn-primary btn-hover" onClick={downloadReport}>
                   <Download size={16} /> Télécharger
                 </button>
               </div>
             </div>
 
-            <div style={styles.resultsGrid}>
+            <div className="ise-results-grid">
               
               {/* LEFT: SCORE CHART */}
-              <div style={{ 
-                ...styles.questionCard, 
-                marginBottom: 0, 
-                display: "flex", 
-                flexDirection: "column"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+              <div className="ise-question-card ise-score-card">
+                <div className="ise-score-header">
                    <Activity size={20} color={COLORS.primary} />
-                   <h3 style={{ fontSize: "18px", fontWeight: "700", margin: 0, color: COLORS.textPrimary }}>Score Moyen</h3>
+                   <h3 className="ise-score-title">Score Moyen</h3>
                 </div>
                 
-                <div style={{ flex: 1, minHeight: "300px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <div className="ise-score-chart-container">
                    <ResponsiveContainer width="100%" height={250}>
                      <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={COLORS.borderColor} />
@@ -542,34 +377,27 @@ export default function ISETest() {
                        </Bar>
                      </BarChart>
                    </ResponsiveContainer>
-                   <div style={{ textAlign: "center", marginTop: "-40px" }}>
-                      <span style={{ fontSize: "48px", fontWeight: "800", color: COLORS.primary }}>
+                   <div className="ise-score-value-container">
+                      <span className="ise-score-value">
                         {metrics.average}
                       </span>
-                      <span style={{ fontSize: "20px", color: COLORS.textSecondary }}> / 5</span>
+                      <span className="ise-score-max"> / 5</span>
                    </div>
                 </div>
               </div>
 
               {/* RIGHT: AI REPORT */}
               {aiReport && (
-                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    <div style={{ 
-                      backgroundColor: COLORS.primaryLight, 
-                      padding: "16px", 
-                      borderRadius: "12px", 
-                      display: "flex", 
-                      gap: "12px",
-                      color: COLORS.primary 
-                    }}>
+                 <div className="ise-ai-report-container">
+                    <div className="ise-ai-report-header">
                       <BrainCircuit size={24} />
                       <div>
-                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA Générée</strong>
-                        <span style={{ fontSize: "14px" }}>Interprétation du score d'auto-efficacité.</span>
+                        <strong className="ise-ai-report-header-title">Analyse IA Générée</strong>
+                        <span className="ise-ai-report-header-subtitle">Interprétation du score d'auto-efficacité.</span>
                       </div>
                     </div>
                     
-                    <div style={styles.aiReportBox}>
+                    <div className="ise-ai-report-box">
                       {aiReport}
                     </div>
                  </div>

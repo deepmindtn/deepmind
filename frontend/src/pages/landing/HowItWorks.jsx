@@ -132,7 +132,7 @@ const HowItWorks = () => {
                 alt="DeepMind logo" 
                 width={22} 
                 height={22}
-                style={{ objectFit: "contain" }}
+                className="logo-icon-img"
               />
             </div>
             <span className="logo-text">DeepMind</span>

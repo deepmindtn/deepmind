@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "./BigFiveTest.css";
+import "./MaslachTest.css";
 import { Download, RotateCcw, ArrowRight, ArrowLeft, AlertTriangle } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -367,7 +368,7 @@ export default function MaslachTest() {
             </p>
             <div className="b5-alert">
               <AlertTriangle size={16} />
-              <span style={{ marginLeft: 8 }}>{t.nonClinical}</span>
+              <span className="maslach-alert-icon-spacing">{t.nonClinical}</span>
             </div>
             <button className="b5-btn primary" onClick={() => setStep(1)}>{t.start}</button>
           </div>
@@ -446,18 +447,18 @@ export default function MaslachTest() {
             </div>
 
             {/* AI narrative */}
-            <div className="b5-card" style={{ marginTop: 16 }}>
+            <div className="b5-card maslach-ai-report-card">
               <div className="b5-card-title">{t.aiTitle}</div>
               <div className="b5-report">
                 {aiLoading && <p>{t.aiGenerating}</p>}
-                {aiError && <p style={{ color: "#b91c1c" }}>{aiError}</p>}
+                {aiError && <p className="maslach-error-text">{aiError}</p>}
                 {aiReport && (
-                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", lineHeight: 1.6 }}>
+                  <pre className="maslach-report-pre">
                     {aiReport}
                   </pre>
                 )}
                 {!OPENAI_KEY && !aiReport && !aiLoading && (
-                  <p style={{ opacity: 0.7 }}>
+                  <p className="maslach-hint-text">
                     {lang === "fr"
                       ? "(Astuce dev : définissez VITE_OPENAI_KEY pour générer automatiquement le rapport et l'enregistrer côté serveur.)"
                       : "(Dev hint: set VITE_OPENAI_KEY to auto-generate the report and save it server-side.)"}

@@ -20,22 +20,33 @@
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   }
   
-  /* Dashboard Wrapper */
-  .dashboard-wrapper {
-    padding: 2rem;
+  /* Dashboard Wrapper (new implementation uses .dashboard-container) */
+  .dashboard-container {
+    padding: 5px 14px;
     background: var(--bg-main);
     min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  .dashboard-main-wrapper {
+    background-color: var(--card-bg);
+    border-radius: 24px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-xl);
+    margin: 0 auto;
+    padding: 48px;
   }
   
   /* Header */
   .dashboard-header {
-    margin-bottom: 2.5rem;
-    padding: 2rem;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(20, 184, 166, 0.05));
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    position: relative;
-    overflow: hidden;
+    margin-bottom: 40px;
+  }
+  
+  .dashboard-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
   }
   
   .dashboard-header::before {
@@ -48,93 +59,78 @@
     background: linear-gradient(90deg, var(--primary), var(--secondary));
   }
   
-  .dashboard-title {
-    font-size: 2rem;
+  .dashboard-header-title {
+    font-size: 32px;
     font-weight: 800;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    position: relative;
-    z-index: 1;
+    margin: 0;
   }
   
-  .dashboard-subtitle {
+  .dashboard-header-subtitle {
     color: var(--text-secondary);
-    font-size: 1rem;
-    position: relative;
-    z-index: 1;
+  font-size: 16px;
   }
   
   /* Tab Navigation */
-  .tab-navigation {
+  .dashboard-tab-nav {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
+  gap: 8px;
+  background-color: #f1f5f9;
+  padding: 6px;
+  border-radius: 14px;
+  width: fit-content;
+  margin-bottom: 32px;
   }
   
-  .tab-button {
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    border: 2px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.95rem;
+  .dashboard-tab-btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+  background-color: transparent;
+  color: var(--text-secondary);
   }
   
-  .tab-button:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
-  
-  .tab-button.tab-active {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    border-color: transparent;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  .dashboard-tab-btn-active {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
   
   /* Dashboard Grid */
-  .dashboard-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
+  .dashboard-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
   }
   
-  .stats-row {
+  .dashboard-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
   }
   
-  .content-grid {
+  .dashboard-content-grid {
     display: grid;
     grid-template-columns: 1.5fr 1fr;
-    gap: 2rem;
+  gap: 32px;
   }
   
-  .completion-grid {
+  .dashboard-completion-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1.25rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
   }
   
   /* Stat Cards */
-  .stat-card {
-    position: relative;
-    background: var(--card-bg);
+  .dashboard-stat-card {
+  background: var(--card-bg);
     border-radius: 20px;
-    padding: 1.5rem;
-    overflow: hidden;
+  padding: 24px;
+  overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border-color);
@@ -152,7 +148,7 @@
     transition: opacity 0.3s;
   }
   
-  .stat-card:hover {
+  .dashboard-stat-card:hover {
     transform: translateY(-6px);
     box-shadow: var(--shadow-xl);
   }
@@ -195,7 +191,7 @@
     transition: transform 0.3s;
   }
   
-  .stat-card:hover .stat-icon-wrapper {
+  .dashboard-stat-card:hover .stat-icon-wrapper {
     transform: scale(1.1) rotate(-5deg);
   }
   
@@ -255,6 +251,61 @@
     border-top: 1px solid var(--border-color);
     font-size: 0.813rem;
     color: var(--text-muted);
+  }
+  
+  /* New stat helpers wired to JSX */
+  .dashboard-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
+  .dashboard-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .dashboard-stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  
+  .dashboard-stat-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  
+  .dashboard-stat-detail {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  /* Icon box background colors based on card order */
+  .dashboard-stats-grid > :nth-child(1) .dashboard-icon-box {
+    background-color: var(--primary-light);
+  }
+  .dashboard-stats-grid > :nth-child(2) .dashboard-icon-box {
+    background-color: var(--blue);
+    opacity: 0.12;
+  }
+  .dashboard-stats-grid > :nth-child(3) .dashboard-icon-box {
+    background-color: #fffbeb;
+  }
+  .dashboard-stats-grid > :nth-child(4) .dashboard-icon-box {
+    background-color: var(--purple-light);
   }
   
   /* Activity Card */
@@ -398,12 +449,14 @@
   }
   
   /* Chart Cards */
+  .dashboard-metrics-grid,
   .metrics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
     gap: 2rem;
   }
   
+  .dashboard-chart-card,
   .chart-card {
     background: var(--card-bg);
     border-radius: 20px;
@@ -413,6 +466,7 @@
     transition: all 0.3s;
   }
   
+  .dashboard-chart-card:hover,
   .chart-card:hover {
     box-shadow: var(--shadow-xl);
     transform: translateY(-4px);
@@ -422,6 +476,7 @@
     margin-bottom: 1.5rem;
   }
   
+  .dashboard-chart-title,
   .chart-title {
     font-size: 1.125rem;
     font-weight: 700;
@@ -523,7 +578,7 @@
     }
   }
   
-  .stat-card,
+  .dashboard-stat-card,
   .activity-card,
   .chart-card {
     animation: fadeIn 0.5s ease-out;
@@ -536,47 +591,57 @@
   
   /* Responsive Design */
   @media (max-width: 1280px) {
-    .content-grid {
+  .content-grid,
+  .dashboard-content-grid {
       grid-template-columns: 1fr;
     }
     
-    .metrics-grid {
+  .metrics-grid,
+  .dashboard-metrics-grid {
       grid-template-columns: 1fr;
     }
   }
   
   @media (max-width: 768px) {
-    .dashboard-wrapper {
+  .dashboard-wrapper,
+  .dashboard-container {
       padding: 1.5rem 1rem;
     }
   
-    .dashboard-title {
+  .dashboard-title,
+  .dashboard-header-title {
       font-size: 1.75rem;
     }
   
-    .stats-row {
+  .stats-row,
+  .dashboard-stats-grid {
       grid-template-columns: 1fr;
     }
   
-    .completion-grid {
+  .completion-grid,
+  .dashboard-completion-grid {
       grid-template-columns: repeat(2, 1fr);
     }
   
-    .tab-button {
+  .tab-button,
+  .dashboard-tab-btn {
       font-size: 0.875rem;
       padding: 0.625rem 1.25rem;
     }
   
-    .stat-card-content {
+  .stat-card-content,
+  .dashboard-stat-header {
       gap: 1rem;
     }
   
-    .stat-icon-wrapper {
+  .stat-icon-wrapper,
+  .dashboard-icon-box {
       width: 48px;
       height: 48px;
     }
   
-    .stat-value {
+  .stat-value,
+  .dashboard-stat-value {
       font-size: 1.75rem;
     }
   
@@ -586,27 +651,100 @@
   }
   
   @media (max-width: 480px) {
-    .dashboard-wrapper {
+  .dashboard-wrapper,
+  .dashboard-container {
       padding: 1rem 0.75rem;
     }
   
-    .dashboard-title {
+  .dashboard-title,
+  .dashboard-header-title {
       font-size: 1.5rem;
     }
   
-    .completion-grid {
+  .completion-grid,
+  .dashboard-completion-grid {
       grid-template-columns: 1fr;
     }
   
-    .stat-card {
+  .stat-card,
+  .dashboard-stat-card {
       padding: 1.25rem;
     }
   
-    .stat-value {
+  .stat-value,
+  .dashboard-stat-value {
       font-size: 1.5rem;
     }
   
-    .chart-card {
+  .chart-card,
+  .dashboard-chart-card {
       padding: 1.25rem;
     }
+  }
+  
+  /* Dashboard-specific activity timeline used in JSX */
+  .dashboard-activity-item {
+    display: flex;
+    gap: 16px;
+    padding-bottom: 24px;
+  }
+  
+  .dashboard-activity-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .dashboard-activity-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    border: 3px solid var(--primary-light);
+    z-index: 2;
+  }
+  
+  .dashboard-activity-line {
+    width: 2px;
+    flex: 1;
+    background-color: var(--border-color);
+    margin: 4px 0;
+  }
+  
+  .dashboard-activity-content {
+    flex: 1;
+  }
+  
+  .dashboard-activity-main {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  
+  .dashboard-activity-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  
+  .dashboard-activity-time {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-top: 4px;
+  }
+  
+  /* Empty chart state */
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  
+  .empty-state-icon {
+    margin-bottom: 16px;
+  }
+  
+  .empty-state-text {
+    margin: 0;
+    font-size: 14px;
   }

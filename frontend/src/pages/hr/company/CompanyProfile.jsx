@@ -12,6 +12,7 @@ import {
   X,
   ShieldCheck,
 } from "lucide-react";
+import "./CompanyProfile.css";
 
 /* -----------------------
    Theme Constants
@@ -29,213 +30,27 @@ const COLORS = {
   shadowHuge: "var(--shadow-huge)",
 };
 
-/* -----------------------
-   CSS & Responsive Styles
------------------------ */
-const responsiveStyles = `
-  /* --- Desktop Layout (Default) --- */
-  .profile-container {
-    padding: 5px 14px;
-    background-color: ${COLORS.bgMain};
-    min-height: 100vh;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-
-  .main-card {
-    background-color: ${COLORS.cardBg};
-    border-radius: 24px;
-    border: 1px solid ${COLORS.borderColor};
-    box-shadow: ${COLORS.shadowHuge};
-    margin: 0 auto;
-    overflow: hidden;
-    min-height: calc(100vh - 40px);
-  }
-
-  .hero-section {
-    background: linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%);
-    padding: 40px;
-    border-bottom: 1px solid ${COLORS.borderColor};
-  }
-
-  .hero-content {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-  }
-
-  .hero-info {
-    flex: 1;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .profile-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    padding: 40px;
-  }
-
-  .info-field-row {
-    display: flex;
-    margin-bottom: 24px;
-  }
-
-  /* --- Buttons --- */
-  .btn-primary {
-    background: ${COLORS.primary};
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .btn-cancel {
-    background: white;
-    color: ${COLORS.red};
-    border: 1px solid ${COLORS.borderColor};
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  /* --- Mobile / Responsive Overrides --- */
-  @media (max-width: 900px) {
-    .profile-grid {
-      grid-template-columns: 1fr; /* Stack columns */
-      padding: 24px;
-      gap: 30px;
-    }
-    
-    .hero-section {
-      padding: 24px; /* Reduce padding */
-    }
-
-    .hero-content {
-      flex-direction: column; /* Stack logo, title, buttons */
-      text-align: center;
-      gap: 20px;
-    }
-
-    .hero-info {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    
-    .hero-info input {
-      text-align: center;
-    }
-
-    .hero-actions {
-      width: 100%;
-      justify-content: center;
-      flex-wrap: wrap; /* Allow buttons to wrap if very small screen */
-    }
-
-    .btn-primary, .btn-cancel {
-      flex: 1; /* Make buttons equal width */
-      min-width: 120px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .profile-container {
-      padding: 0; /* Full bleed on small mobile */
-    }
-    .main-card {
-      border-radius: 0;
-      min-height: 100vh;
-      border: none;
-    }
-  }
-`;
-
-const styles = {
-  sectionTitle: {
-    fontSize: "18px",
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-    marginBottom: "20px",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-  input: {
-    width: "100%",
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: `1px solid ${COLORS.borderColor}`,
-    backgroundColor: COLORS.bgMain,
-    color: COLORS.textPrimary,
-    fontSize: "14px",
-    outline: "none",
-  },
-};
 
 /* -----------------------
    Helper Component
 ----------------------- */
 const InfoField = ({ label, value, icon: Icon, isEditing, onChange }) => (
   <div className="info-field-row">
-    <div
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        background: COLORS.bgMain,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: `1px solid ${COLORS.borderColor}`,
-        marginRight: 12,
-        color: COLORS.primary,
-        flexShrink: 0,
-      }}
-    >
+    <div className="info-field-icon">
       <Icon size={18} />
     </div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <label
-        style={{
-          display: "block",
-          fontSize: 12,
-          fontWeight: 700,
-          color: COLORS.textMuted,
-          marginBottom: 6,
-          textTransform: "uppercase",
-        }}
-      >
+    <div className="info-field-content">
+      <label className="info-field-label">
         {label}
       </label>
       {isEditing ? (
         <input
-          style={styles.input}
+          className="profile-input"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
         />
       ) : (
-        <div style={{ fontSize: 15, wordBreak: "break-word" }}>
+        <div className="info-field-value">
           {value || "Not set"}
         </div>
       )}
@@ -324,50 +139,27 @@ const CompanyProfile = () => {
     }
   };
 
-  if (!company) return <div style={{ padding: 40 }}>Loading...</div>;
+  if (!company) return <div className="loading-container">Loading...</div>;
 
   return (
     <div className="profile-container">
-      <style>{responsiveStyles}</style>
-
       <div className="main-card">
         {/* Hero */}
         <div className="hero-section">
           <div className="hero-content">
-            <div
-              style={{
-                width: 90,
-                height: 90,
-                borderRadius: 24,
-                background: COLORS.primary,
-                position: "relative",
-                overflow: "hidden",
-                flexShrink: 0,
-              }}
-            >
+            <div className="company-logo-container">
               {logoPreview || company.logo ? (
                 <img
                   src={logoPreview || company.logo}
                   alt="Company Logo"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  className="company-logo-img"
                 />
               ) : (
-                <Building2 size={42} color="white" style={{ margin: "24px" }} />
+                <Building2 size={42} color="white" className="company-logo-placeholder" />
               )}
 
               {isEditing && (
-                <label
-                  style={{
-                    position: "absolute",
-                    bottom: -6,
-                    right: -6,
-                    background: "white",
-                    padding: 8,
-                    borderRadius: "50%",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                  }}
-                >
+                <label className="logo-edit-label">
                   <input
                     type="file"
                     hidden
@@ -388,14 +180,14 @@ const CompanyProfile = () => {
             <div className="hero-info">
               {isEditing ? (
                 <input
-                  style={{ ...styles.input, fontSize: 22, fontWeight: 700 }}
+                  className="profile-input profile-input-large"
                   value={editData.name || ""}
                   onChange={(e) =>
                     setEditData((p) => ({ ...p, name: e.target.value }))
                   }
                 />
               ) : (
-                <h1 style={{ margin: 0, fontSize: "clamp(1.5rem, 4vw, 2.2rem)" }}>
+                <h1 className="company-name-title">
                   {company.name}
                 </h1>
               )}
@@ -433,7 +225,7 @@ const CompanyProfile = () => {
         {/* Content */}
         <div className="profile-grid">
           <div>
-            <h3 style={styles.sectionTitle}>
+            <h3 className="section-title">
               <ShieldCheck size={20} /> Company Info
             </h3>
             <InfoField
@@ -460,7 +252,7 @@ const CompanyProfile = () => {
           </div>
 
           <div>
-            <h3 style={styles.sectionTitle}>
+            <h3 className="section-title">
               <Briefcase size={20} /> Business
             </h3>
             <InfoField
@@ -484,43 +276,16 @@ const CompanyProfile = () => {
       {/* Toast Notification */}
       {toast && (
         <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            left: "24px", // Ensure it doesn't go off screen on mobile
-            backgroundColor: COLORS.cardBg,
-            padding: "16px 20px",
-            borderRadius: "12px",
-            boxShadow: COLORS.shadowHuge,
-            border: `2px solid ${
-              toast.type === "error" ? COLORS.red : COLORS.primary
-            }`,
-            zIndex: 10001,
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            maxWidth: "500px",
-            margin: "0 auto", // Center on mobile
-          }}
+          className={`toast-notification ${
+            toast.type === "error" ? "toast-notification-error" : "toast-notification-success"
+          }`}
         >
           <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor:
-                toast.type === "error" ? COLORS.red : COLORS.primary,
-              flexShrink: 0,
-            }}
+            className={`toast-dot ${
+              toast.type === "error" ? "toast-dot-error" : "toast-dot-success"
+            }`}
           />
-          <span
-            style={{
-              color: COLORS.textPrimary,
-              fontSize: "14px",
-              fontWeight: "500",
-            }}
-          >
+          <span className="toast-message">
             {toast.message}
           </span>
         </div>

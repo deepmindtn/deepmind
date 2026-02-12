@@ -162,7 +162,7 @@ const LandingPage = () => {
                 alt="DeepMind logo"
                 width={22}
                 height={22}
-                style={{ objectFit: "contain" }}
+                className="logo-icon-img"
               ></img>
             </div>
             <span className="logo-text">DeepMind</span>

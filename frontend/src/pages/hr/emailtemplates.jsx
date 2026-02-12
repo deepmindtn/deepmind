@@ -47,184 +47,16 @@ const COLORS = {
   shadowHuge: "var(--shadow-huge)",
 };
 
-// -----------------------
-// Inline Styles
-// -----------------------
-const styles = {
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    position: "relative", // Needed for absolute positioning of toast if context changes
-  },
-  mainWrapperCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    margin: "0 auto",
-    padding: "48px",
-    minHeight: "85vh",
-  },
-  searchWrapper: { position: "relative", maxWidth: "500px", width: "100%" },
-  iconBox: (bg) => ({
-    width: "52px",
-    height: "52px",
-    borderRadius: "14px",
-    backgroundColor: bg,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: "20px",
-  }),
-  card: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "20px",
-    border: `1px solid ${COLORS.borderColor}`,
-    padding: "28px",
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    transition: "all 0.3s ease",
-    cursor: "pointer",
-  },
-  pill: (active) => ({
-    padding: "10px 20px",
-    borderRadius: "12px",
-    border: active
-      ? `1px solid ${COLORS.primary}`
-      : `1px solid ${COLORS.borderColor}`,
-    backgroundColor: active ? COLORS.primaryLight : COLORS.cardBg,
-    color: active ? COLORS.primaryDark : COLORS.textSecondary,
-    fontWeight: "600",
-    fontSize: "14px",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    whiteSpace: "nowrap",
-  }),
-  tag: (tone) => {
-    const tones = {
-      green: { bg: COLORS.primaryLight, text: COLORS.primaryDark },
-      blue: { bg: COLORS.blueLight, text: COLORS.blue },
-      purple: { bg: COLORS.purpleLight, text: COLORS.purple },
-      orange: { bg: COLORS.orangeLight, text: COLORS.orange },
-      gray: { bg: "#f1f5f9", text: COLORS.textSecondary },
-    };
-    const t = tones[tone] || tones.gray;
-    return {
-      padding: "4px 10px",
-      borderRadius: "6px",
-      backgroundColor: t.bg,
-      color: t.text,
-      fontSize: "11px",
-      fontWeight: "700",
-      textTransform: "uppercase",
-      letterSpacing: "0.02em",
-    };
-  },
-  editorInput: {
-    width: "100%",
-    padding: "16px",
-    borderRadius: "12px",
-    border: `1px solid ${COLORS.borderColor}`,
-    fontSize: "15px",
-    fontFamily: "'Inter', sans-serif",
-    marginBottom: "24px",
-    transition: "border 0.2s",
-  },
-  editorTextArea: {
-    width: "100%",
-    minHeight: "400px",
-    padding: "24px",
-    borderRadius: "16px",
-    border: `1px solid ${COLORS.borderColor}`,
-    fontSize: "15px",
-    fontFamily: "'Monaco', 'Consolas', monospace",
-    lineHeight: "1.6",
-    resize: "vertical",
-    backgroundColor: "#fafafa",
-  },
-};
-
-const responsiveStyles = `
-  @media (max-width: 1024px) {
-    .template-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
-    .main-wrapper { padding: 32px 24px !important; }
-    .header-flex { flex-direction: column !important; align-items: flex-start !important; gap: 24px !important; }
-    .search-container { max-width: 100% !important; }
-    .stats-container { flex-direction: column !important; }
-    .editor-layout { flex-direction: column !important; }
-    .editor-sidebar { width: 100% !important; margin-top: 24px !important; }
-  }
-  .hover-card:hover { 
-    transform: translateY(-8px); 
-    border-color: ${COLORS.primary} !important; 
-    box-shadow: ${COLORS.shadowHuge} !important; 
-  }
-  .primary-btn { 
-    background: ${COLORS.primary}; 
-    color: white; 
-    border: none; 
-    padding: 10px 20px; 
-    border-radius: 10px; 
-    font-weight: 700; 
-    font-size: 14px; 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    cursor: pointer; 
-    transition: 0.2s; 
-  }
-  .primary-btn:hover { background: ${COLORS.primaryDark}; }
-  
-  .secondary-btn {
-    background: white;
-    color: ${COLORS.textPrimary};
-    border: 1px solid ${COLORS.borderColor};
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex; 
-    align-items: center; 
-    gap: 8px;
-  }
-  .secondary-btn:hover { background: #f8fafc; }
-  .input-focus:focus { 
-    border-color: ${COLORS.primary} !important; 
-    outline: none; 
-    box-shadow: 0 0 0 4px ${COLORS.primaryLight}; 
-  }
-`;
 
 // -----------------------
 // Sub-Components
 // -----------------------
 const StatBadge = ({ value, label, color }) => (
-  <div
-    style={{
-      textAlign: "center",
-      flex: 1,
-      padding: "12px",
-      borderRight: `1px solid ${COLORS.borderColor}`,
-    }}
-  >
-    <div style={{ fontSize: "20px", fontWeight: "800", color: color }}>
+  <div className="stat-badge">
+    <div className="stat-badge-value" style={{ color: color }}>
       {value}
     </div>
-    <div
-      style={{
-        fontSize: "11px",
-        fontWeight: "700",
-        color: COLORS.textMuted,
-        textTransform: "uppercase",
-      }}
-    >
+    <div className="stat-badge-label">
       {label}
     </div>
   </div>
@@ -421,69 +253,31 @@ const EmailTemplateManager = () => {
   // -----------------------
   if (view === "edit" && selectedTemplate) {
     return (
-      <div className="email-templates-page" style={styles.container}>
-        <style>{responsiveStyles}</style>
-        <div className="main-wrapper" style={styles.mainWrapperCard}>
+      <div className="email-templates-page">
+        <div className="main-wrapper">
           {/* Editor Header */}
-          <div
-            className="editor-header"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "20px",
-              borderBottom: `1px solid ${COLORS.borderColor}`,
-              paddingBottom: "24px",
-            }}
-          >
-            <div className="editor-header-left" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div className="editor-header">
+            <div className="editor-header-left">
               <button
                 onClick={handleGoBack}
-                className="secondary-btn"
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: COLORS.cardBg, // button background
-                  color: COLORS.textPrimary, // text color
-                  border: `1px solid ${COLORS.borderColor}`, // border color
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  borderRadius: "8px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                }}
+                className="back-btn"
               >
                 <ArrowLeft size={18} color={COLORS.textPrimary} /> Back
               </button>
               <div className="editor-header-title">
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "700",
-                    color: COLORS.textMuted,
-                    textTransform: "uppercase",
-                  }}
-                >
+                <div className="editor-header-title-label">
                   Editing Template
                 </div>
-                <h2
-                  style={{
-                    fontSize: "24px",
-                    fontWeight: "800",
-                    color: COLORS.textPrimary,
-                    margin: 0,
-                  }}
-                >
+                <h2>
                   {selectedTemplate.name}
                 </h2>
               </div>
             </div>
-            <div className="editor-header-actions" style={{ display: "flex", gap: "12px" }}>
+            <div className="editor-header-actions">
               <button
                 className="primary-btn"
                 onClick={handleSave}
                 disabled={isSaving}
-                style={{ opacity: isSaving ? 0.7 : 1 }}
               >
                 {isSaving ? (
                   <Loader2 className="animate-spin" size={16} />
@@ -496,205 +290,82 @@ const EmailTemplateManager = () => {
           </div>
 
           {/* MODE TOGGLE TABS */}
-          <div
-            className="editor-tabs"
-            style={{
-              display: "flex",
-              gap: "0",
-              marginBottom: "24px",
-              borderBottom: `1px solid ${COLORS.borderColor}`,
-            }}
-          >
+          <div className="editor-tabs">
             <button
               onClick={() => setEditorMode("code")}
-              style={{
-                padding: "12px 24px",
-                borderBottom:
-                  editorMode === "code"
-                    ? `2px solid ${COLORS.primary}`
-                    : "2px solid transparent",
-                color:
-                  editorMode === "code" ? COLORS.primary : COLORS.textSecondary,
-                fontWeight: "600",
-                background: "transparent",
-                borderTop: "none",
-                borderLeft: "none",
-                borderRight: "none",
-                cursor: "pointer",
-              }}
+              className={editorMode === "code" ? "editor-tab editor-tab-active" : "editor-tab"}
             >
               Code Editor
             </button>
             <button
               onClick={() => setEditorMode("preview")}
-              style={{
-                padding: "12px 24px",
-                borderBottom:
-                  editorMode === "preview"
-                    ? `2px solid ${COLORS.primary}`
-                    : "2px solid transparent",
-                color:
-                  editorMode === "preview"
-                    ? COLORS.primary
-                    : COLORS.textSecondary,
-                fontWeight: "600",
-                background: "transparent",
-                borderTop: "none",
-                borderLeft: "none",
-                borderRight: "none",
-                cursor: "pointer",
-              }}
+              className={editorMode === "preview" ? "editor-tab editor-tab-active" : "editor-tab"}
             >
               Visual Preview
             </button>
           </div>
 
           {/* Editor Layout */}
-          <div
-            className="editor-layout"
-            style={{ display: "flex", gap: "32px" }}
-          >
-            <div className="editor-main" style={{ flex: 3 }}>
+          <div className="editor-layout">
+            <div className="editor-main">
               {/* SUBJECT INPUT (Always Visible) */}
-              <div style={{ marginBottom: "20px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: "600",
-                    color: COLORS.textSecondary,
-                    fontSize: "14px",
-                  }}
-                >
+              <div className="editor-input-wrapper">
+                <label className="editor-label">
                   Email Subject
                 </label>
                 <input
                   name="subject"
                   value={editFormData.subject}
                   onChange={handleInputChange}
-                  className="input-focus"
-                  style={{
-                    ...styles.editorInput,
-                    backgroundColor: COLORS.cardBg,
-                    color: COLORS.textPrimary,
-                  }}
+                  className="input-focus editor-input"
                 />
               </div>
 
               {/* CONDITIONAL RENDER: CODE vs PREVIEW */}
               {editorMode === "code" ? (
                 <>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "600",
-                      color: COLORS.textSecondary,
-                      fontSize: "14px",
-                    }}
-                  >
+                  <label className="editor-label">
                     HTML Code
                   </label>
                   <textarea
                     name="body"
                     value={editFormData.body}
                     onChange={handleInputChange}
-                    className="input-focus"
-                    style={{
-                      ...styles.editorTextArea,
-                      backgroundColor: COLORS.cardBg,
-                      color: COLORS.textPrimary,
-                      fontFamily: "'Monaco', monospace",
-                      fontSize: "13px",
-                    }}
+                    className="input-focus editor-textarea editor-textarea-code"
                     placeholder="Paste your HTML here..."
                   />
                 </>
               ) : (
-                <div
-                  className="editor-preview-frame"
-                  style={{
-                    border: `1px solid ${COLORS.borderColor}`,
-                    borderRadius: "16px",
-                    overflow: "hidden",
-                    height: "600px",
-                    backgroundColor: "#fff",
-                  }}
-                >
+                <div className="editor-preview-frame">
                   {/* We use an iframe to safely render the HTML so CSS doesn't bleed 
                   into your React app 
                 */}
                   <iframe
                     title="email-preview"
                     srcDoc={editFormData.body}
-                    style={{ width: "100%", height: "100%", border: "none" }}
                   />
                 </div>
               )}
             </div>
 
             {/* Sidebar (Same as before) */}
-            <div className="editor-sidebar" style={{ flex: 1 }}>
-              <div
-                className="variables-card"
-                style={{
-                  backgroundColor: COLORS.cardBg,
-                  padding: "24px",
-                  borderRadius: "16px",
-                  border: `1px solid ${COLORS.borderColor}`,
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "700",
-                    marginBottom: "16px",
-                    color: COLORS.textPrimary,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
+            <div className="editor-sidebar">
+              <div className="variables-card">
+                <h3>
                   <Zap size={16} color={COLORS.orange} />
                   Dynamic Variables
                 </h3>
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: COLORS.textSecondary,
-                    marginBottom: "16px",
-                  }}
-                >
+                <p>
                   Click to copy variables to clipboard.
                 </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
+                <div className="variables-list">
                   {selectedTemplate.variables.map((v) => (
                     <div
                       key={v}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        backgroundColor: "white",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: `1px solid ${COLORS.borderColor}`,
-                        fontSize: "13px",
-                        fontFamily: "monospace",
-                        cursor: "pointer",
-                      }}
-                      className="secondary-btn"
+                      className="variable-item secondary-btn"
                       onClick={() => handleCopyVariable(v)}
                     >
-                      <span
-                        style={{ color: COLORS.primaryDark }}
-                      >{`{{${v}}}`}</span>
+                      <span>{`{{${v}}}`}</span>
                       <Copy size={12} color={COLORS.textMuted} />
                     </div>
                   ))}
@@ -707,25 +378,7 @@ const EmailTemplateManager = () => {
         {/* TOAST (Keep existing toast code) */}
         {toast && (
           <div
-            className="email-templates-toast"
-            style={{
-              position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              backgroundColor: "#fff",
-              padding: "16px",
-              borderRadius: "12px",
-              boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
-              border: `1px solid ${
-                toast.type === "error" ? COLORS.red : COLORS.primary
-              }`,
-              zIndex: 10001,
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              fontWeight: "600",
-              color: COLORS.textPrimary,
-            }}
+            className={`email-templates-toast ${toast.type === "error" ? "email-templates-toast-error" : "email-templates-toast-success"}`}
           >
             {toast.type === "error" ? (
               <AlertCircle size={20} color={COLORS.red} />
@@ -743,79 +396,32 @@ const EmailTemplateManager = () => {
   // RENDER: List View
   // -----------------------
   return (
-    <div className="email-templates-page" style={styles.container}>
-      <style>{responsiveStyles}</style>
-      <div className="main-wrapper" style={styles.mainWrapperCard}>
+    <div className="email-templates-page">
+      <div className="main-wrapper">
         {/* Header */}
-        <div
-          className="header-flex"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            marginBottom: "48px",
-            borderBottom: `1px solid ${COLORS.borderColor}`,
-            paddingBottom: "40px",
-          }}
-        >
-          <div className="header-title-block" style={{ flex: 1 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginBottom: "8px",
-              }}
-            >
-              <div style={styles.iconBox(COLORS.primaryLight)}>
+        <div className="header-flex">
+          <div className="header-title-block">
+            <div className="header-title-row">
+              <div className="icon-box icon-box-primary-light">
                 <LayoutTemplate size={24} color={COLORS.primary} />
               </div>
-              <h1
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "800",
-                  margin: 0,
-                  color: COLORS.textPrimary,
-                }}
-              >
+              <h1>
                 Email Templates
               </h1>
             </div>
-            <p
-              style={{
-                color: COLORS.textSecondary,
-                fontSize: "16px",
-                margin: 0,
-                maxWidth: "600px",
-              }}
-            >
+            <p>
               Manage, edit, and organize the automated emails sent by your
               application.
             </p>
           </div>
-          <div className="search-container" style={styles.searchWrapper}>
+          <div className="search-container">
             <Search
               size={18}
               color={COLORS.textMuted}
-              style={{
-                position: "absolute",
-                left: "16px",
-                top: "50%",
-                transform: "translateY(-50%)",
-              }}
+              className="search-icon"
             />
             <input
               className="input-focus"
-              style={{
-                width: "100%",
-                padding: "14px 16px 14px 48px",
-                borderRadius: "14px",
-                backgroundColor: COLORS.cardBg,
-                color: COLORS.textPrimary,
-                border: `1px solid ${COLORS.borderColor}`,
-                fontSize: "15px",
-                transition: "0.2s",
-              }}
               placeholder="Search templates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -824,39 +430,19 @@ const EmailTemplateManager = () => {
         </div>
 
         {/* Stats & Filters */}
-        <div
-          className="stats-container"
-          style={{
-            display: "flex",
-            gap: "24px",
-            marginBottom: "40px",
-            alignItems: "center",
-          }}
-        >
-          <div
-            className="filters-scroll"
-            style={{ display: "flex", gap: "8px", flex: 1, overflowX: "auto" }}
-          >
+        <div className="stats-container">
+          <div className="filters-scroll">
             {categories.map((cat) => (
               <button
                 key={cat}
-                style={styles.pill(selectedCategory === cat)}
+                className={`pill ${selectedCategory === cat ? "pill-active" : ""}`}
                 onClick={() => setSelectedCategory(cat)}
               >
                 {cat === "All" && <Filter size={14} />} {cat}
               </button>
             ))}
           </div>
-          <div
-            className="stats-badges"
-            style={{
-              display: "flex",
-              backgroundColor: "#f1f5f9",
-              borderRadius: "16px",
-              padding: "4px",
-              minWidth: "320px",
-            }}
-          >
+          <div className="stats-badges">
             <StatBadge
               value={templates.length}
               label="Total"
@@ -868,16 +454,9 @@ const EmailTemplateManager = () => {
         </div>
 
         {/* Grid */}
-        <div
-          className="template-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))",
-            gap: "24px",
-          }}
-        >
+        <div className="template-grid">
           {loading && (
-            <div style={{ gridColumn: "1/-1", textAlign: "center" }}>
+            <div className="loading-message">
               Loading...
             </div>
           )}
@@ -886,124 +465,42 @@ const EmailTemplateManager = () => {
               <div
                 key={template.id}
                 className="hover-card"
-                style={styles.card}
                 onClick={() => handleEdit(template)}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: "12px" }}>
-                    <div
-                      style={{
-                        width: "42px",
-                        height: "42px",
-                        borderRadius: "10px",
-                        backgroundColor: COLORS.blueLight,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
+                <div className="template-card-header">
+                  <div className="template-card-header-left">
+                    <div className="template-icon-box">
                       <Mail size={20} color={COLORS.blue} />
                     </div>
                     <div>
                       <span
-                        style={styles.tag(
-                          template.status === "Active" ? "green" : "orange"
-                        )}
+                        className={`tag ${template.status === "Active" ? "tag-green" : "tag-orange"}`}
                       >
                         {template.status}
                       </span>
                     </div>
                   </div>
-                  <button
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      color: COLORS.textMuted,
-                    }}
-                  >
+                  <button className="template-more-btn">
                     <MoreHorizontal size={20} />
                   </button>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: "700",
-                      color: COLORS.secondary,
-                      marginBottom: "6px",
-                      textTransform: "uppercase",
-                    }}
-                  >
+                <div className="template-card-content">
+                  <div className="template-card-category">
                     {template.category}
                   </div>
-                  <h3
-                    style={{
-                      fontSize: "19px",
-                      fontWeight: "800",
-                      color: COLORS.textPrimary,
-                      marginBottom: "10px",
-                      lineHeight: "1.3",
-                    }}
-                  >
+                  <h3 className="template-card-title">
                     {template.name}
                   </h3>
-                  <p
-                    style={{
-                      fontSize: "14px",
-                      color: COLORS.textSecondary,
-                      lineHeight: "1.6",
-                      marginBottom: "20px",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
+                  <p className="template-card-description">
                     {template.description}
                   </p>
                 </div>
-                <div
-                  className="template-card-footer"
-                  style={{
-                    borderTop: `1px solid ${COLORS.borderColor}`,
-                    paddingTop: "16px",
-                    marginTop: "8px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      fontSize: "12px",
-                      color: COLORS.textMuted,
-                      fontWeight: "600",
-                    }}
-                  >
+                <div className="template-card-footer">
+                  <div className="template-card-footer-left">
                     <Clock size={12} /> {template.lastUpdated}
                   </div>
                   {template.status === "Active" && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "12px",
-                        color: COLORS.primaryDark,
-                        fontWeight: "700",
-                      }}
-                    >
+                    <div className="template-card-footer-right">
                       <Send size={12} /> {template.openRate} Open Rate
                     </div>
                   )}
@@ -1012,7 +509,7 @@ const EmailTemplateManager = () => {
             ))}
         </div>
         {!loading && filteredTemplates.length === 0 && (
-          <div style={{ textAlign: "center", padding: "80px 0", opacity: 0.6 }}>
+          <div className="empty-message">
             <p>No templates found.</p>
           </div>
         )}
@@ -1020,25 +517,7 @@ const EmailTemplateManager = () => {
         {/* TOAST NOTIFICATION (List View) */}
         {toast && (
           <div
-            className="email-templates-toast"
-            style={{
-              position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              backgroundColor: "#fff",
-              padding: "16px",
-              borderRadius: "12px",
-              boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
-              border: `1px solid ${
-                toast.type === "error" ? COLORS.red : COLORS.primary
-              }`,
-              zIndex: 10001,
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              fontWeight: "600",
-              color: COLORS.textPrimary,
-            }}
+            className={`email-templates-toast ${toast.type === "error" ? "email-templates-toast-error" : "email-templates-toast-success"}`}
           >
             {toast.type === "error" ? (
               <AlertCircle size={20} color={COLORS.red} />

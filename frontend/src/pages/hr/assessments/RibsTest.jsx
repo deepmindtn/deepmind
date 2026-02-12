@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   FileText,
 } from "lucide-react";
+import "./RibsTest.css";
 
 // -----------------------
 // 1. DATA & CONFIG
@@ -96,136 +97,6 @@ async function downloadResultsAsPDF(filename) {
   return pdf.output("blob");
 }
 
-// -----------------------
-// 3. STYLES (CSS-in-JS)
-// -----------------------
-
-const styles = {
-  mainWrapper: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    width: "100%",
-    margin: "0 auto",
-    overflow: "hidden",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: "calc(100vh - 40px)",
-    color: COLORS.textPrimary,
-  },
-  heroSection: {
-    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.cardBg} 100%)`,
-    padding: "32px 48px",
-    borderBottom: `1px solid ${COLORS.borderColor}`,
-  },
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "24px",
-  },
-  heroIconBox: {
-    width: "56px",
-    height: "56px",
-    borderRadius: "16px",
-    backgroundColor: COLORS.gold,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#fff",
-    boxShadow: `0 8px 16px -4px rgba(245, 158, 11, 0.3)`,
-    marginRight: "20px",
-  },
-  progressContainer: {
-    height: "8px",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: "4px",
-    overflow: "hidden",
-    marginTop: "8px",
-  },
-  progressBar: (pct) => ({
-    height: "100%",
-    width: `${pct}%`,
-    backgroundColor: COLORS.gold,
-    transition: "width 0.4s ease-in-out",
-  }),
-  contentBody: {
-    flex: 1,
-    padding: "40px 48px",
-    backgroundColor: COLORS.bgMain,
-  },
-  questionCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "20px",
-    padding: "32px",
-    border: `1px solid ${COLORS.borderColor}`,
-    marginBottom: "24px",
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-  },
-  likertGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5, 1fr)",
-    gap: "12px",
-    marginTop: "24px",
-  },
-  likertOption: (isSelected) => ({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "16px 8px",
-    borderRadius: "12px",
-    border: `2px solid ${isSelected ? COLORS.gold : COLORS.borderColor}`,
-    backgroundColor: isSelected ? `${COLORS.gold}10` : COLORS.cardBg,
-    cursor: "pointer",
-    textAlign: "center",
-    transition: "all 0.2s ease",
-  }),
-  btn: (variant) => ({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    padding: "12px 24px",
-    borderRadius: "12px",
-    fontWeight: "600",
-    fontSize: "14px",
-    cursor: "pointer",
-    border: variant === "primary" ? "none" : `1px solid ${COLORS.borderColor}`,
-    backgroundColor: variant === "primary" ? COLORS.primary : "transparent",
-    color: variant === "primary" ? "#fff" : COLORS.textPrimary,
-    transition: "all 0.2s",
-    opacity: variant === "disabled" ? 0.5 : 1,
-    pointerEvents: variant === "disabled" ? "none" : "auto",
-  }),
-  resultsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-    gap: "24px",
-  },
-  aiReportBox: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "16px",
-    border: `1px solid ${COLORS.borderColor}`,
-    padding: "24px",
-    whiteSpace: "pre-wrap",
-    lineHeight: "1.6",
-    color: COLORS.textSecondary,
-    fontSize: "15px",
-    maxHeight: "500px",
-    overflowY: "auto",
-  },
-};
-
-const animationStyles = `
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-  .likert-hover:hover { border-color: ${COLORS.gold}; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-  .btn-hover:hover { opacity: 0.9; transform: scale(1.02); }
-  .btn-ghost:hover { background-color: rgba(0,0,0,0.05); color: ${COLORS.primary}; }
-`;
 
 // -----------------------
 // 4. MAIN COMPONENT
@@ -356,106 +227,62 @@ export default function RIBSTest() {
   }
 
   return (
-    <div style={styles.mainWrapper}>
-      <style>{animationStyles}</style>
-
+    <div className="ribs-main-wrapper">
       {/* --- HERO --- */}
-      <div style={styles.heroSection}>
-        <div style={styles.headerRow}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div style={styles.heroIconBox}>
+      <div className="ribs-hero-section">
+        <div className="ribs-header-row">
+          <div className="ribs-header-left">
+            <div className="ribs-hero-icon-box">
               <Lightbulb size={32} />
             </div>
             <div>
-              <h1 style={{ fontSize: "28px", fontWeight: "800", margin: 0 }}>
+              <h1 className="ribs-hero-title">
                 RIBS
               </h1>
-              <p style={{ margin: "4px 0 0", color: COLORS.textSecondary }}>
+              <p className="ribs-hero-subtitle">
                 Runco Ideational Behavior Scale
               </p>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: "600",
-                color: COLORS.gold,
-              }}
-            >
+          <div className="ribs-header-right">
+            <span className="ribs-progress-label">
               {Math.round(percent)}% Complété
             </span>
           </div>
         </div>
-        <div style={styles.progressContainer}>
-          <div style={styles.progressBar(percent)} />
+        <div className="ribs-progress-container">
+          <div className="ribs-progress-bar" style={{ width: `${percent}%` }} />
         </div>
       </div>
 
       {/* --- CONTENT --- */}
-      <div style={styles.contentBody}>
+      <div className="ribs-content-body">
         {/* INTRO */}
         {step === 0 && (
-          <div
-            className="animate-fade-in"
-            style={{
-              textAlign: "center",
-              maxWidth: "600px",
-              margin: "40px auto",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
+          <div className="animate-fade-in ribs-intro-container">
+            <h2 className="ribs-intro-title">
               Bienvenue
             </h2>
-            <div
-              style={{
-                backgroundColor: COLORS.cardBg,
-                padding: "24px",
-                borderRadius: "16px",
-                border: `1px solid ${COLORS.borderColor}`,
-                textAlign: "left",
-                marginBottom: "32px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  marginBottom: "16px",
-                  color: COLORS.gold,
-                }}
-              >
+            <div className="ribs-intro-card">
+              <div className="ribs-intro-header">
                 <AlertTriangle size={24} />
-                <span style={{ fontWeight: "600" }}>
+                <span className="ribs-intro-header-text">
                   Auto-évaluation de la créativité
                 </span>
               </div>
-              <p style={{ color: COLORS.textSecondary, lineHeight: "1.6" }}>
+              <p className="ribs-intro-text">
                 Ce questionnaire évalue la fréquence de vos comportements liés à
                 la génération d'idées. Il n'y a pas de bonnes ou mauvaises
                 réponses. Répondez spontanément.
               </p>
-              <ul
-                style={{
-                  color: COLORS.textSecondary,
-                  marginTop: "8px",
-                  paddingLeft: "20px",
-                }}
-              >
+              <ul className="ribs-intro-list">
                 <li>10 affirmations</li>
                 <li>Échelle de 1 à 5</li>
                 <li>Durée : ~2 minutes</li>
               </ul>
             </div>
             <button
-              style={styles.btn("primary")}
-              className="btn-hover"
+              className="ribs-btn ribs-btn-primary btn-hover"
               onClick={() => setStep(1)}
             >
               Commencer <ArrowRight size={18} />
@@ -467,50 +294,29 @@ export default function RIBSTest() {
         {step > 0 && step <= totalPages && (
           <div className="animate-fade-in">
             {pageQuestions.map((q) => (
-              <div key={q.id} style={styles.questionCard}>
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: "600",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <span style={{ color: COLORS.gold, marginRight: "8px" }}>
+              <div key={q.id} className="ribs-question-card">
+                <div className="ribs-question-title">
+                  <span className="ribs-question-number">
                     Q{q.id}.
                   </span>
                   {q.text}
                 </div>
 
-                <div style={styles.likertGrid}>
+                <div className="ribs-likert-grid">
                   {LIKERT_VALUES.map((opt) => {
                     const isSelected = answers[q.id] === opt.val;
                     return (
                       <div
                         key={opt.val}
-                        style={styles.likertOption(isSelected)}
-                        className="likert-hover"
+                        className={`ribs-likert-option ${isSelected ? "ribs-likert-option-selected" : ""} likert-hover`}
                         onClick={() =>
                           setAnswers((prev) => ({ ...prev, [q.id]: opt.val }))
                         }
                       >
-                        <span
-                          style={{
-                            fontSize: "20px",
-                            fontWeight: "700",
-                            color: isSelected ? COLORS.gold : COLORS.textMuted,
-                            marginBottom: "4px",
-                          }}
-                        >
+                        <span className={`ribs-likert-value ${isSelected ? "ribs-likert-value-selected" : ""}`}>
                           {opt.val}
                         </span>
-                        <span
-                          style={{
-                            fontSize: "11px",
-                            color: isSelected
-                              ? COLORS.gold
-                              : COLORS.textSecondary,
-                          }}
-                        >
+                        <span className={`ribs-likert-label ${isSelected ? "ribs-likert-label-selected" : ""}`}>
                           {opt.label}
                         </span>
                       </div>
@@ -520,16 +326,9 @@ export default function RIBSTest() {
               </div>
             ))}
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: "32px",
-              }}
-            >
+            <div className="ribs-nav-bar">
               <button
-                style={styles.btn("ghost")}
-                className="btn-ghost"
+                className="ribs-btn ribs-btn-ghost btn-ghost"
                 onClick={() => setStep((s) => Math.max(1, s - 1))}
               >
                 <ArrowLeft size={18} /> Retour
@@ -537,16 +336,14 @@ export default function RIBSTest() {
 
               {step < totalPages ? (
                 <button
-                  style={styles.btn(canNext ? "primary" : "disabled")}
-                  className={canNext ? "btn-hover" : ""}
+                  className={`ribs-btn ${canNext ? "ribs-btn-primary btn-hover" : "ribs-btn-disabled"}`}
                   onClick={() => canNext && setStep((s) => s + 1)}
                 >
                   Suivant <ArrowRight size={18} />
                 </button>
               ) : (
                 <button
-                  style={styles.btn(loading ? "disabled" : "primary")}
-                  className={!loading ? "btn-hover" : ""}
+                  className={`ribs-btn ${loading ? "ribs-btn-disabled" : "ribs-btn-primary"} ${!loading ? "btn-hover" : ""}`}
                   onClick={submit}
                 >
                   {loading ? (
@@ -566,19 +363,18 @@ export default function RIBSTest() {
         {step > totalPages && (
           <div className="animate-fade-in" id="results-root">
             {/* Header Results */}
-            <div style={{ ...styles.headerRow, marginBottom: "32px" }}>
+            <div className="ribs-header-row ribs-results-header">
               <div>
-                <h2 style={{ fontSize: "24px", fontWeight: "700", margin: 0 }}>
+                <h2 className="ribs-results-title">
                   Résultat RIBS
                 </h2>
-                <span style={{ color: COLORS.textSecondary }}>
+                <span className="ribs-results-subtitle">
                   Comportement Idéationnel
                 </span>
               </div>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div className="ribs-results-actions">
                 <button
-                  style={styles.btn("ghost")}
-                  className="btn-ghost"
+                  className="ribs-btn ribs-btn-ghost btn-ghost"
                   onClick={() => {
                     setAnswers({});
                     setStep(1);
@@ -588,8 +384,7 @@ export default function RIBSTest() {
                   <RotateCcw size={18} /> Recommencer
                 </button>
                 <button
-                  style={styles.btn("primary")}
-                  className="btn-hover"
+                  className="ribs-btn ribs-btn-primary btn-hover"
                   onClick={handleDownload}
                 >
                   <Download size={18} /> PDF
@@ -597,36 +392,15 @@ export default function RIBSTest() {
               </div>
             </div>
 
-            <div style={styles.resultsGrid}>
+            <div className="ribs-results-grid">
               {/* Chart / Score Card */}
-              <div
-                style={{
-                  ...styles.questionCard,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "700",
-                    marginBottom: "8px",
-                    color: COLORS.textSecondary,
-                  }}
-                >
+              <div className="ribs-question-card ribs-score-card">
+                <h3 className="ribs-score-title">
                   Score Moyen
                 </h3>
 
                 {/* Visual Gauge */}
-                <div
-                  style={{
-                    width: "200px",
-                    height: "200px",
-                    position: "relative",
-                  }}
-                >
+                <div className="ribs-score-gauge">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadialBarChart
                       innerRadius="80%"
@@ -650,76 +424,33 @@ export default function RIBSTest() {
                       />
                     </RadialBarChart>
                   </ResponsiveContainer>
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -10%)",
-                      textAlign: "center",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "42px",
-                        fontWeight: "800",
-                        color: COLORS.gold,
-                        display: "block",
-                      }}
-                    >
+                  <div className="ribs-score-value-container">
+                    <span className="ribs-score-value">
                       {metrics.average}
                     </span>
-                    <span style={{ fontSize: "14px", color: COLORS.textMuted }}>
+                    <span className="ribs-score-max">
                       / 5
                     </span>
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: "16px",
-                    textAlign: "center",
-                    color: COLORS.textSecondary,
-                  }}
-                >
+                <div className="ribs-score-total">
                   Total brut : <strong>{metrics.total}</strong> / 50
                 </div>
               </div>
 
               {/* AI Report Column */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "24px",
-                }}
-              >
+              <div className="ribs-ai-report-container">
                 {aiReport ? (
-                  <div style={{ ...styles.questionCard, padding: "24px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        color: COLORS.success,
-                        marginBottom: "16px",
-                      }}
-                    >
+                  <div className="ribs-question-card ribs-ai-report-card">
+                    <div className="ribs-ai-report-header">
                       <CheckCircle2 size={20} />
-                      <span style={{ fontWeight: "600" }}>
+                      <span className="ribs-ai-report-header-text">
                         Analyse Terminée
                       </span>
                     </div>
-                    <div style={styles.aiReportBox}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginBottom: "16px",
-                          color: COLORS.textPrimary,
-                        }}
-                      >
+                    <div className="ribs-ai-report-box">
+                      <div className="ribs-ai-report-title">
                         <FileText size={18} />{" "}
                         <strong>Interprétation IA</strong>
                       </div>
@@ -727,16 +458,8 @@ export default function RIBSTest() {
                     </div>
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      ...styles.questionCard,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minHeight: "200px",
-                    }}
-                  >
-                    <p style={{ color: COLORS.textMuted }}>
+                  <div className="ribs-question-card ribs-loading-card">
+                    <p className="ribs-loading-text">
                       Génération du rapport...
                     </p>
                   </div>
