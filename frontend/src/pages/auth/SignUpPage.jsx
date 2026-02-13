@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Heart, Mail, Lock, User, Eye, EyeOff, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./AuthPages.css";
 
 function SignUpPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
-  // Apply language from localStorage on mount
   useEffect(() => {
     const savedLang = localStorage.getItem("lang");
     if (savedLang) i18n.changeLanguage(savedLang);
@@ -19,7 +20,6 @@ function SignUpPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Change this to your backend URL or use an env var
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const [formData, setFormData] = useState({
@@ -37,11 +37,11 @@ function SignUpPage() {
 
   const validateForm = () => {
     if (formData.password !== formData.confirmPassword) {
-      alert(t("signup.passwordMismatch"));
+      toast.error(t("signup.passwordMismatch"), { position: "top-right", theme: "colored" });
       return false;
     }
     if (formData.password.length < 8) {
-      alert(t("signup.passwordTooShort"));
+      toast.error(t("signup.passwordTooShort"), { position: "top-right", theme: "colored" });
       return false;
     }
     return true;
@@ -98,7 +98,7 @@ function SignUpPage() {
           localStorage.setItem("me", JSON.stringify(me));
         }
       } catch (_) {}
-
+      
       navigate("/dashboard");
     } catch (err) {
       setErrorMsg(err.message || t("signup.genericError"));
@@ -109,6 +109,7 @@ function SignUpPage() {
 
   return (
     <div className="auth-container">
+      <ToastContainer />
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">
