@@ -8,8 +8,8 @@ from django.conf import settings
 
 load_dotenv()
 
-PDF_DIR = "backend/assessments/media/ise"
-INDEX_DIR = "backend/assessments/media/iseindex"
+PDF_DIR = "assessments/media/wses"
+INDEX_DIR = "assessments/media/wsesindex"
 
 def build():
     docs = []
@@ -26,7 +26,7 @@ def build():
     split_docs = splitter.split_documents(docs)
 
     # Embed
-    embeddings = OpenAIEmbeddings(api_key="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")
+    embeddings = OpenAIEmbeddings(api_key="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")
     vectorstore = FAISS.from_documents(split_docs, embeddings)
     vectorstore.save_local(INDEX_DIR)
     print("✅ Index built successfully.")
