@@ -425,13 +425,22 @@ class AssignmentDetailView(generics.RetrieveAPIView):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
+from accounts.authentication import CandidateTokenAuthentication
 from django.conf import settings
 from .models import Assignment
 
 import os
 
 class GenerateBigFiveReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -470,6 +479,9 @@ class GenerateBigFiveReportView(APIView):
             """
 
             result = chain.run(prompt)
+
+            print("✅ AI Report Generated Successfully")
+
             print(result)
             return Response({"report": result})
         except Assignment.DoesNotExist:
@@ -479,7 +491,12 @@ class GenerateBigFiveReportView(APIView):
 
 
 class GenerateKarasekReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -521,10 +538,18 @@ class GenerateKarasekReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 
 class GenerateMaslachReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -557,7 +582,7 @@ class GenerateMaslachReportView(APIView):
 
         ## Guidelines:
         - Summarize the psychological demands, decision latitude, and social support.
-        - Interpret the quadrant .
+        - Interpret the quadrant (low strain, high strain, active, passive).
         - Offer clear, concrete suggestions for the employee to improve well-being or manage stress.
         - Justify insights with reference to known psychological theories and the uploaded PDFs.
         - Use structured paragraphs, professional tone, avoid clinical jargon.
@@ -566,6 +591,9 @@ class GenerateMaslachReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
     
 import os
@@ -577,6 +605,8 @@ from rest_framework import permissions, status
 from django.shortcuts import get_object_or_404
 
 # Imports for Auth and Models
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
 from accounts.authentication import CandidateTokenAuthentication
 from accounts.models import Recruitee
 from .models import Assignment, CandidateAssignment
@@ -585,9 +615,13 @@ from .models import Assignment, CandidateAssignment
 logger = logging.getLogger(__name__)
 
 class GenerateDiscReportView(APIView):
-    # ✅ FIX 1: Allow Candidate Token Auth + Session Auth
-    authentication_classes = [CandidateTokenAuthentication]
-    # ✅ FIX 2: AllowAny because Candidates are technically "Anonymous" to Django permissions
+    # ✅ Support all authentication types: Candidates (Token), Employees (JWT), Session
+    authentication_classes = [
+        CandidateTokenAuthentication,  # for candidates
+        JWTAuthentication,             # for employees/HR
+        SessionAuthentication          # for session-based auth
+    ]
+    # ✅ AllowAny because we check user type manually inside
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
@@ -700,6 +734,9 @@ class GenerateDiscReportView(APIView):
             """
 
             result = chain.run(prompt)
+
+            print("✅ AI Report Generated Successfully")
+
             return Response({"report": result})
 
         except Exception as e:
@@ -713,7 +750,12 @@ class GenerateDiscReportView(APIView):
     
 
 class GenerateJssReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -772,6 +814,8 @@ class GenerateJssReportView(APIView):
 
         result = chain.run(prompt)
 
+        print("✅ AI Report Generated Successfully")
+
         # Sauvegarder dans l’assignment
         assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
@@ -779,7 +823,12 @@ class GenerateJssReportView(APIView):
         return Response({"report": result})
     
 class GenerateBRSReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -833,9 +882,17 @@ class GenerateBRSReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 class GenerateCDRISC10ReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -894,10 +951,18 @@ class GenerateCDRISC10ReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 # ---------- WSES ----------
 class GenerateWSESReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -945,19 +1010,52 @@ class GenerateWSESReportView(APIView):
         - Professional, supportive tone. No markdown. End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 
 
 # ---------- GCOS-mini ----------
 class GenerateGCOSReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        user_name = "Unknown"
+        template_code = "GCOS"
+
+        # Support both candidates and employees
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            # CASE A: CANDIDATE
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(
+                    id=assignment_id, 
+                    recruitee=request.user
+                )
+                user_name = str(assignment.recruitee)
+                if hasattr(assignment, 'template') and assignment.template:
+                    template_code = assignment.template.code
+            
+            # CASE B: EMPLOYEE
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.select_related("employee", "template").get(
+                    id=assignment_id, 
+                    employee=request.user
+                )
+                user_name = str(assignment.employee)
+                template_code = assignment.template.code
+            
+            # CASE C: UNAUTHORIZED
+            else:
+                return Response({"error": "Authentication required."}, status=401)
+
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
@@ -966,8 +1064,8 @@ class GenerateGCOSReportView(APIView):
             return Response({"error": "No GCOS metrics found."}, status=400)
 
         assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
+            "employee": user_name,
+            "template": template_code,
             "status": assignment.status,
             "score": metrics,
             "answers": answers,
@@ -999,12 +1097,20 @@ class GenerateGCOSReportView(APIView):
         - End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 
 
 # ---------- RIBS ----------
 class GenerateRIBSReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -1054,10 +1160,18 @@ class GenerateRIBSReportView(APIView):
         - End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 # ---------- CAQ Report ----------
 class GenerateCAQReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -1106,12 +1220,20 @@ class GenerateCAQReportView(APIView):
         - Maintain supportive tone. No markdown. End with 3 clear actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 
 
 # ---------- ISE Report ----------
 class GenerateISEReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -1159,6 +1281,9 @@ class GenerateISEReportView(APIView):
         - Supportive, engaging tone. No markdown. End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 # recruitment/views.py
 import os

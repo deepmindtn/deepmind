@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Download,
@@ -309,32 +309,77 @@ function computeScores(answers) {
   return { traitScores };
 }
 
-async function generateAIReportMock() {
-  return new Promise((r) =>
-    setTimeout(
-      () =>
-        r(
-          "Analysis indicates a balanced profile with notably high Conscientiousness. You exhibit strong organizational skills and strategic planning capabilities, while your moderate Extraversion suggests you can work effectively both in teams and independently."
-        ),
-      2000
-    )
-  );
-}
-
 // -----------------------
 // Main Component
 // -----------------------
 export default function BigFiveAssessment() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  
+  // 1. Logic: Determine User Type
+  const isCandidate = sessionStorage.getItem("isCandidate") === "true";
+  const candidateToken = sessionStorage.getItem("candidateToken");
+  const hrToken = localStorage.getItem("access");
+  const assignmentId = isCandidate ? sessionStorage.getItem("candidateAssignmentId") : params.get("assignment");
+
+  // 2. Logic: Fetch Config
+  const getFetchConfig = () => {
+    if (isCandidate) {
+      return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Candidate-Token": candidateToken
+        }
+      };
+    } else {
+      return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${hrToken}`
+        }
+      };
+    }
+  };
 
   // State
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0); // 0=Intro, 1..=Questions, >Total=Results
   const [aiLoading, setAiLoading] = useState(false);
   const [aiReport, setAiReport] = useState("");
+  const [fetching, setFetching] = useState(true);
 
   const questionsPerPage = 4;
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
+
+  // 3. Logic: Load Assessment
+  useEffect(() => {
+    const config = getFetchConfig();
+    
+    if ((isCandidate && !candidateToken) || (!isCandidate && !assignmentId)) {
+       console.warn("❌ Missing credentials or ID");
+       setFetching(false);
+       return;
+    }
+
+    fetch(config.url, { headers: config.headers })
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) {
+           if(r.status === 401) throw new Error("Unauthorized: Invalid Token");
+           throw new Error(data?.detail || "Fetch failed");
+        }
+        return data;
+      })
+      .catch((err) => {
+        console.error("❌ Assessment fetch error:", err);
+      })
+      .finally(() => setFetching(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId, candidateToken, isCandidate]);
 
   // Computed
   const percent = Math.round(
@@ -355,11 +400,43 @@ export default function BigFiveAssessment() {
   const handleBack = () => setStep((s) => Math.max(0, s - 1));
 
   async function handleSubmit() {
-    setStep(totalPages + 1);
+    if (Object.keys(answers).length !== QUESTIONS.length) {
+      alert("Please answer all questions.");
+      return;
+    }
+    
     setAiLoading(true);
-    const report = await generateAIReportMock();
-    setAiReport(report);
-    setAiLoading(false);
+    const config = getFetchConfig();
+
+    try {
+      const metrics = computeScores(answers);
+
+      // A) Generate AI Report
+      const reportRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/generate-report/`, {
+        method: "POST",
+        headers: config.headers, 
+        body: JSON.stringify({ answers, metrics }),
+      });
+      const reportData = await reportRes.json();
+      const reportText = reportData.report || "";
+
+      // B) Submit to Assignment
+      const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
+        method: "POST",
+        headers: config.headers,
+        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+      });
+      const submitData = await submitRes.json();
+      if (!submitRes.ok) throw new Error(submitData?.error || "Error submitting assessment.");
+
+      setAiReport(reportText);
+      setStep(totalPages + 1);
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred: " + err.message);
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   // --- Render Views ---
@@ -787,6 +864,17 @@ export default function BigFiveAssessment() {
       </div>
     );
   };
+
+  if (fetching) {
+    return (
+      <div style={styles.container}>
+        <div style={{ ...styles.mainWrapperCard, alignItems: "center", justifyContent: "center", padding: "60px" }}>
+          <Loader2 size={40} color={VARS.primary} style={{ animation: "spin 1s linear infinite" }} />
+          <p style={{ marginTop: 16, color: VARS.textSecondary }}>Loading assessment...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>

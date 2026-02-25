@@ -303,7 +303,7 @@ export default function GCOSTest() {
   const canNext = step < totalPages && pageQuestions.every((q) => answers[q.id] > 0);
   const progressPct = (Object.keys(answers).length / QUESTIONS.length) * 100;
 
-  // Calculate Metrics (Averages per dimension)
+  // Calculate Metrics (Match backend expected format)
   const metrics = useMemo(() => {
     const sums = { auto: 0, ctrl: 0, impers: 0 };
     const counts = { auto: 0, ctrl: 0, impers: 0 };
@@ -315,20 +315,25 @@ export default function GCOSTest() {
       counts[q.dim]++;
     });
 
-    const averages = {};
-    Object.keys(sums).forEach((k) => {
-      averages[k] = counts[k] ? parseFloat((sums[k] / counts[k]).toFixed(2)) : 0;
-    });
+    const autonomous = counts.auto ? parseFloat((sums.auto / counts.auto).toFixed(2)) : 0;
+    const controlled = counts.ctrl ? parseFloat((sums.ctrl / counts.ctrl).toFixed(2)) : 0;
+    const impersonal = counts.impers ? parseFloat((sums.impers / counts.impers).toFixed(2)) : 0;
     
-    return { averages };
+    // Return format that matches backend expectations
+    return {
+      autonomous,
+      controlled,
+      impersonal,
+      range: "1-5"
+    };
   }, [answers]);
 
-  // Chart Data preparation
-  const chartData = Object.entries(metrics.averages).map(([key, value]) => ({
-    name: ORIENTS[key],
-    key: key,
-    value: value,
-  }));
+  // Chart Data preparation (map to short keys for display)
+  const chartData = [
+    { name: ORIENTS.auto, key: 'auto', value: metrics.autonomous },
+    { name: ORIENTS.ctrl, key: 'ctrl', value: metrics.controlled },
+    { name: ORIENTS.impers, key: 'impers', value: metrics.impersonal },
+  ];
 
   // 4. Submit Handler
   async function submit() {

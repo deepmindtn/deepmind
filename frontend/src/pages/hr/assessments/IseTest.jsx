@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -220,7 +220,6 @@ function computeMetrics(answers) {
 // -----------------------
 export default function ISETest() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -284,6 +283,7 @@ export default function ISETest() {
         console.error("❌ Assessment fetch error:", err);
       })
       .finally(() => setFetching(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentId, candidateToken, isCandidate]);
 
   // Derived State
@@ -307,17 +307,27 @@ export default function ISETest() {
     try {
       const metrics = computeMetrics(answers);
 
-      // Submit to ISE specific endpoint
-      const res = await fetch(`${API_BASE}/api/ise/report/${assignmentId}/`, {
+      // A) Generate AI Report
+      const reportRes = await fetch(`${API_BASE}/api/ise/report/${assignmentId}/`, {
         method: "POST",
         headers: config.headers,
         body: JSON.stringify({ answers, metrics }),
       });
       
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Erreur génération rapport.");
+      const reportData = await reportRes.json();
+      if (!reportRes.ok) throw new Error(reportData?.error || "Erreur génération rapport.");
+      const reportText = reportData.report || "";
 
-      setAiReport(data.report || "");
+      // B) Submit to Assignment
+      const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
+        method: "POST",
+        headers: config.headers,
+        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+      });
+      const submitData = await submitRes.json();
+      if (!submitRes.ok) throw new Error(submitData?.error || "Erreur lors du submit.");
+
+      setAiReport(reportText);
       setStep(totalPages + 1); // Move to results
     } catch (err) {
       console.error(err);
