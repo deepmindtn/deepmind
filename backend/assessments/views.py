@@ -364,9 +364,9 @@ class GenerateHRReportView(APIView):
         # Load vectorstore
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "pdf_index")
 
-        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key="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"),allow_dangerous_deserialization=True)
+        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         # Build the prompt
@@ -446,11 +446,11 @@ class GenerateBigFiveReportView(APIView):
 
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "bigfiveindex")
             vectorstore = FAISS.load_local(
-                OpenAIEmbeddings(api_key="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"),
+                OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
             retriever = vectorstore.as_retriever()
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
             chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
             prompt = f"""
@@ -497,11 +497,11 @@ class GenerateKarasekReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -542,11 +542,11 @@ class GenerateMaslachReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -669,7 +669,7 @@ class GenerateDiscReportView(APIView):
             vectorstore = FAISS.load_local(
                 index_path,
                 OpenAIEmbeddings(
-                    api_key="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"
+                    api_key=settings.OPENAI_API_KEY
                 ),
                 allow_dangerous_deserialization=True,
             )
@@ -677,7 +677,7 @@ class GenerateDiscReportView(APIView):
             llm = ChatOpenAI(
                 model="gpt-4o-mini",
                 temperature=0.5,
-                api_key="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",
+                api_key=settings.OPENAI_API_KEY,
             )
             chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
@@ -739,11 +739,11 @@ class GenerateJssReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "jssindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -808,11 +808,11 @@ class GenerateBRSReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "brsindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),  # replace with env variable ideally
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),  # replace with env variable ideally
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -864,7 +864,7 @@ class GenerateCDRISC10ReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriscindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
 
@@ -872,7 +872,7 @@ class GenerateCDRISC10ReportView(APIView):
         llm = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0.5,
-            api_key="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",
+            api_key=settings.OPENAI_API_KEY,
         )
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
@@ -923,11 +923,11 @@ class GenerateWSESReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "wsesindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -976,11 +976,11 @@ class GenerateGCOSReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "gcosindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1030,11 +1030,11 @@ class GenerateRIBSReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "ribsindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1083,11 +1083,11 @@ class GenerateCAQReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "caqindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1137,11 +1137,11 @@ class GenerateISEReportView(APIView):
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "iseindex")
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key="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"),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key="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")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1169,7 +1169,7 @@ from rest_framework.permissions import IsAuthenticated
 from PyPDF2 import PdfReader
 from openai import OpenAI
 
-client = OpenAI(api_key="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")
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def extract_text(file):
     if file.name.endswith(".pdf"):

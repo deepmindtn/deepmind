@@ -1,5 +1,6 @@
 # recruitment/views.py
 import os
+from django.conf import settings
 import numpy as np
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from PyPDF2 import PdfReader
 from openai import OpenAI
 
-client = OpenAI(api_key="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")
+client = OpenAI(api_key=settings.OPENAI_API_KEY_2)
 
 def extract_text(file):
     if file.name.endswith(".pdf"):
