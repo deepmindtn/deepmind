@@ -1169,8 +1169,6 @@ from rest_framework.permissions import IsAuthenticated
 from PyPDF2 import PdfReader
 from openai import OpenAI
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
 def extract_text(file):
     if file.name.endswith(".pdf"):
         reader = PdfReader(file)
@@ -1195,6 +1193,9 @@ class AICandidateMatchView(APIView):
         cv_text = extract_text(cv_file)
         if not cv_text:
             return Response({"error": "CV text extraction failed."}, status=400)
+
+        # Initialize OpenAI client with API key
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
         # Generate embeddings
         cv_embedding = client.embeddings.create(
