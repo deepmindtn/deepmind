@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   RadialBarChart,
   RadialBar,
@@ -232,7 +232,6 @@ const animationStyles = `
 // -----------------------
 
 export default function RIBSTest() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -247,6 +246,7 @@ export default function RIBSTest() {
   const getFetchConfig = () => {
     if (isCandidate) {
       return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
         headers: {
           "Content-Type": "application/json",
           "X-Candidate-Token": candidateToken,
@@ -254,6 +254,7 @@ export default function RIBSTest() {
       };
     } else {
       return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${hrToken}`,
@@ -267,6 +268,23 @@ export default function RIBSTest() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState("");
+
+  // --- Load Existing Results ---
+  useEffect(() => {
+    if (!assignmentId) return;
+    const config = getFetchConfig();
+
+    fetch(config.url, { headers: config.headers })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => {
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1);
+        }
+      })
+      .catch(() => {});
+  }, [assignmentId]);
 
   // --- Navigation & Metrics ---
   const perPage = 5;

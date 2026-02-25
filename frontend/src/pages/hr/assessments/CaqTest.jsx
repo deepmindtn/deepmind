@@ -259,9 +259,15 @@ export default function CAQTest() {
 
   const getFetchConfig = () => {
     if (isCandidate) {
-      return { headers: { "Content-Type": "application/json", "X-Candidate-Token": candidateToken } };
+      return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
+        headers: { "Content-Type": "application/json", "X-Candidate-Token": candidateToken }
+      };
     } else {
-      return { headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` } };
+      return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` }
+      };
     }
   };
 
@@ -270,6 +276,34 @@ export default function CAQTest() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState("");
+
+  // Check if assignment is already completed and restore results
+  useEffect(() => {
+    if (!assignmentId) return;
+    const config = getFetchConfig();
+    fetch(config.url, { headers: config.headers })
+      .then((r) => {
+        if (!r.ok) {
+          alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+          navigate("/my-assessments");
+          return Promise.reject();
+        }
+        return r.json();
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1); // Show results page
+        }
+      })
+      .catch(() => {
+        alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+        navigate("/my-assessments");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId]);
 
   // --- Navigation & Metrics ---
   const perPage = 5; 

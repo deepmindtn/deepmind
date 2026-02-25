@@ -372,6 +372,25 @@ export default function BigFiveAssessment() {
            if(r.status === 401) throw new Error("Unauthorized: Invalid Token");
            throw new Error(data?.detail || "Fetch failed");
         }
+        
+        // Check if assignment is already completed. If so, load existing results
+        if (data && data.status === 'COMPLETED') {
+          console.log("📋 Loading existing completed assessment data...");
+          
+          // Restore answers if available
+          if (data.answers) {
+            setAnswers(data.answers);
+          }
+          
+          // Restore AI report if available
+          if (data.ai_report) {
+            setAiReport(data.ai_report);
+          }
+          
+          // Skip to results page - metrics will be computed from restored answers via useMemo
+          setStep(totalPages + 1);
+        }
+        
         return data;
       })
       .catch((err) => {

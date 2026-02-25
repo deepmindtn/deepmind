@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import "./BigFiveTest.css"; // même style que Big Five / DISC
 import { Download, RotateCcw, ArrowRight, ArrowLeft } from "lucide-react";
 import {
@@ -108,13 +108,29 @@ function computeScores(answers) {
 
 /* ---------- Component ---------- */
 export default function JssTest() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
-  const assignmentId = params.get("assignment");
+
+  // Auth Logic
+  const isCandidate = sessionStorage.getItem("isCandidate") === "true";
+  const candidateToken = sessionStorage.getItem("candidateToken");
+  const hrToken = localStorage.getItem("access");
+  const assignmentId = isCandidate ? sessionStorage.getItem("candidateAssignmentId") : params.get("assignment");
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
-  const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+
+  const getFetchConfig = () => {
+    if (isCandidate) {
+      return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
+        headers: { "Content-Type": "application/json", "X-Candidate-Token": candidateToken }
+      };
+    } else {
+      return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` }
+      };
+    }
+  };
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
@@ -123,6 +139,29 @@ export default function JssTest() {
 
   const questionsPerPage = 4;
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
+
+  // Load Assessment Data (Check if valid and if already completed)
+  useEffect(() => {
+    if (!assignmentId) return;
+    const config = getFetchConfig();
+
+    fetch(config.url, { headers: config.headers })
+      .then((r) => {
+        if (!r.ok) return Promise.reject();
+        return r.json();
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1); // Show results page
+        }
+      })
+      .catch(() => {
+        // Silently fail - will show normal test flow
+      });
+  }, [assignmentId]);
 
   const pageQuestions = QUESTIONS.slice(
     (step - 1) * questionsPerPage,
@@ -142,6 +181,7 @@ async function submit() {
     return;
   }
   setLoading(true);
+  const config = getFetchConfig();
 
   try {
     const metrics = computeScores(answers);
@@ -149,7 +189,7 @@ async function submit() {
     // 1) Générer le rapport IA
     const reportRes = await fetch(`${API_BASE}/api/jss/report/${assignmentId}/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader },
+      headers: config.headers,
       body: JSON.stringify({ answers, metrics }),
     });
     const reportData = await reportRes.json();
@@ -159,7 +199,7 @@ async function submit() {
     // 2) Soumettre réponses + metrics + rapport
     const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader },
+      headers: config.headers,
       body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
     });
     const submitData = await submitRes.json();

@@ -258,6 +258,7 @@ export default function GCOSTest() {
   const getFetchConfig = () => {
     if (isCandidate) {
       return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
         headers: {
           "Content-Type": "application/json",
           "X-Candidate-Token": candidateToken
@@ -265,6 +266,7 @@ export default function GCOSTest() {
       };
     } else {
       return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${hrToken}`
@@ -283,15 +285,36 @@ export default function GCOSTest() {
   const questionsPerPage = 4;
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
 
-  // 2. Initial Data Fetch (Optional check to see if assignment is valid)
+  // 2. Initial Data Fetch - Check if assignment is valid and if already completed
   useEffect(() => {
     if ((isCandidate && !candidateToken) || (!isCandidate && !assignmentId)) {
        console.warn("❌ Missing credentials or ID");
        setFetching(false);
        return;
     }
-    // Simulate fetch delay or validate token here if needed
-    setTimeout(() => setFetching(false), 500);
+    
+    const config = getFetchConfig();
+    fetch(config.url, { headers: config.headers })
+      .then((r) => {
+        if (!r.ok) {
+          alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+          return Promise.reject();
+        }
+        return r.json();
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1); // Show results page
+        }
+        setFetching(false);
+      })
+      .catch(() => {
+        alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+        setFetching(false);
+      });
   }, [assignmentId, candidateToken, isCandidate]);
 
   // 3. Computed Data

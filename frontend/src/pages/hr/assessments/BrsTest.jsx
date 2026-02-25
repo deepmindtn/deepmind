@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "./BigFiveTest.css"; // réutilise ton CSS existant
 import { Download, RotateCcw, ArrowRight, ArrowLeft } from "lucide-react";
@@ -62,6 +62,33 @@ export default function BrsTest() {
   const [loading, setLoading] = useState(false);
 
   const metrics = useMemo(() => computeMetrics(answers), [answers]);
+
+  // Check if assignment is already completed and restore results
+  useEffect(() => {
+    if (!assignmentId) return;
+    fetch(`${API_BASE}/api/assessments/${assignmentId}/`, { headers: authHeader })
+      .then((r) => {
+        if (!r.ok) {
+          alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+          navigate("/my-assessments");
+          return Promise.reject();
+        }
+        return r.json();
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(QUESTIONS.length + 1); // Show results page
+        }
+      })
+      .catch(() => {
+        alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+        navigate("/my-assessments");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId]);
 
   async function submit() {
     if (Object.keys(answers).length !== 6) {

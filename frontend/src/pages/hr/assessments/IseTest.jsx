@@ -260,7 +260,7 @@ export default function ISETest() {
   const questionsPerPage = 3; 
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
 
-  // 3. Load Assessment Data (Check if valid)
+  // 3. Load Assessment Data (Check if valid and if already completed)
   useEffect(() => {
     const config = getFetchConfig();
     
@@ -278,6 +278,14 @@ export default function ISETest() {
            throw new Error(data?.detail || "Fetch failed");
         }
         return data;
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1); // Show results page
+        }
       })
       .catch((err) => {
         console.error("❌ Assessment fetch error:", err);

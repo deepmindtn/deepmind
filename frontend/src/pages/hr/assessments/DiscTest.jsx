@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -219,7 +219,6 @@ function computeScores(answers) {
 // 3. MAIN COMPONENT
 // -----------------------
 export default function DiscTest() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -277,6 +276,21 @@ export default function DiscTest() {
            if(r.status === 401) throw new Error("Unauthorized: Invalid Token");
            throw new Error(data?.detail || "Fetch failed");
         }
+        
+        // Check if assignment is already completed - if so, load existing results
+        if (data && data.status === 'COMPLETED') {
+          // Restore answers if available
+          if (data.answers) {
+            setAnswers(data.answers);
+          }
+          // Restore AI report if available
+          if (data.ai_report) {
+            setAiReport(data.ai_report);
+          }
+          // Skip to results page - metrics will be computed from restored answers via useMemo
+          setStep(totalPages + 1);
+        }
+        
         return data;
       })
       .catch((err) => {

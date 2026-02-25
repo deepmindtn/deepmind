@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
@@ -311,7 +311,6 @@ const animationStyles = `
 // -----------------------
 
 export default function KarasekTest() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -334,19 +333,61 @@ export default function KarasekTest() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState("");
+  const [fetching, setFetching] = useState(true);
   
-  // Navigation
+  // Navigation constants - must be defined before useEffect
   const perPage = 3; 
   const totalPages = Math.ceil(QUESTIONS.length / perPage);
-  const pageQuestions = QUESTIONS.slice((step - 1) * perPage, step * perPage);
   
-  const canNext = pageQuestions.every((q) => answers[q.id]);
-  const percent = (Object.keys(answers).length / QUESTIONS.length) * 100;
-
-  // Metrics
+  // Metrics - must be defined before useEffect  
   const metrics = useMemo(() => computeScores(answers), [answers]);
   
-  // Chart Data preparation
+  // Fetch assignment on mount - check if already completed
+  useEffect(() => {
+    if (!assignmentId) {
+      setFetching(false);
+      return;
+    }
+    
+    const config = getFetchConfig();
+    fetch(`${API_BASE}/api/assessments/${assignmentId}/`, config)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) {
+          if (r.status === 401) throw new Error("Unauthorized: Invalid Token");
+          throw new Error(data?.detail || "Fetch failed");
+        }
+        // If already completed, restore previous answers and go to results
+        if (data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1);
+        }
+        return data;
+      })
+      .catch((err) => {
+        console.error("❌ Assessment fetch error:", err);
+      })
+      .finally(() => setFetching(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId, candidateToken, isCandidate]);
+
+  if (fetching) {
+    return (
+      <div style={{ ...styles.mainWrapper, alignItems: "center", justifyContent: "center" }}>
+        <Loader2 className="loading-spin" size={40} color={COLORS.primary} />
+        <p style={{ marginTop: 16, color: COLORS.textSecondary }}>Chargement de l'évaluation...</p>
+      </div>
+    );
+  }
+  
+  // Navigation
+  const pageQuestions = QUESTIONS.slice((step - 1) * perPage, step * perPage);
+  const canNext = pageQuestions.every((q) => answers[q.id] !== undefined);
+  const totalAnswered = Object.keys(answers).length;
+  const percent = step === 0 ? 0 : (totalAnswered / QUESTIONS.length) * 100;
+  
+
   const overviewData = [
     { name: TEXTS.dims.D, short: "Demandes", value: metrics.dimScores.D, color: CHART_COLORS.D },
     { name: TEXTS.dims.C, short: "Contrôle", value: metrics.dimScores.C, color: CHART_COLORS.C },
