@@ -26,7 +26,7 @@ def build():
     split_docs = splitter.split_documents(docs)
 
     # Embed
-    embeddings = OpenAIEmbeddings(api_key="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")
+    embeddings = OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY)
     vectorstore = FAISS.from_documents(split_docs, embeddings)
     vectorstore.save_local(INDEX_DIR)
     print("✅ Index built successfully.")

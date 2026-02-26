@@ -107,6 +107,9 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-candidate-token",
 ]
 
+# OpenAI API Key
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
 # ---- Email Configuration (SMTP)
 EMAIL_BACKEND = "core.email_ssl.UnverifiedEmailBackend"
 
