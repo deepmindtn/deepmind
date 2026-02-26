@@ -34,7 +34,7 @@ class AICandidateMatchView(APIView):
             return Response({"error": "CV text extraction failed."}, status=400)
 
         # Initialize OpenAI client
-        client = OpenAI(api_key=settings.OPENAI_API_KEY_2)
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
         # Generate embeddings
         cv_embedding = client.embeddings.create(
