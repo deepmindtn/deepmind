@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer
 } from "recharts";
@@ -222,7 +222,6 @@ const animationStyles = `
 // -----------------------
 
 export default function WSESTest() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -234,9 +233,15 @@ export default function WSESTest() {
 
   const getFetchConfig = () => {
     if (isCandidate) {
-      return { headers: { "Content-Type": "application/json", "X-Candidate-Token": candidateToken } };
+      return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
+        headers: { "Content-Type": "application/json", "X-Candidate-Token": candidateToken }
+      };
     } else {
-      return { headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` } };
+      return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` }
+      };
     }
   };
 
@@ -245,6 +250,24 @@ export default function WSESTest() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState("");
+
+  // --- Load Existing Results ---
+  useEffect(() => {
+    if (!assignmentId) return;
+    const config = getFetchConfig();
+
+    fetch(config.url, { headers: config.headers })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentId]);
 
   // --- Navigation & Metrics ---
   const perPage = 4; // Show 4 questions per slide

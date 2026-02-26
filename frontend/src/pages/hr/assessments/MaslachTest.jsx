@@ -146,48 +146,6 @@ function computeScores(answers) {
   return { subScores, raw: sums, labels, counts };
 }
 
-/* ---------- LLM helpers (dev) ---------- */
-function buildAnswersText(lang, answers) {
-  const labels = i18n[lang].scale;
-  return QUESTIONS.map((q) => {
-    const v = answers[q.id];
-    const lab = v === undefined ? "-" : labels[v] || String(v);
-    return `Q${q.id} [${q.sub}] — ${q[lang]} → ${v ?? "-"} (${lab})`;
-  }).join("\n");
-}
-function buildLLMPrompt({ lang, scores, answersText }) {
-  const language = lang === "fr" ? "French" : "English";
-  const payload = {
-    normalizedScores: scores.subScores, // 0..100
-    rawTotals: scores.raw,              // 0..6 sums
-    labels: scores.labels,
-  };
-  return `
-You are an occupational health psychologist. The user completed a Maslach-style burnout questionnaire with 22 items (0–6 frequency scale).
-Write a concise, actionable report in ${language}, non-clinical.
-
-DATA:
-${JSON.stringify(payload, null, 2)}
-
-RAW ANSWERS (context only):
-${answersText}
-
-STRUCTURE:
-- Title
-- 2–3 sentence executive summary
-- Dimension overview:
-  • Emotional Exhaustion (EE) — higher suggests greater strain
-  • Depersonalization (DP) — higher suggests detachment/cynicism
-  • Personal Accomplishment (PA) — lower suggests reduced efficacy/meaning
-- Key strengths (3–5 bullets)
-- Risks / watch-outs (2–4 bullets)
-- Practical actions (6–8 bullets) across workload/time, recovery, meaning/progress, support/communication, 1–2 micro-habits for this week
-- Encouraging close (1–2 lines)
-
-Constraints: Avoid diagnoses/clinical cutoffs; ~350–500 words; plain text section titles (no markdown headings).
-`.trim();
-}
-
 /* ---------- UI atoms ---------- */
 function LikertRow({ q, value, onChange, lang }) {
   const labels = i18n[lang].scale;
@@ -234,11 +192,26 @@ export default function MaslachTest() {
   const scores = useMemo(() => computeScores(answers), [answers]);
   const t = i18n[lang];
 
-  // Verify assignment belongs to user
+  // Verify assignment belongs to user and restore results if already completed
   useEffect(() => {
     if (!assignmentId) return;
     fetch(`${API_BASE}/api/assessments/${assignmentId}/`, { headers: { ...authHeader } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((r) => {
+        if (!r.ok) {
+          alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+          navigate("/my-assessments");
+          return Promise.reject();
+        }
+        return r.json();
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1); // Show results page
+        }
+      })
       .catch(() => {
         alert("Invalid or inaccessible assignment. Please start from My Assessments.");
         navigate("/my-assessments");

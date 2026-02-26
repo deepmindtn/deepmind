@@ -9,6 +9,8 @@ from accounts.models import Recruitee
 from .models import Assignment, AssessmentTemplate ,CandidateAssignment
 from rest_framework import permissions
 from rest_framework.parsers import MultiPartParser
+from django.utils import timezone
+import logging
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.chat_models import ChatOpenAI
@@ -364,6 +366,13 @@ class GenerateHRReportView(APIView):
         # Load vectorstore
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "pdf_index")
 
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+
         vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever()
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
@@ -425,13 +434,22 @@ class AssignmentDetailView(generics.RetrieveAPIView):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
+from accounts.authentication import CandidateTokenAuthentication
 from django.conf import settings
 from .models import Assignment
 
 import os
 
 class GenerateBigFiveReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -445,7 +463,16 @@ class GenerateBigFiveReportView(APIView):
             }
 
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "bigfiveindex")
+            
+            # Check if FAISS index exists
+            if not os.path.exists(os.path.join(index_path, "index.faiss")):
+                return Response({
+                    "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                    "details": f"Missing index at: {index_path}"
+                }, status=503)
+            
             vectorstore = FAISS.load_local(
+                index_path,
                 OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
@@ -470,6 +497,13 @@ class GenerateBigFiveReportView(APIView):
             """
 
             result = chain.run(prompt)
+
+            print("✅ AI Report Generated Successfully")
+
+            # Save AI report to database
+            assignment.ai_report = result
+            assignment.save(update_fields=["ai_report"])
+
             print(result)
             return Response({"report": result})
         except Assignment.DoesNotExist:
@@ -479,7 +513,12 @@ class GenerateBigFiveReportView(APIView):
 
 
 class GenerateKarasekReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -495,6 +534,14 @@ class GenerateKarasekReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -521,10 +568,18 @@ class GenerateKarasekReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
         return Response({"report": result})
 
 class GenerateMaslachReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -540,6 +595,14 @@ class GenerateMaslachReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -557,7 +620,7 @@ class GenerateMaslachReportView(APIView):
 
         ## Guidelines:
         - Summarize the psychological demands, decision latitude, and social support.
-        - Interpret the quadrant .
+        - Interpret the quadrant (low strain, high strain, active, passive).
         - Offer clear, concrete suggestions for the employee to improve well-being or manage stress.
         - Justify insights with reference to known psychological theories and the uploaded PDFs.
         - Use structured paragraphs, professional tone, avoid clinical jargon.
@@ -566,6 +629,13 @@ class GenerateMaslachReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
     
 import os
@@ -577,6 +647,8 @@ from rest_framework import permissions, status
 from django.shortcuts import get_object_or_404
 
 # Imports for Auth and Models
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
 from accounts.authentication import CandidateTokenAuthentication
 from accounts.models import Recruitee
 from .models import Assignment, CandidateAssignment
@@ -585,9 +657,13 @@ from .models import Assignment, CandidateAssignment
 logger = logging.getLogger(__name__)
 
 class GenerateDiscReportView(APIView):
-    # ✅ FIX 1: Allow Candidate Token Auth + Session Auth
-    authentication_classes = [CandidateTokenAuthentication]
-    # ✅ FIX 2: AllowAny because Candidates are technically "Anonymous" to Django permissions
+    # ✅ Support all authentication types: Candidates (Token), Employees (JWT), Session
+    authentication_classes = [
+        CandidateTokenAuthentication,  # for candidates
+        JWTAuthentication,             # for employees/HR
+        SessionAuthentication          # for session-based auth
+    ]
+    # ✅ AllowAny because we check user type manually inside
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
@@ -660,11 +736,12 @@ class GenerateDiscReportView(APIView):
         try:
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "discindex")
             
-            # Check if vector store exists to avoid crashing
-            if not os.path.exists(index_path):
-                print(f"⚠️ Warning: Vector store not found at {index_path}")
-                # Optional: return a dummy report if FAISS is missing to keep flow working
-                # return Response({"report": "AI Knowledge Base missing. Proceeding without AI insights."})
+            # Check if FAISS index exists
+            if not os.path.exists(os.path.join(index_path, "index.faiss")):
+                return Response({
+                    "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                    "details": f"Missing index at: {index_path}"
+                }, status=503)
 
             vectorstore = FAISS.load_local(
                 index_path,
@@ -700,6 +777,13 @@ class GenerateDiscReportView(APIView):
             """
 
             result = chain.run(prompt)
+
+            print("✅ AI Report Generated Successfully")
+
+            # Save AI report to database
+            assignment.ai_report = result
+            assignment.save(update_fields=["ai_report"])
+
             return Response({"report": result})
 
         except Exception as e:
@@ -713,7 +797,12 @@ class GenerateDiscReportView(APIView):
     
 
 class GenerateJssReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -772,6 +861,8 @@ class GenerateJssReportView(APIView):
 
         result = chain.run(prompt)
 
+        print("✅ AI Report Generated Successfully")
+
         # Sauvegarder dans l’assignment
         assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
@@ -779,7 +870,12 @@ class GenerateJssReportView(APIView):
         return Response({"report": result})
     
 class GenerateBRSReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -806,6 +902,14 @@ class GenerateBRSReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "brsindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),  # replace with env variable ideally
@@ -833,9 +937,21 @@ class GenerateBRSReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 class GenerateCDRISC10ReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -861,7 +977,15 @@ class GenerateCDRISC10ReportView(APIView):
         }
 
         # Load the FAISS vectorstore
-        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriscindex")
+        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriskindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -894,10 +1018,22 @@ class GenerateCDRISC10ReportView(APIView):
         """
 
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 # ---------- WSES ----------
 class GenerateWSESReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -921,6 +1057,14 @@ class GenerateWSESReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "wsesindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -945,19 +1089,56 @@ class GenerateWSESReportView(APIView):
         - Professional, supportive tone. No markdown. End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 
 
 # ---------- GCOS-mini ----------
 class GenerateGCOSReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        user_name = "Unknown"
+        template_code = "GCOS"
+
+        # Support both candidates and employees
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            # CASE A: CANDIDATE
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(
+                    id=assignment_id, 
+                    recruitee=request.user
+                )
+                user_name = str(assignment.recruitee)
+                if hasattr(assignment, 'template') and assignment.template:
+                    template_code = assignment.template.code
+            
+            # CASE B: EMPLOYEE
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.select_related("employee", "template").get(
+                    id=assignment_id, 
+                    employee=request.user
+                )
+                user_name = str(assignment.employee)
+                template_code = assignment.template.code
+            
+            # CASE C: UNAUTHORIZED
+            else:
+                return Response({"error": "Authentication required."}, status=401)
+
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
@@ -966,14 +1147,22 @@ class GenerateGCOSReportView(APIView):
             return Response({"error": "No GCOS metrics found."}, status=400)
 
         assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
+            "employee": user_name,
+            "template": template_code,
             "status": assignment.status,
             "score": metrics,
             "answers": answers,
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "gcosindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -999,12 +1188,24 @@ class GenerateGCOSReportView(APIView):
         - End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 
 
 # ---------- RIBS ----------
 class GenerateRIBSReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -1028,6 +1229,14 @@ class GenerateRIBSReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "ribsindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -1054,10 +1263,22 @@ class GenerateRIBSReportView(APIView):
         - End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 # ---------- CAQ Report ----------
 class GenerateCAQReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -1081,6 +1302,14 @@ class GenerateCAQReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "caqindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -1106,12 +1335,24 @@ class GenerateCAQReportView(APIView):
         - Maintain supportive tone. No markdown. End with 3 clear actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 
 
 # ---------- ISE Report ----------
 class GenerateISEReportView(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        CandidateTokenAuthentication,
+        JWTAuthentication,
+        SessionAuthentication
+    ]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
         try:
@@ -1135,6 +1376,14 @@ class GenerateISEReportView(APIView):
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "iseindex")
+        
+        # Check if FAISS index exists
+        if not os.path.exists(os.path.join(index_path, "index.faiss")):
+            return Response({
+                "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
+                "details": f"Missing index at: {index_path}"
+            }, status=503)
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
@@ -1159,6 +1408,13 @@ class GenerateISEReportView(APIView):
         - Supportive, engaging tone. No markdown. End with 3 actionable suggestions.
         """
         result = chain.run(prompt)
+
+        print("✅ AI Report Generated Successfully")
+
+        # Save AI report to database
+        assignment.ai_report = result
+        assignment.save(update_fields=["ai_report"])
+
         return Response({"report": result})
 # recruitment/views.py
 import os
@@ -1391,14 +1647,13 @@ class SubmitAnswersView(APIView):
     Hybrid Submit View: 
     - Handles Employees (Session Auth -> Assignment Model)
     - Handles Candidates (Token Auth -> CandidateAssignment Model)
+    - Properly saves answers, metrics, and ai_report to respective fields
     """
-    # 1. Allow Candidate Token
     authentication_classes = [
         CandidateTokenAuthentication,  # for candidates
         JWTAuthentication,             # for HR JWT tokens
         SessionAuthentication          # optional if using Django sessions
     ]
-    # 2. AllowAny (we check user type manually inside)
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, pk):
@@ -1431,39 +1686,40 @@ class SubmitAnswersView(APIView):
             if assignment.status == "COMPLETED" and not request.data.get("overwrite"):
                 return Response({"detail": "Assessment already submitted."}, status=400)
 
-            # Extract data from Frontend
+            # Extract data from request
             answers = request.data.get("answers", {})
-            metrics = request.data.get("metrics", {})
+            metrics = request.data.get("metrics")
             ai_report = request.data.get("ai_report", "")
 
-            # Update Status
+            # If metrics not provided by frontend, compute them on backend
+            if metrics is None and answers:
+                from .serializers import compute_metrics_for_template
+                template_code = assignment.template.code if hasattr(assignment, 'template') else None
+                if template_code:
+                    try:
+                        metrics = compute_metrics_for_template(template_code, answers)
+                    except Exception as e:
+                        logger.error(f"Failed to compute metrics for {template_code}: {e}")
+                        metrics = {}
+
+            # Save to Assignment/CandidateAssignment fields
+            assignment.answers = answers
+            assignment.metrics = metrics or {}
+            assignment.ai_report = ai_report
             assignment.status = "COMPLETED"
-
-            # Prepare Result Data
-            # (Adjust 'result_data' to match your actual Model field name, e.g., 'answers', 'score', etc.)
-            result_payload = {
-                "answers": answers,
-                "metrics": metrics,
-                "ai_report": ai_report,
-                "submitted_at": str(timezone.now())
-            }
-
-            # Save to JSONField if it exists
-            if hasattr(assignment, 'result_data'):
-                assignment.result_data = result_payload
-            
-            # Fallback: specific fields if your model uses them
-            if hasattr(assignment, 'metrics') and metrics:
-                assignment.metrics = metrics
-            
+            assignment.completed_at = timezone.now()
             assignment.save()
 
-            print(f"✅ SUBMIT SUCCESS: Assessment {pk} for {request.user}")
-            return Response({"status": "COMPLETED", "detail": "Submission successful."})
+            logger.info(f"✅ SUBMIT SUCCESS: Assessment {pk} for {request.user} ({assignment.template.code})")
+            return Response({
+                "status": "COMPLETED", 
+                "detail": "Submission successful.",
+                "assignment_id": assignment.id
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"❌ SUBMIT ERROR: {str(e)}")
-            return Response({"detail": str(e)}, status=500)
+            logger.error(f"❌ SUBMIT ERROR for assignment {pk}: {str(e)}")
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 # assessments/views.py
 from rest_framework.generics import RetrieveAPIView

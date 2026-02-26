@@ -258,6 +258,7 @@ export default function GCOSTest() {
   const getFetchConfig = () => {
     if (isCandidate) {
       return {
+        url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
         headers: {
           "Content-Type": "application/json",
           "X-Candidate-Token": candidateToken
@@ -265,6 +266,7 @@ export default function GCOSTest() {
       };
     } else {
       return {
+        url: `${API_BASE}/api/assessments/${assignmentId}/`,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${hrToken}`
@@ -283,15 +285,36 @@ export default function GCOSTest() {
   const questionsPerPage = 4;
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
 
-  // 2. Initial Data Fetch (Optional check to see if assignment is valid)
+  // 2. Initial Data Fetch - Check if assignment is valid and if already completed
   useEffect(() => {
     if ((isCandidate && !candidateToken) || (!isCandidate && !assignmentId)) {
        console.warn("❌ Missing credentials or ID");
        setFetching(false);
        return;
     }
-    // Simulate fetch delay or validate token here if needed
-    setTimeout(() => setFetching(false), 500);
+    
+    const config = getFetchConfig();
+    fetch(config.url, { headers: config.headers })
+      .then((r) => {
+        if (!r.ok) {
+          alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+          return Promise.reject();
+        }
+        return r.json();
+      })
+      .then((data) => {
+        // If already completed, restore previous answers and show results
+        if (data && data.status === 'COMPLETED') {
+          if (data.answers) setAnswers(data.answers);
+          if (data.ai_report) setAiReport(data.ai_report);
+          setStep(totalPages + 1); // Show results page
+        }
+        setFetching(false);
+      })
+      .catch(() => {
+        alert("Invalid or inaccessible assignment. Please start from My Assessments.");
+        setFetching(false);
+      });
   }, [assignmentId, candidateToken, isCandidate]);
 
   // 3. Computed Data
@@ -303,7 +326,7 @@ export default function GCOSTest() {
   const canNext = step < totalPages && pageQuestions.every((q) => answers[q.id] > 0);
   const progressPct = (Object.keys(answers).length / QUESTIONS.length) * 100;
 
-  // Calculate Metrics (Averages per dimension)
+  // Calculate Metrics (Match backend expected format)
   const metrics = useMemo(() => {
     const sums = { auto: 0, ctrl: 0, impers: 0 };
     const counts = { auto: 0, ctrl: 0, impers: 0 };
@@ -315,20 +338,25 @@ export default function GCOSTest() {
       counts[q.dim]++;
     });
 
-    const averages = {};
-    Object.keys(sums).forEach((k) => {
-      averages[k] = counts[k] ? parseFloat((sums[k] / counts[k]).toFixed(2)) : 0;
-    });
+    const autonomous = counts.auto ? parseFloat((sums.auto / counts.auto).toFixed(2)) : 0;
+    const controlled = counts.ctrl ? parseFloat((sums.ctrl / counts.ctrl).toFixed(2)) : 0;
+    const impersonal = counts.impers ? parseFloat((sums.impers / counts.impers).toFixed(2)) : 0;
     
-    return { averages };
+    // Return format that matches backend expectations
+    return {
+      autonomous,
+      controlled,
+      impersonal,
+      range: "1-5"
+    };
   }, [answers]);
 
-  // Chart Data preparation
-  const chartData = Object.entries(metrics.averages).map(([key, value]) => ({
-    name: ORIENTS[key],
-    key: key,
-    value: value,
-  }));
+  // Chart Data preparation (map to short keys for display)
+  const chartData = [
+    { name: ORIENTS.auto, key: 'auto', value: metrics.autonomous },
+    { name: ORIENTS.ctrl, key: 'ctrl', value: metrics.controlled },
+    { name: ORIENTS.impers, key: 'impers', value: metrics.impersonal },
+  ];
 
   // 4. Submit Handler
   async function submit() {

@@ -619,5 +619,9 @@ class CandidateAssignmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CandidateAssignment
-        fields = ['id', 'token', 'recruitee', 'template', 'status', 'assigned_at', 'completed_at']
+        fields = [
+            'id', 'token', 'recruitee', 'template', 
+            'status', 'assigned_at', 'completed_at',
+            'answers', 'metrics', 'ai_report'
+        ]
         read_only_fields = ['id', 'token', 'assigned_at']
