@@ -79,6 +79,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
           key={item.label}
           onClick={() => handleNavClick(item.path)}
           className={`nav-link ${active ? "active" : ""}`}
+          title={!isOpen ? item.label : ""}
         >
           <div className={`nav-icon-container ${active ? "active" : ""}`}>
             <Icon size={20} />
@@ -92,7 +93,13 @@ const Sidebar = ({ isOpen, toggleSidebar, isMobile }) => {
   return (
     <div className={`sidebar-island ${!isOpen ? "collapsed" : ""}`}>
       {!isMobile && (
-        <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
+        <button 
+          className="sidebar-toggle-btn" 
+          onClick={toggleSidebar}
+          style={{
+            left: isOpen ? `${24 + 280 - 16}px` : `${24 + 88 - 16}px`
+          }}
+        >
           {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
       )}

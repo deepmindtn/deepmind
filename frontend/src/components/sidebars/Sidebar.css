@@ -8,7 +8,7 @@
   position: fixed;
   left: 24px;
   top: 24px;
-  bottom: 15px;
+  bottom: 24px;
   width: var(--sidebar-width);
   background: var(--card-bg);
   /* Theme Aware */
@@ -18,22 +18,39 @@
   box-shadow: var(--shadow-huge);
   display: flex;
   flex-direction: column;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
-
   font-family: "Inter", system-ui, sans-serif;
+  overflow: hidden;
 }
 
 .sidebar-island.collapsed {
   width: var(--sidebar-collapsed);
 }
 
+.sidebar-island.collapsed .nav-link {
+  justify-content: center;
+  padding: 6px 0;
+  width: 100%;
+}
+
+.sidebar-island.collapsed .nav-icon-container {
+  margin: 0 auto;
+}
+
 /* Header & Logo */
 .sidebar-header {
-  padding: 32px 24px;
+  padding: 16px 16px 12px 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 12px;
+  transition: justify-content 0.3s ease;
+}
+
+.sidebar-island.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 16px 0 12px 0;
 }
 
 .logo-box-emerald {
@@ -56,32 +73,60 @@
   letter-spacing: -0.02em;
 }
 
+/* Smooth collapse - hide text elements first */
+.sidebar-island.collapsed .brand-name,
+.sidebar-island.collapsed .nav-text,
+.sidebar-island.collapsed .profile-details,
+.sidebar-island.collapsed .section-label {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar-island:not(.collapsed) .brand-name,
+.sidebar-island:not(.collapsed) .nav-text,
+.sidebar-island:not(.collapsed) .profile-details,
+.sidebar-island:not(.collapsed) .section-label {
+  opacity: 1;
+  transition: opacity 0.3s ease 0.2s;
+}
+
 /* Navigation Links */
 .sidebar-content {
   flex: 1;
-  padding: 0 16px;
+  padding: 8px 12px 0 12px;
+  margin-top: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-island.collapsed .sidebar-content {
+  padding: 0 8px;
+  align-items: center;
 }
 
 .nav-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px;
+  gap: 10px;
+  padding: 6px 10px;
   border: none;
   background: transparent;
-  border-radius: 16px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s ease;
   color: var(--text-muted);
   /* Theme Aware */
   position: relative;
   width: 100%;
+  min-height: 48px;
 }
 
 .nav-link:hover {
@@ -97,13 +142,16 @@
 }
 
 .nav-icon-container {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 10px;
   transition: 0.2s;
+  flex-shrink: 0;
 }
 
 .nav-link.active .nav-icon-container {
@@ -129,7 +177,7 @@
 
 /* Footer & Profile */
 .sidebar-footer {
-  padding: 24px 16px;
+  padding: 16px;
 }
 
 .profile-mini-card {
@@ -138,21 +186,26 @@
   border: 1px solid var(--border-color);
   /* Theme Aware */
   border-radius: 20px;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-height: 60px;
 }
 
 .profile-mini-card.collapsed {
   flex-direction: column;
   background: transparent;
   border: none;
+  gap: 8px;
+  padding: 8px 0;
 }
 
 .avatar-emerald {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   background: var(--dark);
   /* Adjusted for theme */
   border-radius: 12px;
@@ -206,28 +259,35 @@
   color: white;
 }
 
-/* Toggle Button */
+/* Toggle Button - Fixed positioning to float above everything */
 .sidebar-toggle-btn {
-  position: absolute;
-  right: -14px;
-  top: 86px;
-  width: 28px;
-  height: 28px;
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   color: var(--text-muted);
-  z-index: 10;
+  z-index: 10000;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-toggle-btn:hover {
   color: var(--primary);
   border-color: var(--primary);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.sidebar-toggle-btn:active {
+  transform: translateY(-50%) scale(0.95);
 }
 
 /* --- Mobile Logic --- */
@@ -262,14 +322,10 @@
   }
 }
 
-.nav-text,
-.brand-name,
-.profile-details {
-  animation: fadeIn 0.3s ease-in-out;
-}
+/* Animation handled by transition in collapsed state */
 
 .sidebar-section-separator {
-  margin-top: 20px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
 }
@@ -280,7 +336,7 @@
   letter-spacing: 0.05em;
   color: #94a3b8;
   /* Faded slate */
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   margin-left: 12px;
   font-weight: 700;
 }
@@ -299,22 +355,22 @@
 
 /* Sidebar Footer now acts as a container for bottom items */
 .sidebar-footer {
-  padding: 16px;
-  /* Reduced slightly to accommodate more items */
+  padding: 8px 16px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sidebar-system-section {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
 }
 
 /* Ensure bottom nav items look consistent with top ones */
 .bottom-nav {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* Optional: Add a subtle separator if you want a line above the system menu */
@@ -323,8 +379,12 @@
   display: block;
   height: 1px;
   background: var(--border-color);
-  margin: 0 8px 16px 8px;
-  opacity: 0.6;
+  margin: 0 8px 10px 8px;
+  opacity: 0.5;
+}
+
+.collapsed .sidebar-system-section::before {
+  margin: 0 4px 8px 4px;
 }
 
 /* Adjustments for collapsed state in the footer */
@@ -333,6 +393,10 @@
 }
 
 .collapsed .sidebar-system-section .nav-link {
-  padding: 12px 0;
+  padding: 6px 0;
   justify-content: center;
+}
+
+.collapsed .sidebar-footer {
+  padding: 12px 8px 16px 8px;
 }
