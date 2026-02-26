@@ -124,13 +124,12 @@ const LayoutComponent = ({ children }) => {
 
         .theme-toggle-btn {
           position: fixed;
-          right: 24px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          background: var(--bg-card);
+          right: 32px;
+          bottom: 32px;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: var(--card-bg);
           border: 1px solid var(--border-color);
           color: var(--text-primary);
           cursor: pointer;
@@ -138,13 +137,32 @@ const LayoutComponent = ({ children }) => {
           align-items: center;
           justify-content: center;
           z-index: 9999;
-          box-shadow: var(--shadow);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .theme-toggle-btn:hover {
-          transform: translateY(-50%) scale(1.1);
-          border-color: var(--primary-emerald);
+          transform: scale(1.1);
+          border-color: var(--primary);
+          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .theme-toggle-btn:active {
+          transform: scale(0.95);
+        }
+
+        .theme-toggle-btn:active {
+          transform: scale(0.95);
+        }
+
+        .theme-toggle-btn .sun-icon,
+        .theme-toggle-btn .moon-icon {
+          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .theme-toggle-btn:hover .sun-icon,
+        .theme-toggle-btn:hover .moon-icon {
+          transform: rotate(20deg);
         }
 
         .mobile-top-nav {
@@ -176,15 +194,21 @@ const LayoutComponent = ({ children }) => {
           z-index: 150;
         }
 
+        @media (max-width: 1024px) {
+          .theme-toggle-btn {
+            width: 52px;
+            height: 52px;
+            right: 24px;
+            bottom: 24px;
+          }
+        }
+
         @media (max-width: 768px) {
           .theme-toggle-btn {
-            top: auto;
-            bottom: 24px;
-            right: 24px;
-            transform: none;
-          }
-          .theme-toggle-btn:hover {
-            transform: scale(1.1);
+            width: 48px;
+            height: 48px;
+            right: 20px;
+            bottom: 20px;
           }
         }
       `}</style>
@@ -194,12 +218,13 @@ const LayoutComponent = ({ children }) => {
         className="theme-toggle-btn"
         onClick={toggleTheme}
         aria-label="Toggle Dark Mode"
+        title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
       >
         {isDarkMode ? (
-          <Sun size={20} className="sun-icon" fill="#fbbf24" color="#fbbf24" />
+          <Sun size={24} className="sun-icon" fill="#fbbf24" color="#fbbf24" />
         ) : (
           <Moon
-            size={20}
+            size={24}
             className="moon-icon"
             fill="#4b5563"
             color="#4b5563"
