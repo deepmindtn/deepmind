@@ -373,9 +373,9 @@ class GenerateHRReportView(APIView):
                 "details": f"Missing index at: {index_path}"
             }, status=503)
 
-        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),allow_dangerous_deserialization=True)
+        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY), allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         # Build the prompt
@@ -454,13 +454,44 @@ class GenerateBigFiveReportView(APIView):
     def post(self, request, assignment_id):
         try:
             assignment = Assignment.objects.select_related("employee", "template").get(id=assignment_id)
+        except Assignment.DoesNotExist:
+            return Response({"error": "Assignment not found"}, status=404)
 
-            assessment_data = {
-                "employee": str(assignment.employee),
-                "template": assignment.template.code,
-                "status": assignment.status,
-                "score": assignment.metrics,
+        try:
+            #  read metrics from request body first.
+            request_metrics = request.data.get("metrics") or assignment.metrics or {}
+
+            # Normalise key
+            raw_traits = (
+                request_metrics.get("traitScores")
+                or request_metrics.get("trait")
+                or {}
+            )
+
+            def _level(score):
+                if score >= 80: return "Very High"
+                if score >= 60: return "High"
+                if score >= 40: return "Moderate"
+                if score >= 20: return "Low"
+                return "Very Low"
+
+            TRAIT_LABELS = {
+                "E": "Extraversion",
+                "A": "Agreeableness",
+                "C": "Conscientiousness",
+                "N": "Neuroticism",
+                "O": "Openness to Experience",
             }
+
+            if raw_traits:
+                scores_text = "\n".join(
+                    f"  - {TRAIT_LABELS.get(k, k)}: {v}/100 ({_level(v)})"
+                    for k, v in sorted(raw_traits.items())
+                )
+            else:
+                scores_text = "  Score data unavailable."
+
+            employee_name = str(assignment.employee)
 
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "bigfiveindex")
             
@@ -470,31 +501,39 @@ class GenerateBigFiveReportView(APIView):
                     "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                     "details": f"Missing index at: {index_path}"
                 }, status=503)
-            
+
             vectorstore = FAISS.load_local(
                 index_path,
                 OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
-            retriever = vectorstore.as_retriever()
+            retriever = vectorstore.as_retriever()            
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
             chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
             prompt = f"""
-            You are a workplace psychologist. Generate a detailed Big Five psychometric profile report for the following employee based on their score (0–100 per trait and facet).
-            
-            ## Data:
-            {assessment_data}
+You are a workplace psychologist. Generate a detailed Big Five (OCEAN) psychometric profile report
+for the employee below based on their precise scores.
 
-            ## Instructions:
-            - Start with a short summary
-            - Provide deep insights per trait
-            - Highlight strong/weak facets
-            - List strengths and risks (as bullets)
-            - End with tailored action points (habits, work style, coaching ideas)
+Employee: {employee_name}
 
-            Use a professional and supportive tone. Format with clear paragraphs.(no markdown marks)
-            """
+OCEAN Trait Scores (0–100):
+{scores_text}
+
+Score interpretation bands: Very High (80–100), High (60–79), Moderate (40–59), Low (20–39), Very Low (0–19).
+
+Instructions:
+- Begin with a concise executive summary referencing the actual scores above.
+- For each of the five traits (Extraversion, Agreeableness, Conscientiousness, Neuroticism,
+  Openness to Experience), write a dedicated paragraph that:
+    * States the numeric score and level.
+    * Interprets what this score means for the employee's workplace behaviour.
+    * Identifies the strongest and weakest facets implied by this score.
+- List 3–4 key professional strengths derived from the profile.
+- List 2–3 potential risks or development areas.
+- End with 4 tailored action points (habits, work-style adjustments, coaching ideas).
+Use a professional, supportive tone. Write in clear prose paragraphs. Do not use markdown symbols.
+"""
 
             result = chain.run(prompt)
 
@@ -504,10 +543,7 @@ class GenerateBigFiveReportView(APIView):
             assignment.ai_report = result
             assignment.save(update_fields=["ai_report"])
 
-            print(result)
             return Response({"report": result})
-        except Assignment.DoesNotExist:
-            return Response({"error": "Assignment not found"}, status=404)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
@@ -526,29 +562,32 @@ class GenerateKarasekReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
+        # read metrics from request body first (sent before submit completes).
+        metrics = request.data.get("metrics") or assignment.metrics or {}
+
         assessment_data = {
             "employee": str(assignment.employee),
             "template": assignment.template.code,
             "status": assignment.status,
-            "score": assignment.metrics,
+            "score": metrics,
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
-        
+
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
             return Response({
                 "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                 "details": f"Missing index at: {index_path}"
             }, status=503)
-        
+
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -587,29 +626,32 @@ class GenerateMaslachReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
+        # read metrics from request body first (sent before submit completes).
+        metrics = request.data.get("metrics") or assignment.metrics or {}
+
         assessment_data = {
             "employee": str(assignment.employee),
             "template": assignment.template.code,
             "status": assignment.status,
-            "score": assignment.metrics,
+            "score": metrics,
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
-        
+
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
             return Response({
                 "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                 "details": f"Missing index at: {index_path}"
             }, status=503)
-        
+
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -753,7 +795,7 @@ class GenerateDiscReportView(APIView):
             retriever = vectorstore.as_retriever()
             llm = ChatOpenAI(
                 model="gpt-4o-mini",
-                temperature=0.5,
+                temperature=0.0,
                 api_key=settings.OPENAI_API_KEY,
             )
             chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
@@ -832,7 +874,7 @@ class GenerateJssReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -916,7 +958,7 @@ class GenerateBRSReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -995,7 +1037,7 @@ class GenerateCDRISC10ReportView(APIView):
         retriever = vectorstore.as_retriever()
         llm = ChatOpenAI(
             model="gpt-4o-mini",
-            temperature=0.5,
+            temperature=0.0,
             api_key=settings.OPENAI_API_KEY,
         )
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
@@ -1071,7 +1113,7 @@ class GenerateWSESReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1169,7 +1211,7 @@ class GenerateGCOSReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1243,7 +1285,7 @@ class GenerateRIBSReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1316,7 +1358,7 @@ class GenerateCAQReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
@@ -1390,7 +1432,7 @@ class GenerateISEReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
         chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
         prompt = f"""
