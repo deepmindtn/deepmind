@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import StructuredReport from "./assessments/StructuredReport";
 import {
   ResponsiveContainer,
   BarChart,
@@ -276,7 +277,12 @@ export default function ReportPage() {
       {report.ai_report && (
         <div className="report-section">
           <h3>AI Report</h3>
-          <p style={{ whiteSpace: "pre-wrap" }}>{report.ai_report}</p>
+          <StructuredReport
+            report={(() => {
+              try { return JSON.parse(report.ai_report); }
+              catch { return report.ai_report; }
+            })()}
+          />
         </div>
       )}
     </div>
