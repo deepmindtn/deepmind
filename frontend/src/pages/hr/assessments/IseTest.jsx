@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   Lightbulb, // Icon for Innovation
   ChevronRight,
@@ -252,7 +253,7 @@ export default function ISETest() {
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0); // 0=Intro, 1..N=Questions, N+1=Results
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -283,7 +284,7 @@ export default function ISETest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1); // Show results page
         }
       })
@@ -324,18 +325,18 @@ export default function ISETest() {
       
       const reportData = await reportRes.json();
       if (!reportRes.ok) throw new Error(reportData?.error || "Erreur génération rapport.");
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // B) Submit to Assignment
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
         headers: config.headers,
-        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+        body: JSON.stringify({ answers, metrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
       });
       const submitData = await submitRes.json();
       if (!submitRes.ok) throw new Error(submitData?.error || "Erreur lors du submit.");
 
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1); // Move to results
     } catch (err) {
       console.error(err);
@@ -353,7 +354,8 @@ export default function ISETest() {
   ];
 
   function downloadReport() {
-    const blob = new Blob([aiReport], { type: "text/plain" });
+    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -524,7 +526,7 @@ export default function ISETest() {
                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
                    setAnswers({});
                    setStep(1);
-                   setAiReport("");
+                   setAiReport(null);
                 }}>
                   <RotateCcw size={16} /> Recommencer
                 </button>
@@ -588,7 +590,7 @@ export default function ISETest() {
                     </div>
                     
                     <div style={styles.aiReportBox}>
-                      {aiReport}
+                      <StructuredReport report={aiReport} />
                     </div>
                  </div>
               )}

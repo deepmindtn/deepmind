@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "./BigFiveTest.css"; // réutilise ton CSS existant
 import { Download, RotateCcw, ArrowRight, ArrowLeft } from "lucide-react";
+import StructuredReport from "./StructuredReport";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
@@ -58,7 +59,7 @@ export default function BrsTest() {
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const metrics = useMemo(() => computeMetrics(answers), [answers]);
@@ -79,7 +80,7 @@ export default function BrsTest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(QUESTIONS.length + 1); // Show results page
         }
       })
@@ -107,19 +108,19 @@ export default function BrsTest() {
       });
       const reportData = await reportRes.json();
       if (!reportRes.ok) throw new Error(reportData?.error || "Erreur génération rapport.");
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // 2) Soumettre réponses + metrics + rapport
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({ answers, metrics: localMetrics, ai_report: reportText, overwrite: true }),
+        body: JSON.stringify({ answers, metrics: localMetrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
       });
       const submitData = await submitRes.json();
       if (!submitRes.ok) throw new Error(submitData?.error || "Erreur lors du submit.");
 
       // 3) Afficher résultats
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(QUESTIONS.length + 1);
     } catch (err) {
       alert(err.message);
@@ -129,7 +130,8 @@ export default function BrsTest() {
   }
 
   function downloadReport() {
-    const blob = new Blob([aiReport], { type: "text/plain" });
+    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -244,7 +246,7 @@ export default function BrsTest() {
                 <div className="b5-card-title">Rapport IA — BRS</div>
                 <div className="b5-report">
                   <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-                    {aiReport}
+                    <StructuredReport report={aiReport} />
                   </pre>
                 </div>
               </div>

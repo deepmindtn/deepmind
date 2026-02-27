@@ -8,6 +8,7 @@ import {
   Tooltip,
   PolarAngleAxis,
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   Lightbulb,
   ArrowRight,
@@ -267,7 +268,7 @@ export default function RIBSTest() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
 
   // --- Load Existing Results ---
   useEffect(() => {
@@ -279,7 +280,7 @@ export default function RIBSTest() {
       .then((data) => {
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1);
         }
       })
@@ -328,7 +329,7 @@ export default function RIBSTest() {
         }
       );
       const reportData = await reportRes.json();
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // 2. Submit Data
       const submitRes = await fetch(
@@ -339,7 +340,7 @@ export default function RIBSTest() {
           body: JSON.stringify({
             answers,
             metrics,
-            ai_report: reportText,
+            ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""),
             assessment_type: "RIBS",
             overwrite: true,
           }),
@@ -348,7 +349,7 @@ export default function RIBSTest() {
 
       if (!submitRes.ok) throw new Error("Erreur lors de la soumission.");
 
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1);
     } catch (e) {
       alert(e.message);
@@ -600,7 +601,7 @@ export default function RIBSTest() {
                   onClick={() => {
                     setAnswers({});
                     setStep(1);
-                    setAiReport("");
+                    setAiReport(null);
                   }}
                 >
                   <RotateCcw size={18} /> Recommencer
@@ -741,7 +742,7 @@ export default function RIBSTest() {
                         <FileText size={18} />{" "}
                         <strong>Interprétation IA</strong>
                       </div>
-                      {aiReport}
+                      <StructuredReport report={aiReport} />
                     </div>
                   </div>
                 ) : (

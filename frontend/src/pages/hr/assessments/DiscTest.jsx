@@ -11,6 +11,7 @@ import {
   Legend,
   Cell,
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   BrainCircuit,
   ChevronRight,
@@ -252,7 +253,7 @@ export default function DiscTest() {
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -284,9 +285,7 @@ export default function DiscTest() {
             setAnswers(data.answers);
           }
           // Restore AI report if available
-          if (data.ai_report) {
-            setAiReport(data.ai_report);
-          }
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           // Skip to results page - metrics will be computed from restored answers via useMemo
           setStep(totalPages + 1);
         }
@@ -326,18 +325,18 @@ export default function DiscTest() {
         body: JSON.stringify({ answers, metrics }),
       });
       const reportData = await reportRes.json();
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // B) Submit
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
         headers: config.headers,
-        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+        body: JSON.stringify({ answers, metrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
       });
       const submitData = await submitRes.json();
       if (!submitRes.ok) throw new Error(submitData?.error || "Erreur lors du submit.");
 
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1);
     } catch (err) {
       console.error(err);
@@ -355,7 +354,8 @@ export default function DiscTest() {
   }));
 
   function downloadReport() {
-    const blob = new Blob([aiReport], { type: "text/plain" });
+    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -531,7 +531,7 @@ export default function DiscTest() {
                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
                    setAnswers({});
                    setStep(1);
-                   setAiReport("");
+                   setAiReport(null);
                 }}>
                   <RotateCcw size={16} /> Recommencer
                 </button>
@@ -594,7 +594,7 @@ export default function DiscTest() {
                     </div>
                     
                     <div style={styles.aiReportBox}>
-                      {aiReport}
+                      <StructuredReport report={aiReport} />
                     </div>
                  </div>
               )}

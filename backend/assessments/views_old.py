@@ -13,12 +13,8 @@ from django.utils import timezone
 import logging
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
-from .report_schemas import (
-    BigFiveReport, DiscReport, KarasekReport, MaslachReport,
-    JssReport, BrsReport, CdriscReport, WsesReport, GcosReport,
-    RibsReport, CaqReport, IseReport,
-)
+from langchain_community.chat_models import ChatOpenAI
+from langchain.chains import RetrievalQA
 
 from .serializers import (
     AssignRequestSerializer,
@@ -377,35 +373,51 @@ class GenerateHRReportView(APIView):
                 "details": f"Missing index at: {index_path}"
             }, status=503)
 
-        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY), allow_dangerous_deserialization=True)
+        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
-        docs = retriever.invoke("HR organizational assessment overview employee well-being burnout stress motivation")
-        context = "\n\n".join([d.page_content for d in docs])
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        prompt = f"""You are a senior HR consultant. Based on the psychological assessment data below and the reference material, generate a comprehensive decision-support report for HR leadership.
+        # Build the prompt
+        prompt = f"""
+        You are a senior HR consultant. Based on the psychological assessment data below, generate a comprehensive decision-support report for HR leadership.
 
-Reference Material:
-{context}
+        Objective:
+        Provide strategic insights and concrete recommendations to help the HR department understand employees' psychological profiles and take action to improve well-being, engagement, and performance. (no markdown marks no * just paragraphs)
 
-Assessment Data:
-{assessment_data}
+        ## Assessment Data:
+        {assessment_data}
 
-Guidelines:
-1. Summarize Key Trends: overall mental health state, distribution across assessment types, patterns like high stress, burnout, low motivation.
-2. Deep Analysis: highlight at-risk individuals or groups, cross-compare assessments where possible.
-3. Actionable Recommendations: trainings, coaching, reorganization, burnout prevention, cultural improvements, per-department suggestions if relevant.
-4. Reference Best Practices: mention key psychological models from the reference material.
-5. Tone: clear and supportive language, structured with headings and paragraphs suitable for HR leadership.
-End with a next-step checklist for HR. Do not use markdown symbols.
-"""
+        ## Guidelines:
+        1. **Summarize Key Trends**:
+        - Overall mental health state of the organization.
+        - Distribution across assessment types (BIG_FIVE, KARASEK, MASLACH).
+        - Detect patterns like high stress, burnout, lack of motivation, etc.
 
-        from langchain_core.messages import HumanMessage
-        ai_response = llm.invoke([HumanMessage(content=prompt)])
-        result = ai_response.content
+        2. **Deep Analysis**:
+        - Highlight at-risk individuals or groups.
+        - Cross-compare assessments if possible (e.g. stress + low agreeableness).
 
-        print("✅ AI Report Generated Successfully")
+        3. **Actionable Recommendations**:
+        - Tailored advice for HR: trainings, coaching, reorganization.
+        - Burnout prevention and mental wellness initiatives.
+        - Cultural or leadership improvements.
+        - Suggestions per department if relevant.
 
+        4. **Reference Best Practices**:
+        - Mention key psychological models from the uploaded knowledge PDFs.
+        - Justify suggestions using evidence from known psychological research.
+
+        5. **Tone**:
+        - Use clear, supportive language.
+        - Structure the report with headings and paragraphs.
+        - Write in a way suitable to be shared directly with HR leadership.
+
+        End the report with a **next-step checklist** for HR.(no markdown marks)
+        """
+
+
+        result = chain.run(prompt)
         return Response({"report": result})
 		
 # ---------- Detail ----------
@@ -442,44 +454,13 @@ class GenerateBigFiveReportView(APIView):
     def post(self, request, assignment_id):
         try:
             assignment = Assignment.objects.select_related("employee", "template").get(id=assignment_id)
-        except Assignment.DoesNotExist:
-            return Response({"error": "Assignment not found"}, status=404)
 
-        try:
-            #  read metrics from request body first.
-            request_metrics = request.data.get("metrics") or assignment.metrics or {}
-
-            # Normalise key
-            raw_traits = (
-                request_metrics.get("traitScores")
-                or request_metrics.get("trait")
-                or {}
-            )
-
-            def _level(score):
-                if score >= 80: return "Very High"
-                if score >= 60: return "High"
-                if score >= 40: return "Moderate"
-                if score >= 20: return "Low"
-                return "Very Low"
-
-            TRAIT_LABELS = {
-                "E": "Extraversion",
-                "A": "Agreeableness",
-                "C": "Conscientiousness",
-                "N": "Neuroticism",
-                "O": "Openness to Experience",
+            assessment_data = {
+                "employee": str(assignment.employee),
+                "template": assignment.template.code,
+                "status": assignment.status,
+                "score": assignment.metrics,
             }
-
-            if raw_traits:
-                scores_text = "\n".join(
-                    f"  - {TRAIT_LABELS.get(k, k)}: {v}/100 ({_level(v)})"
-                    for k, v in sorted(raw_traits.items())
-                )
-            else:
-                scores_text = "  Score data unavailable."
-
-            employee_name = str(assignment.employee)
 
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "bigfiveindex")
             
@@ -489,53 +470,44 @@ class GenerateBigFiveReportView(APIView):
                     "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                     "details": f"Missing index at: {index_path}"
                 }, status=503)
-
+            
             vectorstore = FAISS.load_local(
                 index_path,
                 OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
             retriever = vectorstore.as_retriever()
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-            structured_llm = llm.with_structured_output(BigFiveReport)
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+            chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-            # Retrieve relevant context from the FAISS index
-            docs = retriever.invoke("Big Five OCEAN personality traits interpretation facets scores workplace behaviour")
-            context = "\n\n".join([d.page_content for d in docs])
+            prompt = f"""
+            You are a workplace psychologist. Generate a detailed Big Five psychometric profile report for the following employee based on their score (0–100 per trait and facet).
+            
+            ## Data:
+            {assessment_data}
 
-            prompt = f"""You are a senior workplace psychologist specialising in the Big Five / OCEAN model.
-Using the reference material below AND the employee's precise scores, produce a structured psychometric report.
+            ## Instructions:
+            - Start with a short summary
+            - Provide deep insights per trait
+            - Highlight strong/weak facets
+            - List strengths and risks (as bullets)
+            - End with tailored action points (habits, work style, coaching ideas)
 
-Reference Material:
-{context}
+            Use a professional and supportive tone. Format with clear paragraphs.(no markdown marks)
+            """
 
-Employee: {employee_name}
+            result = chain.run(prompt)
 
-OCEAN Trait Scores (0–100):
-{scores_text}
+            print("✅ AI Report Generated Successfully")
 
-Score bands: Very High (80–100), High (60–79), Moderate (40–59), Low (20–39), Very Low (0–19).
-
-Instructions:
-- summary: 3–5 sentence executive summary referencing the actual scores.
-- traits: For each of the 5 OCEAN traits state the score, level, a 2–3 sentence workplace interpretation,
-  2–3 strong facets implied by the score, and 1–2 weaker facets.
-- strengths: 3–4 key professional strengths derived from the full profile.
-- risks: 2–3 potential risks or development areas.
-- action_points: 4 tailored, concrete action points (title + description each).
-- profile_archetype: a 2–4 word archetype label that captures the dominant personality pattern.
-Use a professional, supportive tone grounded in psychometric science."""
-
-            result = structured_llm.invoke(prompt)
-
-            print("✅ AI Report Generated Successfully (structured JSON)")
-
-            # Save AI report to database as JSON
-            import json
-            assignment.ai_report = json.dumps(result.model_dump())
+            # Save AI report to database
+            assignment.ai_report = result
             assignment.save(update_fields=["ai_report"])
 
-            return Response({"report": result.model_dump()})
+            print(result)
+            return Response({"report": result})
+        except Assignment.DoesNotExist:
+            return Response({"error": "Assignment not found"}, status=404)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
@@ -554,66 +526,52 @@ class GenerateKarasekReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        # read metrics from request body first (sent before submit completes).
-        metrics = request.data.get("metrics") or assignment.metrics or {}
-
         assessment_data = {
             "employee": str(assignment.employee),
             "template": assignment.template.code,
             "status": assignment.status,
-            "score": metrics,
+            "score": assignment.metrics,
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
-
+        
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
             return Response({
                 "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                 "details": f"Missing index at: {index_path}"
             }, status=503)
-
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(KarasekReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Karasek job demands control support model quadrant strain active passive")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a senior psychologist. Based on the following Karasek assessment results, write a professional report for the employee.
 
-        prompt = f"""You are a senior occupational psychologist specialising in the Job Demands-Control-Support model.
-Using the reference material below AND the assessment data, produce a structured report.
+        ## Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        ## Guidelines:
+        - Summarize the psychological demands, decision latitude, and social support.
+        - Interpret the quadrant (low strain, high strain, active, passive).
+        - Offer clear, concrete suggestions for the employee to improve well-being or manage stress.
+        - Justify insights with reference to known psychological theories and the uploaded PDFs.
+        - Use structured paragraphs, professional tone, avoid clinical jargon.
 
-Assessment Data:
-{assessment_data}
+        End the report with 3 actionable suggestions.(no markdown marks)
+        """
 
-Instructions:
-- summary: 3–4 sentence overview of the work environment based on JDC-S scores.
-- quadrant: one of High Strain, Low Strain, Active, or Passive.
-- quadrant_meaning: 2–3 sentences explaining what this quadrant implies for the employee.
-- dimensions: interpret Psychological Demands, Decision Latitude, and Social Support with level and 1–2 sentence meaning.
-- strengths: 2–3 positive aspects of the work situation.
-- risks: 2–3 risk factors for stress or burnout.
-- action_points: 3–4 actionable well-being improvement suggestions.
-- profile_archetype: a short label, e.g. 'The Overloaded Expert'.
-Professional tone, grounded in JDC-S theory."""
+        result = chain.run(prompt)
 
-        result = structured_llm.invoke(prompt)
+        print("✅ AI Report Generated Successfully")
 
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
-        assignment.save(update_fields=["ai_report"])
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 
 class GenerateMaslachReportView(APIView):
     authentication_classes = [
@@ -629,66 +587,56 @@ class GenerateMaslachReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        # read metrics from request body first (sent before submit completes).
-        metrics = request.data.get("metrics") or assignment.metrics or {}
-
         assessment_data = {
             "employee": str(assignment.employee),
             "template": assignment.template.code,
             "status": assignment.status,
-            "score": metrics,
+            "score": assignment.metrics,
         }
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
-
+        
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
             return Response({
                 "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                 "details": f"Missing index at: {index_path}"
             }, status=503)
-
+        
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(MaslachReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Maslach burnout inventory emotional exhaustion depersonalization personal accomplishment")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a senior psychologist. Based on the following maslach assessment results, write a professional report for the employee.
 
-        prompt = f"""You are a senior occupational psychologist specialising in burnout and the Maslach Burnout Inventory.
-Using the reference material below AND the assessment data, produce a structured burnout report.
+        ## Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        ## Guidelines:
+        - Summarize the psychological demands, decision latitude, and social support.
+        - Interpret the quadrant (low strain, high strain, active, passive).
+        - Offer clear, concrete suggestions for the employee to improve well-being or manage stress.
+        - Justify insights with reference to known psychological theories and the uploaded PDFs.
+        - Use structured paragraphs, professional tone, avoid clinical jargon.
 
-Assessment Data:
-{assessment_data}
+        End the report with 3 actionable suggestions.(no markdown marks)
+        """
 
-Instructions:
-- summary: 3–4 sentence overall burnout profile summary.
-- burnout_level: overall risk level (High Risk, Moderate Risk, or Low Risk).
-- subscales: for each of the 3 MBI subscales (Emotional Exhaustion, Depersonalization, Personal Accomplishment),
-  provide the score, level, and 1–2 sentence interpretation.
-- strengths: 2–3 protective factors in the profile.
-- risks: 2–3 burnout risk areas requiring attention.
-- action_points: 3–4 recovery and prevention strategies.
-- profile_archetype: short label for this burnout profile.
-Maintain a compassionate, professional tone."""
+        result = chain.run(prompt)
 
-        result = structured_llm.invoke(prompt)
+        print("✅ AI Report Generated Successfully")
 
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
     
 import os
 import logging
@@ -805,42 +753,38 @@ class GenerateDiscReportView(APIView):
             retriever = vectorstore.as_retriever()
             llm = ChatOpenAI(
                 model="gpt-4o-mini",
-                temperature=0.1,
+                temperature=0.5,
                 api_key=settings.OPENAI_API_KEY,
             )
-            structured_llm = llm.with_structured_output(DiscReport)
+            chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-            docs = retriever.invoke("DISC profile Dominance Influence Steadiness Conscientiousness dimensions")
-            context = "\n\n".join([d.page_content for d in docs])
+            prompt = f"""
+            You are a workplace psychologist. Based on the following DISC assessment results, write a professional decision-support report for the employee.
 
-            prompt = f"""You are a workplace psychologist specialising in DISC profiling.
-Using the reference material below AND the assessment data, produce a structured DISC report.
+            Assessment Data:
+            {assessment_data}
 
-Reference Material:
-{context}
+            Guidelines:
+            - Begin with a short overview of the employee’s dominant DISC traits (Dominance, Influence, Steadiness, Conscientiousness).
+            - Explain the implications of their profile for workplace behavior, communication, and teamwork.
+            - Highlight strengths (3–4 points).
+            - Highlight potential challenges or blind spots (2–3 points).
+            - Provide 3–5 practical recommendations for personal development and better collaboration at work.
+            - Ground insights in recognized DISC theory and the uploaded reference PDFs.
+            - Use a supportive, professional, and constructive tone.
+            - Do not use markdown or bullet symbols, write in structured paragraphs.
+            - End the report with exactly 3 clear, actionable suggestions.
+            """
 
-Assessment Data:
-{assessment_data}
-
-Instructions:
-- summary: 3–4 sentence overview of the DISC profile.
-- disc_dimensions: for each of D/I/S/C provide score, level, and a 1-sentence interpretation.
-- strengths: 2–3 key workplace strengths from this DISC profile.
-- risks: 2–3 potential blind spots or challenges.
-- action_points: 3–5 practical development recommendations.
-- profile_archetype: short label describing this DISC combination.
-Supportive, professional tone.
-"""
-
-            result = structured_llm.invoke(prompt)
+            result = chain.run(prompt)
 
             print("✅ AI Report Generated Successfully")
 
             # Save AI report to database
-            assignment.ai_report = json.dumps(result.model_dump())
+            assignment.ai_report = result
             assignment.save(update_fields=["ai_report"])
 
-            return Response({"report": result.model_dump()})
+            return Response({"report": result})
 
         except Exception as e:
             # This catches ONLY AI/LangChain errors
@@ -888,43 +832,42 @@ class GenerateJssReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(JssReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Job Satisfaction Survey JSS dimensions pay promotion supervision coworkers scores")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are an organizational psychologist. Based on the following Job Satisfaction Survey (JSS) results, 
+        write a professional report for the employee it needs to be report not letter and no markdowns .
 
-        prompt = f"""You are an organisational psychologist specialising in job satisfaction measurement.
-Using the reference material below AND the assessment data, produce a structured JSS report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Explain the global score (36–216) and what it reflects about overall satisfaction.
+        - Go through each of the 9 dimensions (Rémunération, Avantages sociaux, Promotion, Supervision, Conditions de travail,
+          Relations avec collègues, Nature du travail, Politiques organisationnelles, Communication).
+        - For each dimension, interpret the score according to the interpretation scale:
+          19–24: Very high satisfaction
+          14–18: Moderate satisfaction
+          9–13: Low satisfaction
+          4–8: Very low satisfaction
+        - Highlight the strongest dimensions (strengths).
+        - Highlight the weakest dimensions (areas for improvement).
+        - Provide 4–5 concrete recommendations to improve satisfaction at work.
+        - Keep a supportive, professional tone.
+        - Do not use markdown or bullet symbols, write in clear structured paragraphs.
+        - End with a concise summary of key next steps.
+        """
 
-Assessment Data:
-{assessment_data}
-
-Instructions:
-- summary: 3–4 sentence overview of the overall job satisfaction profile.
-- global_score: the total JSS score (numeric).
-- overall_level: Very High, Moderate, Low, or Very Low.
-- dimensions: for each of the 9 JSS dimensions provide score, satisfaction_level, and 1 sentence interpretation.
-  Bands per dimension: Very High (19–24), Moderate (14–18), Low (9–13), Very Low (4–8).
-- strengths: 2–3 highest satisfaction dimensions.
-- risks: 2–3 lowest satisfaction dimensions needing improvement.
-- action_points: 4–5 concrete recommendations to improve satisfaction.
-- profile_archetype: short label for the satisfaction profile.
-Supportive, professional tone.
-"""
-
-        result = structured_llm.invoke(prompt)
+        result = chain.run(prompt)
 
         print("✅ AI Report Generated Successfully")
 
-        # Save to assignment
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Sauvegarder dans l’assignment
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
     
 class GenerateBRSReportView(APIView):
     authentication_classes = [
@@ -946,6 +889,7 @@ class GenerateBRSReportView(APIView):
         metrics = request.data.get("metrics") or assignment.metrics
         answers = request.data.get("answers") or assignment.answers
 
+        # ✅ FIX: validate on metrics, not assignment.metrics
         if not metrics or not metrics.get("average"):
             return Response({"error": "No BRS metrics found in request or assignment."}, status=400)
 
@@ -968,44 +912,39 @@ class GenerateBRSReportView(APIView):
         
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),  # replace with env variable ideally
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(BrsReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Brief Resilience Scale BRS score resilience capacity stress coping workplace")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a workplace psychologist. Based on the following Brief Resilience Scale (BRS) results, 
+        write a professional report for the employee it needs to be report not letter and no markdowns .    
 
-        prompt = f"""You are a workplace psychologist specialising in resilience and stress management.
-Using the reference material below AND the assessment data, produce a structured BRS report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Summarize the resilience capacity of the employee.
+        - Explain the implications for coping with stress and adaptation in the workplace.
+        - Provide strengths and vulnerabilities related to resilience.
+        - Provide 3–5 practical recommendations to improve resilience.
+        - Use supportive and professional tone.
+        - Do not use markdown or bullet symbols.
+        - End the report with exactly 3 clear, actionable suggestions.
+        """
 
-Assessment Data:
-{assessment_data}
+        result = chain.run(prompt)
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's resilience capacity.
-- average_score: the BRS average score (1.00–5.00).
-- resilience_level: High Resilience (4.31–5.00), Normal Resilience (2.99–4.30), or Low Resilience (1.00–2.98).
-- strengths: 2–3 resilience strengths observed.
-- risks: 2–3 resilience vulnerabilities or stress-coping challenges.
-- action_points: 3–4 practical strategies to maintain or improve resilience.
-- profile_archetype: short resilience profile label.
-Supportive, professional tone."""
+        print("✅ AI Report Generated Successfully")
 
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 class GenerateCDRISC10ReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -1056,43 +995,37 @@ class GenerateCDRISC10ReportView(APIView):
         retriever = vectorstore.as_retriever()
         llm = ChatOpenAI(
             model="gpt-4o-mini",
-            temperature=0.1,
+            temperature=0.5,
             api_key=settings.OPENAI_API_KEY,
         )
-        structured_llm = llm.with_structured_output(CdriscReport)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Connor-Davidson Resilience Scale CD-RISC score adversity stress adaptation workplace")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a workplace psychologist. Based on the following Connor-Davidson Resilience Scale (CD-RISC 10) results,
+        write a professional and detailed report for the employee.
 
-        prompt = f"""You are a workplace psychologist specialising in resilience assessment.
-Using the reference material below AND the assessment data, produce a structured CD-RISC 10 report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Interpret the total resilience score (0–40) and explain its meaning.
+        - Discuss the employee’s capacity to adapt to stress and adversity.
+        - Highlight resilience strengths and possible areas for growth.
+        - Provide 3–5 practical strategies to enhance resilience in workplace contexts.
+        - Maintain a professional, clear, and supportive tone.
+        - Do not use markdown symbols.
+        - End the report with exactly 3 concrete, actionable suggestions.
+        """
 
-Assessment Data:
-{assessment_data}
+        result = chain.run(prompt)
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's resilience capacity.
-- total_score: the CD-RISC 10 total score (0–40).
-- resilience_level: High (30–40), Moderate (20–29), or Low (0–19).
-- strengths: 2–3 resilience strengths based on the score.
-- risks: 2–3 areas where resilience may be challenged.
-- action_points: 3–4 strategies to strengthen resilience.
-- profile_archetype: short resilience profile label.
-Professional, clear, supportive tone.
-"""
+        print("✅ AI Report Generated Successfully")
 
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 # ---------- WSES ----------
 class GenerateWSESReportView(APIView):
     authentication_classes = [
@@ -1138,40 +1071,32 @@ class GenerateWSESReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(WsesReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Work Self-Efficacy Scale WSES confidence problem solving autonomy professional performance")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a workplace psychologist. Based on the following Work Self-Efficacy Scale (WSES) results,
+        write a detailed professional report for the employee.
 
-        prompt = f"""You are a workplace psychologist specialising in self-efficacy and professional development.
-Using the reference material below AND the assessment data, produce a structured WSES report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Interpret the overall efficacy level.
+        - Explain implications for confidence, problem-solving, and autonomy at work.
+        - Identify strengths and development areas.
+        - Provide 3–5 strategies to enhance work self-efficacy.
+        - Professional, supportive tone. No markdown. End with 3 actionable suggestions.
+        """
+        result = chain.run(prompt)
 
-Assessment Data:
-{assessment_data}
+        print("✅ AI Report Generated Successfully")
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's work self-efficacy.
-- average_score: the WSES average score.
-- efficacy_level: High, Moderate, or Low.
-- strengths: 2–3 self-efficacy strengths observed.
-- risks: 2–3 areas where self-efficacy limits performance.
-- action_points: 3–4 strategies to develop work self-efficacy.
-- profile_archetype: short efficacy profile label.
-Professional, supportive tone."""
-
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 
 
 # ---------- GCOS-mini ----------
@@ -1244,41 +1169,33 @@ class GenerateGCOSReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(GcosReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("General Causality Orientations Scale GCOS autonomous controlled impersonal motivation self-determination")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a workplace psychologist. Based on the following General Causality Orientations Scale (GCOS-mini) results,
+        write a professional motivation profile for the employee.
 
-        prompt = f"""You are a workplace psychologist specialising in motivation and self-determination theory.
-Using the reference material below AND the assessment data, produce a structured GCOS motivation profile.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Interpret the three orientations (autonomous, controlled, impersonal).
+        - Discuss motivational tendencies and implications for work engagement.
+        - Suggest how to leverage autonomy and manage extrinsic or amotivated aspects.
+        - Provide 3–5 development actions to foster intrinsic motivation.
+        - Supportive tone, structured paragraphs, no markdown.
+        - End with 3 actionable suggestions.
+        """
+        result = chain.run(prompt)
 
-Assessment Data:
-{assessment_data}
+        print("✅ AI Report Generated Successfully")
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's motivational orientations.
-- orientations: for each of the 3 GCOS orientations (Autonomous, Controlled, Impersonal), provide the score,
-  level (Dominant/Moderate/Low), and 1–2 sentence workplace implication.
-- dominant_orientation: the strongest orientation name.
-- strengths: 2–3 motivational strengths observed.
-- risks: 2–3 motivational risks or engagement concerns.
-- action_points: 3–4 development actions to foster intrinsic motivation.
-- profile_archetype: short motivational style label.
-Supportive, professional tone."""
-
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 
 
 # ---------- RIBS ----------
@@ -1326,41 +1243,34 @@ class GenerateRIBSReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(RibsReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Runco Ideational Behavior Scale RIBS creativity ideation divergent thinking problem solving")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a psychologist specializing in creativity and innovation.
+        Based on the following Runco Ideational Behavior Scale (RIBS-SF) results,
+        write a detailed professional report.
 
-        prompt = f"""You are a psychologist specialising in creativity and ideation.
-Using the reference material below AND the assessment data, produce a structured RIBS report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Interpret the ideation level and creativity potential.
+        - Discuss implications for innovation, problem-solving, and work adaptability.
+        - Identify strengths and possible developmental opportunities.
+        - Suggest 3–5 actionable strategies to enhance creative thinking at work.
+        - Supportive tone, clear paragraphs, no markdown.
+        - End with 3 actionable suggestions.
+        """
+        result = chain.run(prompt)
 
-Assessment Data:
-{assessment_data}
+        print("✅ AI Report Generated Successfully")
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's ideational creativity.
-- average_score: the RIBS average score.
-- ideation_level: High Ideation, Moderate Ideation, or Low Ideation.
-- strengths: 2–3 creativity strengths observed.
-- risks: 2–3 potential limitations in creative thinking.
-- action_points: 3–4 strategies to enhance creative ideation at work.
-- profile_archetype: short creativity label.
-Supportive, professional tone.
-"""
-
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 # ---------- CAQ Report ----------
 class GenerateCAQReportView(APIView):
     authentication_classes = [
@@ -1406,42 +1316,33 @@ class GenerateCAQReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(CaqReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Creative Achievement Questionnaire CAQ creative domains arts science writing design achievement")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a psychologist specializing in creativity and innovation.
+        Based on the following Creative Achievement Questionnaire (CAQ-SF) results,
+        write a professional report.
 
-        prompt = f"""You are a psychologist specialising in creativity and creative achievement.
-Using the reference material below AND the assessment data, produce a structured CAQ report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Summarize the overall creative achievement level.
+        - Highlight the strongest creative domains (e.g., arts, science, design).
+        - Discuss the implications for professional or academic creativity.
+        - Provide 3–5 personalized recommendations for leveraging creative potential.
+        - Maintain supportive tone. No markdown. End with 3 clear actionable suggestions.
+        """
+        result = chain.run(prompt)
 
-Assessment Data:
-{assessment_data}
+        print("✅ AI Report Generated Successfully")
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's creative achievement profile.
-- total_score: the CAQ total score (integer).
-- overall_level: High, Moderate, Low, or Minimal.
-- creative_domains: list key creative domains with achievement level and 1 sentence note each.
-- strengths: 2–3 strongest creative areas.
-- risks: 2–3 underdeveloped domains or creative barriers.
-- action_points: 3–4 personalised recommendations to leverage or expand creative potential.
-- profile_archetype: short creative profile label.
-Supportive, professional tone.
-"""
-
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 
 
 # ---------- ISE Report ----------
@@ -1489,41 +1390,32 @@ class GenerateISEReportView(APIView):
             allow_dangerous_deserialization=True,
         )
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
-        structured_llm = llm.with_structured_output(IseReport)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
+        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
 
-        docs = retriever.invoke("Innovation Self-Efficacy Scale ISE creative confidence problem solving experimentation innovation")
-        context = "\n\n".join([d.page_content for d in docs])
+        prompt = f"""
+        You are a workplace psychologist. Based on the following Innovation Self-Efficacy Scale (ISE-SF) results,
+        write a professional innovation-focused report.
 
-        prompt = f"""You are a workplace psychologist specialising in innovation and self-efficacy.
-Using the reference material below AND the assessment data, produce a structured ISE report.
+        Assessment Data:
+        {assessment_data}
 
-Reference Material:
-{context}
+        Guidelines:
+        - Interpret the confidence level to innovate and apply creative ideas.
+        - Explain implications for problem-solving, experimentation, and leadership.
+        - Highlight strengths and development zones in innovation mindset.
+        - Provide 3–5 practical recommendations to enhance innovation confidence.
+        - Supportive, engaging tone. No markdown. End with 3 actionable suggestions.
+        """
+        result = chain.run(prompt)
 
-Assessment Data:
-{assessment_data}
+        print("✅ AI Report Generated Successfully")
 
-Instructions:
-- summary: 3–4 sentence overview of the employee's innovation confidence.
-- average_score: the ISE average score.
-- innovation_level: High Innovation Confidence, Moderate, or Low.
-- strengths: 2–3 innovation confidence strengths.
-- risks: 2–3 areas where innovation confidence is limited.
-- action_points: 3–4 practical recommendations to build innovation self-efficacy.
-- profile_archetype: short innovation profile label.
-Supportive, engaging, professional tone.
-"""
-
-        result = structured_llm.invoke(prompt)
-
-        print("✅ AI Report Generated Successfully (structured JSON)")
-
-        import json
-        assignment.ai_report = json.dumps(result.model_dump())
+        # Save AI report to database
+        assignment.ai_report = result
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result.model_dump()})
+        return Response({"report": result})
 # recruitment/views.py
 import os
 import numpy as np

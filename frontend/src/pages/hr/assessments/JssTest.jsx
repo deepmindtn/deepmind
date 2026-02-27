@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./BigFiveTest.css"; // même style que Big Five / DISC
 import { Download, RotateCcw, ArrowRight, ArrowLeft } from "lucide-react";
+import StructuredReport from "./StructuredReport";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
@@ -134,7 +135,7 @@ export default function JssTest() {
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const questionsPerPage = 4;
@@ -154,7 +155,7 @@ export default function JssTest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1); // Show results page
         }
       })
@@ -194,19 +195,19 @@ async function submit() {
     });
     const reportData = await reportRes.json();
     if (!reportRes.ok) throw new Error(reportData?.error || "Erreur génération rapport.");
-    const reportText = reportData.report || "";
+    const reportObj = reportData.report || null;
 
     // 2) Soumettre réponses + metrics + rapport
     const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
       method: "POST",
       headers: config.headers,
-      body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+      body: JSON.stringify({ answers, metrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
     });
     const submitData = await submitRes.json();
     if (!submitRes.ok) throw new Error(submitData?.error || "Erreur lors du submit.");
 
     // 3) Mettre à jour UI
-    setAiReport(reportText);
+    setAiReport(reportObj);
     setStep(totalPages + 1);
   } catch (err) {
     alert(err.message);
@@ -217,7 +218,8 @@ async function submit() {
 
 
   function downloadReport() {
-    const blob = new Blob([aiReport], { type: "text/plain" });
+    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -331,7 +333,7 @@ async function submit() {
                 <div className="b5-card-title">Rapport IA — JSS</div>
                 <div className="b5-report">
                   <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-                    {aiReport}
+                    <StructuredReport report={aiReport} />
                   </pre>
                 </div>
               </div>

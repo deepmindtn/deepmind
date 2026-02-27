@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   BrainCircuit,
   ChevronRight,
@@ -277,7 +278,7 @@ export default function GCOSTest() {
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -306,7 +307,7 @@ export default function GCOSTest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1); // Show results page
         }
         setFetching(false);
@@ -375,7 +376,7 @@ export default function GCOSTest() {
         body: JSON.stringify({ answers, metrics }),
       });
       const reportData = await reportRes.json();
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // B) Submit Final Status
       // Note: Adjust URL if your backend uses a generic submit endpoint or specific GCOS one
@@ -385,14 +386,14 @@ export default function GCOSTest() {
         body: JSON.stringify({ 
             answers, 
             metrics, 
-            ai_report: reportText,
+            ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""),
             assessment_type: "GCOS" // explicit type often helps backend
         }),
       });
 
       if (!submitRes.ok) throw new Error("Erreur lors de la soumission.");
 
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1); // Move to results
     } catch (e) {
       console.error(e);
@@ -403,7 +404,8 @@ export default function GCOSTest() {
   }
 
   function downloadReport() {
-    const blob = new Blob([aiReport], { type: "text/plain" });
+    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -575,7 +577,7 @@ export default function GCOSTest() {
                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
                    setAnswers({});
                    setStep(1);
-                   setAiReport("");
+                   setAiReport(null);
                 }}>
                   <RotateCcw size={16} /> Recommencer
                 </button>
@@ -638,7 +640,7 @@ export default function GCOSTest() {
                     </div>
                     
                     <div style={styles.aiReportBox}>
-                      {aiReport}
+                      <StructuredReport report={aiReport} />
                     </div>
                  </div>
               )}

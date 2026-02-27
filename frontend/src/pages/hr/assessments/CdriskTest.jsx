@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Download, ArrowRight, RotateCcw } from "lucide-react";
+import StructuredReport from "./StructuredReport";
 
 const SCALE = [
   "0. Pas du tout vrai",
@@ -32,7 +33,7 @@ export default function CDRISCTest() {
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
   const [answers, setAnswers] = useState({});
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -57,7 +58,7 @@ export default function CDRISCTest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(2); // Show results page (step 2)
         }
       })
@@ -82,7 +83,7 @@ export default function CDRISCTest() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Erreur génération rapport.");
-      setAiReport(data.report || "");
+      setAiReport(data.report || null);
       setStep(2);
     } catch (e) {
       alert(e.message);
@@ -133,9 +134,10 @@ export default function CDRISCTest() {
           {aiReport && (
             <div className="b5-card">
               <h3>Rapport IA</h3>
-              <pre style={{ whiteSpace: "pre-wrap" }}>{aiReport}</pre>
+              <StructuredReport report={aiReport} />
               <button className="b5-btn" onClick={() => {
-                const blob = new Blob([aiReport], { type: "text/plain" });
+                const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;

@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "./BigFiveTest.css";
 import { Download, RotateCcw, ArrowRight, ArrowLeft, AlertTriangle } from "lucide-react";
+import StructuredReport from "./StructuredReport";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -181,7 +182,7 @@ export default function MaslachTest() {
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
 
   const perPage = 5;
   const totalPages = Math.ceil(QUESTIONS.length / perPage);
@@ -208,7 +209,7 @@ export default function MaslachTest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1); // Show results page
         }
       })
@@ -251,7 +252,7 @@ export default function MaslachTest() {
     if (!assignmentId) return;
     setAiLoading(true);
     setAiError("");
-    setAiReport("");
+    setAiReport(null);
 
     try {
       const res = await fetch(`${API_BASE}/api/maslach/report/${assignmentId}/`, {
@@ -425,9 +426,7 @@ export default function MaslachTest() {
                 {aiLoading && <p>{t.aiGenerating}</p>}
                 {aiError && <p style={{ color: "#b91c1c" }}>{aiError}</p>}
                 {aiReport && (
-                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", lineHeight: 1.6 }}>
-                    {aiReport}
-                  </pre>
+                  <StructuredReport report={aiReport} />
                 )}
                 {!OPENAI_KEY && !aiReport && !aiLoading && (
                   <p style={{ opacity: 0.7 }}>
