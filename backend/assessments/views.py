@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
@@ -18,6 +20,12 @@ from .report_schemas import (
     BigFiveReport, DiscReport, KarasekReport, MaslachReport,
     JssReport, BrsReport, CdriscReport, WsesReport, GcosReport,
     RibsReport, CaqReport, IseReport,
+)
+from .score_formatters import (
+    format_karasek_scores, format_maslach_scores, format_disc_scores,
+    format_jss_scores, format_brs_scores, format_cdrisc_scores,
+    format_wses_scores, format_gcos_scores, format_ribs_scores,
+    format_caq_scores, format_ise_scores,
 )
 
 from .serializers import (
@@ -556,13 +564,8 @@ class GenerateKarasekReportView(APIView):
 
         # read metrics from request body first (sent before submit completes).
         metrics = request.data.get("metrics") or assignment.metrics or {}
-
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_karasek_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
 
@@ -586,13 +589,14 @@ class GenerateKarasekReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a senior occupational psychologist specialising in the Job Demands-Control-Support model.
-Using the reference material below AND the assessment data, produce a structured report.
+Using the reference material below AND the employee's precise JDC-S scores, produce a structured report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the work environment based on JDC-S scores.
@@ -631,13 +635,8 @@ class GenerateMaslachReportView(APIView):
 
         # read metrics from request body first (sent before submit completes).
         metrics = request.data.get("metrics") or assignment.metrics or {}
-
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_maslach_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
 
@@ -661,13 +660,15 @@ class GenerateMaslachReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a senior occupational psychologist specialising in burnout and the Maslach Burnout Inventory.
-Using the reference material below AND the assessment data, produce a structured burnout report.
+Using the reference material below AND the employee's precise MBI scores, produce a structured burnout report.
+IMPORTANT: Personal Accomplishment (PA) is scored INVERSELY — a LOW PA score indicates burnout risk.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overall burnout profile summary.
@@ -721,7 +722,6 @@ class GenerateDiscReportView(APIView):
     def post(self, request, assignment_id):
         assignment = None
         user_name = "Unknown"
-        template_code = "DISC" # Default fallback
 
         # ---------------------------------------------------------------
         # 🔍 PHASE 1: Resolve User & Assignment (Hybrid Logic)
@@ -734,9 +734,6 @@ class GenerateDiscReportView(APIView):
                     recruitee=request.user
                 )
                 user_name = str(assignment.recruitee)
-                # If CandidateAssignment has a template link, use it, else default
-                if hasattr(assignment, 'template') and assignment.template:
-                    template_code = assignment.template.code
             
             # CASE B: EMPLOYEE (Authenticated via Login/Session)
             elif request.user.is_authenticated:
@@ -745,7 +742,6 @@ class GenerateDiscReportView(APIView):
                     employee=request.user
                 )
                 user_name = str(assignment.employee)
-                template_code = assignment.template.code
             
             # CASE C: UNAUTHORIZED
             else:
@@ -773,14 +769,9 @@ class GenerateDiscReportView(APIView):
         if not metrics:
             return Response({"error": "No DISC metrics provided or stored."}, status=400)
 
-        assessment_data = {
-            "employee": user_name,
-            "template": template_code,
-            "status": assignment.status,
-            "score": metrics,
-        }
+        scores_text = format_disc_scores(metrics)
 
-        print(f"📝 Generating Report for: {user_name} | Data: {assessment_data}")
+        print(f"📝 Generating Report for: {user_name}")
 
         # ---------------------------------------------------------------
         # 🤖 PHASE 3: AI Generation (Wrapped to catch AI-specific errors)
@@ -814,13 +805,14 @@ class GenerateDiscReportView(APIView):
             context = "\n\n".join([d.page_content for d in docs])
 
             prompt = f"""You are a workplace psychologist specialising in DISC profiling.
-Using the reference material below AND the assessment data, produce a structured DISC report.
+Using the reference material below AND the employee's precise DISC scores, produce a structured DISC report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {user_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the DISC profile.
@@ -836,6 +828,7 @@ Supportive, professional tone.
 
             print("✅ AI Report Generated Successfully")
 
+            import json
             # Save AI report to database
             assignment.ai_report = json.dumps(result.model_dump())
             assignment.save(update_fields=["ai_report"])
@@ -873,12 +866,8 @@ class GenerateJssReportView(APIView):
         if not metrics:
             return Response({"error": "No JSS metrics found. Report not generated."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_jss_scores(metrics)
 
         # Charger l’index FAISS
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "jssindex")
@@ -895,13 +884,14 @@ class GenerateJssReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are an organisational psychologist specialising in job satisfaction measurement.
-Using the reference material below AND the assessment data, produce a structured JSS report.
+Using the reference material below AND the employee's precise JSS scores, produce a structured JSS report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the overall job satisfaction profile.
@@ -920,6 +910,7 @@ Supportive, professional tone.
 
         print("✅ AI Report Generated Successfully")
 
+        import json
         # Save to assignment
         assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
@@ -942,20 +933,14 @@ class GenerateBRSReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        # take metrics/answers from body first, fallback to assignment
+        # take metrics from body first, fallback to assignment
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
 
         if not metrics or not metrics.get("average"):
             return Response({"error": "No BRS metrics found in request or assignment."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_brs_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "brsindex")
         
@@ -979,13 +964,14 @@ class GenerateBRSReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in resilience and stress management.
-Using the reference material below AND the assessment data, produce a structured BRS report.
+Using the reference material below AND the employee's precise BRS scores, produce a structured BRS report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's resilience capacity.
@@ -1022,20 +1008,14 @@ class GenerateCDRISC10ReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        # Take metrics either from request or DB
+        # Take metrics from request or DB
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
 
         if not metrics or "total" not in metrics:
             return Response({"error": "No CD-RISC 10 metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_cdrisc_scores(metrics)
 
         # Load the FAISS vectorstore
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriskindex")
@@ -1065,13 +1045,14 @@ class GenerateCDRISC10ReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in resilience assessment.
-Using the reference material below AND the assessment data, produce a structured CD-RISC 10 report.
+Using the reference material below AND the employee's precise CD-RISC 10 scores, produce a structured report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's resilience capacity.
@@ -1111,17 +1092,11 @@ class GenerateWSESReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "average" not in metrics:
             return Response({"error": "No WSES metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_wses_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "wsesindex")
         
@@ -1145,13 +1120,14 @@ class GenerateWSESReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in self-efficacy and professional development.
-Using the reference material below AND the assessment data, produce a structured WSES report.
+Using the reference material below AND the employee's precise WSES scores, produce a structured WSES report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's work self-efficacy.
@@ -1186,7 +1162,6 @@ class GenerateGCOSReportView(APIView):
     def post(self, request, assignment_id):
         assignment = None
         user_name = "Unknown"
-        template_code = "GCOS"
 
         # Support both candidates and employees
         try:
@@ -1197,8 +1172,6 @@ class GenerateGCOSReportView(APIView):
                     recruitee=request.user
                 )
                 user_name = str(assignment.recruitee)
-                if hasattr(assignment, 'template') and assignment.template:
-                    template_code = assignment.template.code
             
             # CASE B: EMPLOYEE
             elif request.user.is_authenticated:
@@ -1207,7 +1180,6 @@ class GenerateGCOSReportView(APIView):
                     employee=request.user
                 )
                 user_name = str(assignment.employee)
-                template_code = assignment.template.code
             
             # CASE C: UNAUTHORIZED
             else:
@@ -1217,17 +1189,10 @@ class GenerateGCOSReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "autonomous" not in metrics:
             return Response({"error": "No GCOS metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": user_name,
-            "template": template_code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        scores_text = format_gcos_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "gcosindex")
         
@@ -1251,13 +1216,14 @@ class GenerateGCOSReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in motivation and self-determination theory.
-Using the reference material below AND the assessment data, produce a structured GCOS motivation profile.
+Using the reference material below AND the employee's precise GCOS scores, produce a structured GCOS motivation profile.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {user_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's motivational orientations.
@@ -1299,17 +1265,11 @@ class GenerateRIBSReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "average" not in metrics:
             return Response({"error": "No RIBS metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_ribs_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "ribsindex")
         
@@ -1333,13 +1293,14 @@ class GenerateRIBSReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a psychologist specialising in creativity and ideation.
-Using the reference material below AND the assessment data, produce a structured RIBS report.
+Using the reference material below AND the employee's precise RIBS scores, produce a structured RIBS report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's ideational creativity.
@@ -1379,17 +1340,11 @@ class GenerateCAQReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "total" not in metrics:
             return Response({"error": "No CAQ metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_caq_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "caqindex")
         
@@ -1413,13 +1368,14 @@ class GenerateCAQReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a psychologist specialising in creativity and creative achievement.
-Using the reference material below AND the assessment data, produce a structured CAQ report.
+Using the reference material below AND the employee's precise CAQ scores, produce a structured CAQ report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's creative achievement profile.
@@ -1462,17 +1418,11 @@ class GenerateISEReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "average" not in metrics:
             return Response({"error": "No ISE metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_ise_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "iseindex")
         
@@ -1496,13 +1446,14 @@ class GenerateISEReportView(APIView):
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in innovation and self-efficacy.
-Using the reference material below AND the assessment data, produce a structured ISE report.
+Using the reference material below AND the employee's precise ISE scores, produce a structured ISE report.
 
 Reference Material:
 {context}
 
-Assessment Data:
-{assessment_data}
+Employee: {employee_name}
+
+{scores_text}
 
 Instructions:
 - summary: 3–4 sentence overview of the employee's innovation confidence.
