@@ -41,6 +41,7 @@ User = get_user_model()
 from django.template import Template, Context
 from django.core.mail import EmailMultiAlternatives
 from accounts.models import EmailTemplate
+from django.db import transaction
 
 
 class AssignAssessmentView(generics.CreateAPIView):
@@ -350,13 +351,14 @@ class UploadPDFView(generics.UpdateAPIView):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
+from accounts.authentication import CandidateTokenAuthentication
+from django.conf import settings
+from .models import Assignment
 
 import os
-from dotenv import load_dotenv
-from assessments.models import Assignment  # adjust to your app
-from django.conf import settings
-load_dotenv()
 
 class GenerateHRReportView(APIView):
     permission_classes = [IsAuthenticated]
@@ -503,16 +505,49 @@ class GenerateBigFiveReportView(APIView):
                 OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
-            retriever = vectorstore.as_retriever()
+            # MMR retriever — fetches 6 diverse chunks from top-20 candidates.
+            # lambda_mult=0.7 balances relevance (1.0) vs diversity (0.0).
+            # This avoids returning 4 near-duplicate passages about the same facet.
+            retriever = vectorstore.as_retriever(
+                search_type="mmr",
+                search_kwargs={
+                    "k": 6,           # final chunks returned to the prompt
+                    "fetch_k": 20,    # candidate pool before MMR re-ranking
+                    "lambda_mult": 0.7,  # 0.7 = slightly favour relevance over diversity
+                    "filter": lambda meta: meta.get("section_type") != "methodology",
+                },
+            )
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
             structured_llm = llm.with_structured_output(BigFiveReport)
 
-            # Retrieve relevant context from the FAISS index
-            docs = retriever.invoke("Big Five OCEAN personality traits interpretation facets scores workplace behaviour")
+            # Targeted query focuses on trait-level interpretation content rather
+            # than methodology/statistics sections of academic papers.
+            docs = retriever.invoke(
+                "Big Five OCEAN personality trait descriptions facets behavioural interpretation "
+                "Extraversion Agreeableness Conscientiousness Neuroticism Openness workplace scores"
+            )
+
+            # ── Retrieval debug log ──────────────────────────────────────
+            print(f"\n{'='*60}")
+            print(f"[BigFive RAG] Retrieved {len(docs)} chunks")
+            for i, doc in enumerate(docs):
+                m = doc.metadata
+                print(
+                    f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                    f"section_title={m.get('section_title','—')!r:30s} "
+                    f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                    f"page={m.get('page_number', m.get('page','?'))}"
+                )
+                print(f"       preview: {doc.page_content[:400].replace(chr(10),' ')!r}")
+            print(f"{'='*60}\n")
+            # ────────────────────────────────────────────────────────────
+
             context = "\n\n".join([d.page_content for d in docs])
 
             prompt = f"""You are a senior workplace psychologist specialising in the Big Five / OCEAN model.
 Using the reference material below AND the employee's precise scores, produce a structured psychometric report.
+Where the reference material is general or introductory, draw on your deep psychometric expertise to provide
+specific, facet-level interpretations grounded in Big Five theory (Costa & McCrae NEO-PI-R framework).
 
 Reference Material:
 {context}
@@ -524,10 +559,22 @@ OCEAN Trait Scores (0–100):
 
 Score bands: Very High (80–100), High (60–79), Moderate (40–59), Low (20–39), Very Low (0–19).
 
+⚠️  CRITICAL SCORING RULES — read before writing any trait interpretation:
+1. NEUROTICISM direction: N is scored POSITIVELY for emotional instability / negative affect.
+   - N ≥ 60 (High / Very High) = prone to stress, anxiety, moodiness.
+   - N 40–59 (Moderate) = AVERAGE emotional reactivity: experiences normal stress and frustration;
+     NOT emotionally stable, NOT managing stress especially well — just typical.
+   - N ≤ 39 (Low) = genuinely calm, emotionally resilient, rarely distressed.
+   NEVER describe Moderate N as "manages stress effectively", "emotionally stable", or "resilient".
+   Moderate N means ordinary / typical — acknowledge both the everyday stress and the coping capacity.
+2. ALL traits: anchor every sentence to the actual numeric score and band. 50 = right in the middle.
+3. Facets must match the score direction, e.g., High C → strong Self-Discipline and Dutifulness;
+   Moderate E → neither highly assertive nor highly reserved.
+
 Instructions:
-- summary: 3–5 sentence executive summary referencing the actual scores.
+- summary: 3–5 sentence executive summary referencing the actual scores; do NOT speculate beyond what the scores indicate.
 - traits: For each of the 5 OCEAN traits state the score, level, a 2–3 sentence workplace interpretation,
-  2–3 strong facets implied by the score, and 1–2 weaker facets.
+  2–3 strong facets implied by the score, and 1–2 weaker facets. Use NEO-PI-R facet names where possible.
 - strengths: 3–4 key professional strengths derived from the full profile.
 - risks: 2–3 potential risks or development areas.
 - action_points: 4 tailored, concrete action points (title + description each).
