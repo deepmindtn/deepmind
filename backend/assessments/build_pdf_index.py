@@ -30,6 +30,20 @@ ASSESSMENT_REGISTRY = {
 }
 
 # ──────────────────────────────────────────────
+# Chunking configuration for each type of PDF.
+# ──────────────────────────────────────────────
+
+
+CHUNKING_CONFIG = {
+    "standard": {"size": 600, "overlap": 100},
+    "academic": {"size": 500, "overlap": 100},
+    "manual": {"size": 500, "overlap": 100},
+}
+
+MIN_PAGE_TEXT_LENGTH = 50
+MIN_SECTION_TEXT_LENGTH = 30
+
+# ──────────────────────────────────────────────
 # Regex patterns — ACADEMIC PAPERS ONLY
 # These are intentionally NOT applied to questionnaire/scale PDFs
 # because patterns like bare digit lines or
@@ -60,6 +74,7 @@ _SECTION_HEADING_RE = re.compile(
     r"^(?P<heading>"
     r"(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness(?:\s+to\s+Experience)?)"
     r"|(?:NEO|BFI|IPIP|Big\s*Five|OCEAN|DISC)"
+    r"|(?:Dominance|Influence|Steadiness|Compliance|Latitude|Demande|Soutien|Burnout|Resilience)"
     r"|(?:Facets?\s+of\s+\w+)"
     r"|(?:\d{1,2}\.?\s+[A-Z][A-Za-z\s\n]{3,80})" # Catches "1. Introduction" or "3.1. Validity" with newlines
     r"|(?:[A-Z][A-Z\s\n]{4,80})"                 # Catches fully capitalized headers like "THE VALIDATION PROCESS"
@@ -72,13 +87,18 @@ _SECTION_HEADING_RE = re.compile(
 #   general            — everything else (abstract, intro, conclusion prose, etc.)
 _TRAIT_HEADING_RE = re.compile(
     r"(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness"
-    r"|Facets?|NEO|BFI|IPIP|Big\s*Five|OCEAN|Domain\s+\d+)",
+    r"|Facets?|NEO|BFI|IPIP|Big\s*Five|OCEAN|Domain\s+\d+|DISC"
+    r"|Dominance|Influence|Steadiness|Compliance|Latitude|Demande|Soutien|Burnout|Resilience"
+    r"|Exhaustion|Depersonalization|Accomplishment|Autonomy|Control|Impersonal|Causality"
+    r"|Creative|Creativity|Achievement|Stress|Strain|Behavior|Behaviour|Stigma|Cognitive"
+    r"|Matrix|Matrices|Raven|Intelligence|Self-Esteem|Motivation|Orientation|Tension|Emotional"
+    r"|Karasek|Maslach|GCOS|CD-RISC|BRS|CAQ|JSS|ISE|RIBS)",
     re.IGNORECASE,
 )
 _METHOD_HEADING_RE = re.compile(
     r"(?:Method|Result|Statistic|Measure|Instrument|Procedure"
     r"|Participant|Sample|Data|Analys|Discussion|Conclusion|Introduction"
-    r"|Study|Design|Reliability|Validity|Factor|Regression|Correlation)",
+    r"|Study|Design|Reliability|Validity|Factor|Regression|Correlation|Scoring|Administration|Scoring\s+and\s+interpretation)",
     re.IGNORECASE,
 )
 
@@ -273,89 +293,159 @@ def load_pdfs_with_pymupdf(pdf_dir: str) -> dict[str, list[Document]]:
 # Per-document chunking
 # ──────────────────────────────────────────────
 
-def _chunk_standard(pages: list[Document], fname: str, assessment: str) -> list[Document]:
+def _create_chunk_metadata(fname: str, section_title: str, page_num: int, assessment: str) -> dict:
+    """Create metadata dictionary for a chunk."""
+    return {
+        "source_pdf": fname,
+        "section_title": section_title,
+        "section_type": _classify_section(section_title),
+        "page_number": page_num,
+        "assessment": assessment,
+    }
+
+
+def _extract_sections(text: str) -> list[tuple[str, str]]:
     """
-    Simple chunking for non-academic PDFs (questionnaires, scales, manuals).
-    Applies whitespace normalisation only. chunk_size=600, overlap=100.
+    Extract sections from text using _SECTION_HEADING_RE.
+    Returns list of (section_title, section_text) tuples.
+    """
+    heading_positions = [
+        (m.start(), m.group("heading").strip())
+        for m in _SECTION_HEADING_RE.finditer(text)
+    ]
+
+    if not heading_positions:
+        return [("general", text)]
+
+    sections = []
+    pre = text[: heading_positions[0][0]].strip()
+    if pre:
+        sections.append(("general", pre))
+
+    for i, (start_pos, heading) in enumerate(heading_positions):
+        end_pos = (
+            heading_positions[i + 1][0]
+            if i + 1 < len(heading_positions)
+            else len(text)
+        )
+        section_text = text[start_pos:end_pos].strip()
+        if section_text:
+            sections.append((heading, section_text))
+
+    return sections
+
+
+def _chunk_generic(
+    pages: list[Document],
+    fname: str,
+    assessment: str,
+    clean_fn,
+    chunk_size: int = 500,
+    chunk_overlap: int = 100,
+    section_aware: bool = True,
+) -> list[Document]:
+    """
+    Generic section-aware chunking logic used by both manual and academic paths.
+    
+    Args:
+        pages: List of page documents
+        fname: PDF filename
+        assessment: Assessment code
+        clean_fn: Function to clean text (e.g., clean_text_academic or normalize_whitespace)
+        chunk_size: Target chunk size in characters
+        chunk_overlap: Overlap between chunks
+        section_aware: Whether to split on section headings
+    
+    Returns:
+        List of chunked documents with rich metadata
     """
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=600,
-        chunk_overlap=100,
-        separators=["\n\n", "\n", ". ", " ", ""],
-    )
-    cleaned = []
-    for page_doc in pages:
-        text = normalize_whitespace(page_doc.page_content)
-        text = strip_references_section(text)
-        if len(text) > 50:
-            cleaned.append(Document(
-                page_content=text,
-                metadata={**page_doc.metadata, "assessment": assessment},
-            ))
-    return splitter.split_documents(cleaned)
-
-
-def _chunk_academic(pages: list[Document], fname: str, assessment: str) -> list[Document]:
-    """
-    Enhanced chunking for confirmed academic papers.
-    1. clean_text_academic  (strip page-number lines, journal headers/footers)
-    2. strip_references_section
-    3. Section-aware split on headings, then fine splitter within each section
-       (chunk_size=500, overlap=100)
-    4. Rich metadata: source_pdf, section_title, page_number, assessment
-    """
-    fine_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
     all_chunks: list[Document] = []
 
     for page_doc in pages:
         page_num = page_doc.metadata.get("page", 0)
-        text = clean_text_academic(page_doc.page_content)
+        text = clean_fn(page_doc.page_content)
         text = strip_references_section(text)
-        if len(text) < 50:
+        
+        if len(text) < MIN_PAGE_TEXT_LENGTH:
             continue
 
-        heading_positions = [
-            (m.start(), m.group("heading").strip())
-            for m in _SECTION_HEADING_RE.finditer(text)
-        ]
-
-        if not heading_positions:
-            sections = [("general", text)]
-        else:
-            sections = []
-            pre = text[: heading_positions[0][0]].strip()
-            if pre:
-                sections.append(("general", pre))
-            for i, (start_pos, heading) in enumerate(heading_positions):
-                end_pos = (
-                    heading_positions[i + 1][0]
-                    if i + 1 < len(heading_positions)
-                    else len(text)
-                )
-                section_text = text[start_pos:end_pos].strip()
-                if section_text:
-                    sections.append((heading, section_text))
-
-        for section_title, section_text in sections:
-            if len(section_text.strip()) < 30:
-                continue
-            sub_docs = fine_splitter.create_documents(
-                texts=[section_text],
-                metadatas=[{
-                    "source_pdf": fname,
-                    "section_title": section_title,
-                    "section_type": _classify_section(section_title),
-                    "page_number": page_num,
-                    "assessment": assessment,
-                }],
+        if not section_aware:
+            # Simple splitter without section awareness
+            sub_docs = splitter.create_documents(
+                texts=[text],
+                metadatas=[_create_chunk_metadata(fname, "general", page_num, assessment)],
             )
             all_chunks.extend(sub_docs)
+        else:
+            # Section-aware splitting
+            sections = _extract_sections(text)
+            
+            for section_title, section_text in sections:
+                if len(section_text.strip()) < MIN_SECTION_TEXT_LENGTH:
+                    continue
+                
+                sub_docs = splitter.create_documents(
+                    texts=[section_text],
+                    metadatas=[_create_chunk_metadata(fname, section_title, page_num, assessment)],
+                )
+                all_chunks.extend(sub_docs)
 
     return all_chunks
+
+
+def _chunk_standard(pages: list[Document], fname: str, assessment: str) -> list[Document]:
+    """
+    Simple chunking for non-academic PDFs (questionnaires, scales, manuals).
+    Applies whitespace normalisation only. chunk_size=600, overlap=100.
+    """
+    return _chunk_generic(
+        pages,
+        fname,
+        assessment,
+        clean_fn=normalize_whitespace,
+        chunk_size=CHUNKING_CONFIG["standard"]["size"],
+        chunk_overlap=CHUNKING_CONFIG["standard"]["overlap"],
+        section_aware=False,
+    )
+
+
+def _chunk_manual(pages: list[Document], fname: str, assessment: str) -> list[Document]:
+    """
+    Section-aware chunking for manuals and questionnaires.
+    Uses normalize_whitespace. chunk_size=500, overlap=100.
+    """
+    return _chunk_generic(
+        pages,
+        fname,
+        assessment,
+        clean_fn=normalize_whitespace,
+        chunk_size=CHUNKING_CONFIG["manual"]["size"],
+        chunk_overlap=CHUNKING_CONFIG["manual"]["overlap"],
+        section_aware=True,
+    )
+
+
+def _chunk_academic(pages: list[Document], fname: str, assessment: str) -> list[Document]:
+    """
+    Enhanced chunking for confirmed academic papers.
+    Uses clean_text_academic to strip page numbers and journal headers.
+    Section-aware split on headings, then fine splitting within each section.
+    chunk_size=500, overlap=100.
+    """
+    return _chunk_generic(
+        pages,
+        fname,
+        assessment,
+        clean_fn=clean_text_academic,
+        chunk_size=CHUNKING_CONFIG["academic"]["size"],
+        chunk_overlap=CHUNKING_CONFIG["academic"]["overlap"],
+        section_aware=True,
+    )
 
 
 # ──────────────────────────────────────────────
@@ -431,12 +521,12 @@ def build(assessment: str, api_key: str, method: str = "enhanced") -> None:
 
             if academic:
                 academic_count += 1
-                print(f"  📄 '{fname}' → academic  (section-aware, 500-char chunks)")
+                print(f"  📄 '{fname}' → academic (cleaning + section-aware, 500-char chunks)")
                 file_chunks = _chunk_academic(pages, fname, assessment)
             else:
                 standard_count += 1
-                print(f"  📄 '{fname}' → standard  (simple, 600-char chunks)")
-                file_chunks = _chunk_standard(pages, fname, assessment)
+                print(f"  📄 '{fname}' → standard/manual (section-aware, 500-char chunks)")
+                file_chunks = _chunk_manual(pages, fname, assessment)
 
             chunks.extend(file_chunks)
 
