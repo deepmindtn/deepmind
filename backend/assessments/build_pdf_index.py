@@ -59,25 +59,24 @@ REFERENCES_SECTION_RE = re.compile(
 _SECTION_HEADING_RE = re.compile(
     r"^(?P<heading>"
     r"(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness(?:\s+to\s+Experience)?)"
-    r"|(?:NEO|BFI|IPIP|Big\s*Five|OCEAN)"
+    r"|(?:NEO|BFI|IPIP|Big\s*Five|OCEAN|DISC)"
     r"|(?:Facets?\s+of\s+\w+)"
-    r"|(?:Domain\s+\d+[:.]\s*\w+)"
-    r"|(?:\d+\.\s+[A-Z][A-Za-z\s]{3,50})"
-    r"|(?:[A-Z][A-Z\s]{4,50})"
+    r"|(?:\d{1,2}\.?\s+[A-Z][A-Za-z\s\n]{3,80})" # Catches "1. Introduction" or "3.1. Validity" with newlines
+    r"|(?:[A-Z][A-Z\s\n]{4,80})"                 # Catches fully capitalized headers like "THE VALIDATION PROCESS"
     r")\s*$",
-    re.MULTILINE,
+    re.MULTILINE | re.IGNORECASE,
 )
 # Patterns used to classify a section heading into one of three types:
 #   trait_description  — OCEAN trait names, facet labels, instrument names
 #   methodology        — methods, statistics, participants, results, discussion
 #   general            — everything else (abstract, intro, conclusion prose, etc.)
 _TRAIT_HEADING_RE = re.compile(
-    r"^(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness"
+    r"(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness"
     r"|Facets?|NEO|BFI|IPIP|Big\s*Five|OCEAN|Domain\s+\d+)",
     re.IGNORECASE,
 )
 _METHOD_HEADING_RE = re.compile(
-    r"^(?:Method|Result|Statistic|Measure|Instrument|Procedure"
+    r"(?:Method|Result|Statistic|Measure|Instrument|Procedure"
     r"|Participant|Sample|Data|Analys|Discussion|Conclusion|Introduction"
     r"|Study|Design|Reliability|Validity|Factor|Regression|Correlation)",
     re.IGNORECASE,
@@ -89,9 +88,9 @@ def _classify_section(heading: str) -> str:
     Return a coarse section type tag stored in chunk metadata.
     Used at retrieval time to filter out pure methodology/statistics chunks.
     """
-    if _TRAIT_HEADING_RE.match(heading):
+    if _TRAIT_HEADING_RE.search(heading):
         return "trait_description"
-    if _METHOD_HEADING_RE.match(heading):
+    if _METHOD_HEADING_RE.search(heading):
         return "methodology"
     return "general"
 # ──────────────────────────────────────────────
