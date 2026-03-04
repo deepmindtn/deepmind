@@ -441,6 +441,158 @@ from .models import Assignment
 
 import os
 
+
+def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
+    """
+    Build targeted RAG retrieval queries based on specific employee scores.
+    This dynamically guides the vectorstore to fetch the most relevant psychological text.
+    """
+    queries = []
+    name = assessment_name.upper()
+
+    if name == 'BIG_FIVE':
+        if not isinstance(metrics, dict): return ["Big Five OCEAN personality trait descriptions facets behavioural interpretation workplace scores"]
+        raw_traits = metrics.get("traitScores") or metrics.get("trait") or {}
+        for trait, score in raw_traits.items():
+            if isinstance(score, (int, float)):
+                if score >= 70:
+                    queries.append(f"Big Five High {trait} personality trait workplace behavior interpretation")
+                elif score <= 30:
+                    queries.append(f"Big Five Low {trait} personality trait workplace behavior interpretation")
+        if not queries:
+            queries.append("Big Five OCEAN personality trait descriptions facets behavioural interpretation workplace scores")
+
+    elif name == 'KARASEK':
+        quadrant = str(metrics.get("quadrant", "")).lower().replace("_", " ")
+        if quadrant:
+            queries.append(f"Karasek JDC-S model {quadrant} strain burnout risk definition")
+        
+        dim = metrics.get("dimScores") or metrics.get("dim") or {}
+        D = int(dim.get("D", 50))
+        C = int(dim.get("C", 50))
+        S = int(dim.get("S", 50))
+        if D >= 67 and C <= 33:
+            queries.append("Karasek high psychological demands low decision latitude control stress")
+        if S <= 33:
+            queries.append("Karasek low social support isolation workplace buffer")
+
+    elif name == 'MASLACH':
+        sub = metrics.get("subScores") or {}
+        EE = int(sub.get("EE", 0))
+        DP = int(sub.get("DP", 0))
+        PA = int(sub.get("PA", 0))
+        if EE >= 60:
+            queries.append("Maslach Burnout Inventory high emotional exhaustion workplace intervention")
+        if DP >= 60:
+            queries.append("Maslach Burnout Inventory high depersonalisation cynicism coping strategies")
+        if PA <= 40:
+            queries.append("Maslach Burnout Inventory low personal accomplishment protective factors")
+        if not queries:
+            queries.append("Maslach Burnout Inventory subscales interpretation")
+
+    elif name == 'DISC':
+        scores = {k: int(metrics.get(k, 0)) for k in ('D', 'I', 'S', 'C')}
+        labels = {"D": "Dominance", "I": "Influence", "S": "Steadiness", "C": "Compliance"}
+        if any(scores.values()):
+            dominant = max(scores, key=scores.get)
+            queries.append(f"DISC profile dominant {labels.get(dominant)} behavioral style communication")
+        else:
+            queries.append("DISC profile styles dominance influence steadiness compliance")
+
+    elif name == 'JSS':
+        global_score = int(metrics.get("global", 0))
+        if global_score <= 125:
+            queries.append("Job Satisfaction Survey low overall satisfaction causes remedies")
+        elif global_score >= 171:
+            queries.append("Job Satisfaction Survey high overall satisfaction retention")
+        else:
+            queries.append("Job Satisfaction Survey subscales interpretation")
+        
+        dim = metrics.get("dimScores") or {}
+        for dim_name, score in dim.items():
+            if int(score) <= 8:
+                queries.append(f"Job Satisfaction Survey very low {dim_name} impact on employee motivation")
+
+    elif name == 'BRS':
+        level = str(metrics.get("level", "")).lower()
+        if "low" in level:
+            queries.append("Brief Resilience Scale low resilience workplace coping mechanisms")
+        elif "high" in level:
+            queries.append("Brief Resilience Scale high resilience traits in employees")
+        else:
+            queries.append("Brief Resilience Scale interpretation and workplace application")
+
+    elif name == 'CD_RISC':
+        total = int(metrics.get("total", 0))
+        if total <= 19:
+            queries.append("CD-RISC 10 low resilience stress management interventions")
+        elif total >= 30:
+            queries.append("CD-RISC 10 high resilience protective factors workplace")
+        else:
+            queries.append("CD-RISC 10 resilience scale moderate score meaning")
+
+    elif name == 'WSES':
+        avg = float(metrics.get("average", 0))
+        if avg < 3.0:
+            queries.append("Work Self-Efficacy Scale low confidence strategies to improve")
+        elif avg >= 4.0:
+            queries.append("Work Self-Efficacy Scale high self-efficacy employee performance")
+        else:
+            queries.append("Work Self-Efficacy Scale moderate score")
+
+    elif name == 'GCOS':
+        orientations = {
+            "Autonomous": float(metrics.get("autonomous", 0) or 0),
+            "Controlled": float(metrics.get("controlled", 0) or 0),
+            "Impersonal": float(metrics.get("impersonal", 0) or 0)
+        }
+        if any(orientations.values()):
+            dominant = max(orientations, key=orientations.get)
+            queries.append(f"General Causality Orientations Scale {dominant.lower()} orientation workplace motivation")
+            if dominant == "Impersonal":
+                queries.append("GCOS impersonal orientation amotivation burnout intervention")
+        else:
+            queries.append("General Causality Orientations Scale autonomous controlled impersonal")
+
+    elif name == 'RIBS':
+        avg = float(metrics.get("average", 0))
+        if avg >= 3.0:
+            queries.append("Runco Ideational Behavior Scale high ideation creativity innovation workplace")
+        elif avg < 2.0:
+            queries.append("Runco Ideational Behavior Scale low ideation barriers to creativity")
+        else:
+            queries.append("Runco Ideational Behavior Scale moderate score interpretation")
+
+    elif name == 'CAQ':
+        total = int(metrics.get("total", 0))
+        if total >= 13:
+            queries.append("Creative Achievement Questionnaire high score exceptional creative talent")
+        elif total <= 3:
+            queries.append("Creative Achievement Questionnaire minimal activity interpretation")
+        else:
+            queries.append("Creative Achievement Questionnaire domain involvement interpretation")
+            
+        domains = metrics.get("domainScores") or {}
+        for dom, score in domains.items():
+            if int(score) >= 2:
+                queries.append(f"CAQ recognized published achievement in {dom}")
+
+    elif name == 'ISE':
+        avg = float(metrics.get("average", 0))
+        if avg >= 4.0:
+            queries.append("Innovation Self-Efficacy Scale high confidence innovation leadership")
+        elif avg <= 2.99:
+            queries.append("Innovation Self-Efficacy Scale low innovation self-efficacy improvement")
+        else:
+            queries.append("Innovation Self-Efficacy Scale interpretation")
+
+    # Fallback to ensure we always run at least one query
+    if not queries:
+        queries.append(f"{name} assessment psychological interpretation in workplace")
+
+    return queries
+
+
 class GenerateBigFiveReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -457,12 +609,12 @@ class GenerateBigFiveReportView(APIView):
 
         try:
             #  read metrics from request body first.
-            request_metrics = request.data.get("metrics") or assignment.metrics or {}
+            metrics = request.data.get("metrics") or assignment.metrics or {}
 
             # Normalise key
             raw_traits = (
-                request_metrics.get("traitScores")
-                or request_metrics.get("trait")
+                metrics.get("traitScores")
+                or metrics.get("trait")
                 or {}
             )
 
@@ -522,10 +674,14 @@ class GenerateBigFiveReportView(APIView):
 
             # Targeted query focuses on trait-level interpretation content rather
             # than methodology/statistics sections of academic papers.
-            docs = retriever.invoke(
-                "Big Five OCEAN personality trait descriptions facets behavioural interpretation "
-                "Extraversion Agreeableness Conscientiousness Neuroticism Openness workplace scores"
-            )
+            dyn_queries = build_dynamic_queries("BIG_FIVE", metrics)
+            combined_query = " ".join(dyn_queries)
+            
+            # Use wider fetch_k and query combined
+            retriever.search_kwargs["k"] = 8 
+            retriever.search_kwargs["fetch_k"] = 30
+            
+            docs = retriever.invoke(combined_query)
 
             # ── Retrieval debug log ──────────────────────────────────────
             print(f"\n{'='*60}")
@@ -538,11 +694,14 @@ class GenerateBigFiveReportView(APIView):
                     f"source={m.get('source_pdf', m.get('source','?'))!r} "
                     f"page={m.get('page_number', m.get('page','?'))}"
                 )
-                print(f"       preview: {doc.page_content[:400].replace(chr(10),' ')!r}")
+                print(f"       preview: {doc.page_content.replace(chr(10),' ')!r}")
             print(f"{'='*60}\n")
             # ────────────────────────────────────────────────────────────
-
-            context = "\n\n".join([d.page_content for d in docs])
+            
+            # Deduplicate
+            unique_docs_map = {doc.page_content: doc for doc in docs}
+            unique_docs = list(unique_docs_map.values())
+            context = "\n\n".join([d.page_content for d in unique_docs])
 
             prompt = f"""You are a senior workplace psychologist specialising in the Big Five / OCEAN model.
 Using the reference material below AND the employee's precise scores, produce a structured psychometric report.
@@ -570,11 +729,12 @@ Score bands: Very High (80–100), High (60–79), Moderate (40–59), Low (20�
 2. ALL traits: anchor every sentence to the actual numeric score and band. 50 = right in the middle.
 3. Facets must match the score direction, e.g., High C → strong Self-Discipline and Dutifulness;
    Moderate E → neither highly assertive nor highly reserved.
+4. For Moderate scores (40-59), do NOT list extreme facets as "strong" or "weak". Instead, populate both the `strong_facets` and `weak_facets` lists with exactly ["Balanced"] or ["Average"]. Do not invent strong/weak facets for moderate traits.
 
 Instructions:
 - summary: 3–5 sentence executive summary referencing the actual scores; do NOT speculate beyond what the scores indicate.
 - traits: For each of the 5 OCEAN traits state the score, level, a 2–3 sentence workplace interpretation,
-  2–3 strong facets implied by the score, and 1–2 weaker facets. Use NEO-PI-R facet names where possible.
+  2–3 strong facets implied by the score, and 1–2 weaker facets. Use NEO-PI-R facet names where possible. (See Rule 4 for Moderate scores).
 - strengths: 3–4 key professional strengths derived from the full profile.
 - risks: 2–3 potential risks or development areas.
 - action_points: 4 tailored, concrete action points (title + description each).
@@ -632,7 +792,11 @@ class GenerateKarasekReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(KarasekReport)
 
-        docs = retriever.invoke("Karasek job demands control support model quadrant strain active passive")
+        dyn_queries = build_dynamic_queries("KARASEK", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a senior occupational psychologist specialising in the Job Demands-Control-Support model.
@@ -703,7 +867,11 @@ class GenerateMaslachReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(MaslachReport)
 
-        docs = retriever.invoke("Maslach burnout inventory emotional exhaustion depersonalization personal accomplishment")
+        dyn_queries = build_dynamic_queries("MASLACH", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a senior occupational psychologist specialising in burnout and the Maslach Burnout Inventory.
@@ -848,7 +1016,11 @@ class GenerateDiscReportView(APIView):
             )
             structured_llm = llm.with_structured_output(DiscReport)
 
-            docs = retriever.invoke("DISC profile Dominance Influence Steadiness Conscientiousness dimensions")
+            dyn_queries = build_dynamic_queries("DISC", metrics)
+            combined_query = " ".join(dyn_queries)
+            retriever.search_kwargs["k"] = 8
+            retriever.search_kwargs["fetch_k"] = 30
+            docs = retriever.invoke(combined_query)
             context = "\n\n".join([d.page_content for d in docs])
 
             prompt = f"""You are a workplace psychologist specialising in DISC profiling.
@@ -927,7 +1099,11 @@ class GenerateJssReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(JssReport)
 
-        docs = retriever.invoke("Job Satisfaction Survey JSS dimensions pay promotion supervision coworkers scores")
+        dyn_queries = build_dynamic_queries("JSS", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are an organisational psychologist specialising in job satisfaction measurement.
@@ -1007,7 +1183,11 @@ class GenerateBRSReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(BrsReport)
 
-        docs = retriever.invoke("Brief Resilience Scale BRS score resilience capacity stress coping workplace")
+        dyn_queries = build_dynamic_queries("BRS", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in resilience and stress management.
@@ -1088,7 +1268,11 @@ class GenerateCDRISC10ReportView(APIView):
         )
         structured_llm = llm.with_structured_output(CdriscReport)
 
-        docs = retriever.invoke("Connor-Davidson Resilience Scale CD-RISC score adversity stress adaptation workplace")
+        dyn_queries = build_dynamic_queries("CD_RISC", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in resilience assessment.
@@ -1163,7 +1347,11 @@ class GenerateWSESReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(WsesReport)
 
-        docs = retriever.invoke("Work Self-Efficacy Scale WSES confidence problem solving autonomy professional performance")
+        dyn_queries = build_dynamic_queries("WSES", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in self-efficacy and professional development.
@@ -1259,7 +1447,11 @@ class GenerateGCOSReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(GcosReport)
 
-        docs = retriever.invoke("General Causality Orientations Scale GCOS autonomous controlled impersonal motivation self-determination")
+        dyn_queries = build_dynamic_queries("GCOS", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in motivation and self-determination theory.
@@ -1336,7 +1528,11 @@ class GenerateRIBSReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(RibsReport)
 
-        docs = retriever.invoke("Runco Ideational Behavior Scale RIBS creativity ideation divergent thinking problem solving")
+        dyn_queries = build_dynamic_queries("RIBS", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a psychologist specialising in creativity and ideation.
@@ -1411,7 +1607,11 @@ class GenerateCAQReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(CaqReport)
 
-        docs = retriever.invoke("Creative Achievement Questionnaire CAQ creative domains arts science writing design achievement")
+        dyn_queries = build_dynamic_queries("CAQ", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a psychologist specialising in creativity and creative achievement.
@@ -1489,7 +1689,11 @@ class GenerateISEReportView(APIView):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(IseReport)
 
-        docs = retriever.invoke("Innovation Self-Efficacy Scale ISE creative confidence problem solving experimentation innovation")
+        dyn_queries = build_dynamic_queries("ISE", metrics)
+        combined_query = " ".join(dyn_queries)
+        retriever.search_kwargs["k"] = 8
+        retriever.search_kwargs["fetch_k"] = 30
+        docs = retriever.invoke(combined_query)
         context = "\n\n".join([d.page_content for d in docs])
 
         prompt = f"""You are a workplace psychologist specialising in innovation and self-efficacy.

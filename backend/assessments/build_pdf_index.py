@@ -35,13 +35,13 @@ ASSESSMENT_REGISTRY = {
 
 
 CHUNKING_CONFIG = {
-    "standard": {"size": 600, "overlap": 100},
-    "academic": {"size": 500, "overlap": 100},
-    "manual": {"size": 500, "overlap": 100},
+    "standard": {"size": 1000, "overlap": 200},
+    "academic": {"size": 1200, "overlap": 250},
+    "manual": {"size": 1000, "overlap": 200},
 }
 
-MIN_PAGE_TEXT_LENGTH = 50
-MIN_SECTION_TEXT_LENGTH = 30
+MIN_PAGE_TEXT_LENGTH = 100
+MIN_SECTION_TEXT_LENGTH = 150
 
 # ──────────────────────────────────────────────
 # Regex patterns — ACADEMIC PAPERS ONLY
@@ -65,14 +65,15 @@ _ACADEMIC_HEADER_FOOTER_RE = re.compile(
 # Detects start of a References/Bibliography section
 # (fires only on an exact standalone heading line, not mid-paragraph text).
 REFERENCES_SECTION_RE = re.compile(
-    r"^\s*(References|Bibliography|REFERENCES|BIBLIOGRAPHY|Works Cited)\s*$",
-    re.MULTILINE,
+    r"^\s*(?:\d+\.?\s*)?(?:References|Bibliography|REFERENCES|BIBLIOGRAPHY|Works Cited|Literature Cited)(?:\s+and\s+Notes)?\s*$",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 # Section headings for section-aware chunking of academic papers.
 _SECTION_HEADING_RE = re.compile(
     r"^(?P<heading>"
-    r"(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness(?:\s+to\s+Experience)?)"
+    r"(?:Abstract|Introduction|Methods?|Results?|Discussion|Conclusions?|References?|Bibliography)"
+    r"|(?:Extraversion|Agreeableness|Conscientiousness|Neuroticism|Openness(?:\s+to\s+Experience)?)"
     r"|(?:NEO|BFI|IPIP|Big\s*Five|OCEAN|DISC)"
     r"|(?:Dominance|Influence|Steadiness|Compliance|Latitude|Demande|Soutien|Burnout|Resilience)"
     r"|(?:Facets?\s+of\s+\w+)"
@@ -96,7 +97,7 @@ _TRAIT_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 _METHOD_HEADING_RE = re.compile(
-    r"(?:Method|Result|Statistic|Measure|Instrument|Procedure"
+    r"(?:Method|Result|Statistic|Measure|Instrument|Procedure|Abstract|Reference|Bibliography"
     r"|Participant|Sample|Data|Analys|Discussion|Conclusion|Introduction"
     r"|Study|Design|Reliability|Validity|Factor|Regression|Correlation|Scoring|Administration|Scoring\s+and\s+interpretation)",
     re.IGNORECASE,
@@ -235,15 +236,34 @@ def _decode_cpdf_chars(text: str) -> str:
 
 def _load_pages_with_fallback(fpath: str, fname: str) -> tuple[list[Document], str]:
     """
-    Try PyMuPDFLoader first.  If the extracted text is garbled (broken CMap),
-    fall back to pypdf + /Cxx decoding.
+    Try PyMuPDF directly using block extraction to preserve column layout.
+    If the extracted text is garbled (broken CMap), fall back to pypdf + /Cxx decoding.
     Returns (list_of_page_Documents, loader_name_used).
     """
-    loader = PyMuPDFLoader(fpath)
-    pages = loader.load()
-    for p in pages:
-        p.metadata["file_name"] = fname
-        p.metadata.setdefault("page", 0)
+    pages = []
+    try:
+        import fitz
+        doc = fitz.open(fpath)
+        for page_num, page in enumerate(doc):
+            # Using blocks with sort=True reads in natural reading order
+            # which solves the multi-column text interleaving issue.
+            blocks = page.get_text("blocks", sort=True)
+            text_blocks = [b[4].strip() for b in blocks if b[6] == 0]
+            pages.append(Document(
+                page_content="\n\n".join(text_blocks),
+                metadata={"file_name": fname, "page": page_num, "source": fpath}
+            ))
+        loader_name = "pymupdf_blocks"
+    except Exception as e:
+        print(f"PyMuPDF block extraction failed for {fname}: {e}")
+        from langchain_community.document_loaders import PyMuPDFLoader
+        loader = PyMuPDFLoader(fpath)
+        pages = loader.load()
+        for p in pages:
+            p.metadata["file_name"] = fname
+            p.metadata.setdefault("page", 0)
+        loader_name = "pymupdf_fallback"
+        loader_name = "pymupdf_fallback"
 
     # Check whether the first non-empty page looks garbled
     probe = next((p.page_content for p in pages if p.page_content.strip()), "")
@@ -365,11 +385,22 @@ def _chunk_generic(
         separators=["\n\n", "\n", ". ", " ", ""],
     )
     all_chunks: list[Document] = []
+    in_references = False
+    in_references = False
 
     for page_doc in pages:
+        if in_references:
+            continue
+            
         page_num = page_doc.metadata.get("page", 0)
         text = clean_fn(page_doc.page_content)
-        text = strip_references_section(text)
+        
+        match = REFERENCES_SECTION_RE.search(text)
+        if match:
+            text = text[: match.start()]
+            in_references = True
+            
+        text = text.strip()
         
         if len(text) < MIN_PAGE_TEXT_LENGTH:
             continue
