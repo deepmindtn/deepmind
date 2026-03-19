@@ -21,7 +21,7 @@ ASSESSMENT_REGISTRY = {
     "maslach":  ("assessments/media/maslach",    "assessments/media/maslachindex"),
     "jss":      ("assessments/media/jss",        "assessments/media/jssindex"),
     "brs":      ("assessments/media/brs",        "assessments/media/brsindex"),
-    "cdrisc":   ("assessments/media/cdrisc",     "assessments/media/cdriskindex"),
+    "cdrisc":   ("assessments/media/cdrisc",     "assessments/media/cdriscindex"),
     "wses":     ("assessments/media/wses",       "assessments/media/wsesindex"),
     "gcos":     ("assessments/media/gcos",       "assessments/media/gcosindex"),
     "ribs":     ("assessments/media/ribs",       "assessments/media/ribsindex"),
@@ -42,6 +42,7 @@ CHUNKING_CONFIG = {
 
 MIN_PAGE_TEXT_LENGTH = 100
 MIN_SECTION_TEXT_LENGTH = 150
+MIN_CHUNK_WORDS = 20
 
 # ──────────────────────────────────────────────
 # Regex patterns — ACADEMIC PAPERS ONLY
@@ -61,6 +62,111 @@ _ACADEMIC_HEADER_FOOTER_RE = re.compile(
     r"^.{0,80}(Journal|Chapter|Copyright|©|All rights reserved|Published by|Vol\.|No\.|pp\.|Downloaded from).{0,80}$",
     re.MULTILINE | re.IGNORECASE,
 )
+
+# Matches book/chapter running headers of the form "Some Title   7"
+# (text + 2+ whitespace chars + page number at line end).
+# Covers both ASCII spaces and unicode em/en-space variants (U+2002/2003).
+# Applied in BOTH academic and standard cleaning so block-extracted headers
+# are stripped regardless of PDF type.
+_RUNNING_HEADER_RE = re.compile(
+    r"^.{3,80}[\s\u2002\u2003]{2,}\d{1,4}\s*$",
+    re.MULTILINE,
+)
+
+# Matches copyright/attribution boilerplate blocks found on cover pages and score sheets.
+# Examples: "Source: Smith et al. (2008)...", "All rights reserved...",
+# "Any use, copying, or distribution without prior written permission..."
+# These carry zero substantive content for RAG.
+_COPYRIGHT_BLOCK_RE = re.compile(
+    r"(?:Source\s*:|All rights reserved|Any use[,.]|without prior written permission"
+    r"|strictly prohibited|Copyright\s*©|\bproprietary\b)",
+    re.IGNORECASE,
+)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Unified structural-table detection
+# ──────────────────────────────────────────────────────────────────────────────
+# Problem: psychometric PDFs contain many table types —
+# instrument taxonomy tables, demographic tables, correlation
+# matrices, scale-means tables — all of which pollute the index with high-
+# similarity-scoring but zero-insight chunks.
+#
+# No single regex can catch all of them without over-fitting to one domain.
+# The robust solution is a TWO-SIGNAL approach:
+#
+#   Signal A — ABBREVIATION: catches psychometric instrument taxonomy tables
+#     (EFA/CFA/PredV rows, TABLE N headers, Authors/Scale/Items columns).
+#     Domain-specific but very precise for academic review papers.
+#
+#   Signal B — STRUCTURAL: catches numeric-column tables (demographics n/%,
+#     correlation matrices, means/SD grids). Works across ALL domains because
+#     it measures content shape (low prose density + columnar numbers), not
+#     domain vocabulary. Safe for questionnaire PDFs because Likert item text
+#     has HIGH prose density and NO columnar number patterns.
+#
+# A chunk is dropped only if Signal A OR Signal B fires.
+# Prose paragraphs (high density, no columnar patterns) always pass both.
+# Scale item rows (moderate density, 1-3 numbers per line) pass Signal B.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Signal A: abbreviation-based (psychometric taxonomy / instrument survey tables)
+_TABLE_ABBREV_RE = re.compile(
+    r"\b(?:EFA|CFA|PredV|IncrV|ConV|DisV|CFI|RMSEA|ICC|AVE|CR)\b"  # validation acronyms
+    r"|\b\d{1,3}\s+items?\b"            # "N items" column cell
+    r"|\bTABLE\s+\d+\b"                 # explicit table label
+    r"|Authors\s+Scale\s+Name",         # table column header row
+    re.IGNORECASE,
+)
+
+
+def _prose_density(text: str) -> float:
+    """Fraction of tokens that are alphabetic words (≥3 chars). Prose ≈ 0.80+, tables ≈ 0.05–0.45."""
+    tokens = text.split()
+    if not tokens:
+        return 1.0
+    alpha = sum(1 for t in tokens if re.search(r"[a-zA-Z]{3,}", t))
+    return alpha / len(tokens)
+
+
+def _has_columnar_numbers(text: str) -> bool:
+    """
+    Returns True if ≥2 lines each contain ≥3 numbers — the signature of
+    demographic tables, correlation matrices, and means/SD grids.
+    Scale item rows (1-2 numbers: M and SD) intentionally do NOT trigger this.
+    """
+    lines = text.split("\n")
+    dense_lines = sum(
+        1 for line in lines
+        if len(re.findall(r"\b\d+\.?\d*\b", line)) >= 3
+    )
+    return dense_lines >= 2
+
+
+def is_structural_table_chunk(text: str) -> bool:
+    """
+    Returns True if a chunk is a structural/data table that should be excluded
+    from the FAISS index. Works across all assessment domains without requiring
+    domain-specific tuning.
+    """
+    pd = _prose_density(text)
+    cn = _has_columnar_numbers(text)
+    
+    # If it's pure prose (density > 0.65), it's NEVER a structural table to be dropped.
+    if pd > 0.65:
+        return False
+        
+    # Pure symbolic/numeric junk (e.g., leftover Likert scales)
+    if pd < 0.20:
+        return True
+
+    # Signal A: psychometric taxonomy abbreviations
+    if _TABLE_ABBREV_RE.search(text):
+        # Only drop if it's somewhat sparse (not a dense paragraph mentioning an abbreviation)
+        if pd < 0.60:
+            return True
+            
+    # Signal B: columnar numeric structure with low prose density
+    return pd < 0.50 and cn
 
 # Detects start of a References/Bibliography section
 # (fires only on an exact standalone heading line, not mid-paragraph text).
@@ -174,6 +280,7 @@ def is_academic_pdf(first_page_text: str) -> bool:
 
 def normalize_whitespace(text: str) -> str:
     """Safe for ALL PDF types. Only collapses excessive blank lines."""
+    text = _RUNNING_HEADER_RE.sub("", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
@@ -185,6 +292,7 @@ def clean_text_academic(text: str) -> str:
     """
     text = _ACADEMIC_PAGE_NUMBER_RE.sub("", text)
     text = _ACADEMIC_HEADER_FOOTER_RE.sub("", text)
+    text = _RUNNING_HEADER_RE.sub("", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
@@ -327,30 +435,41 @@ def _create_chunk_metadata(fname: str, section_title: str, page_num: int, assess
 def _extract_sections(text: str) -> list[tuple[str, str]]:
     """
     Extract sections from text using _SECTION_HEADING_RE.
-    Returns list of (section_title, section_text) tuples.
+    Returns list of (section_title, section_text) tuples where section_text
+    is the heading line PLUS its body — but the body length alone must meet
+    MIN_SECTION_TEXT_LENGTH to avoid storing heading-only chunks.
     """
-    heading_positions = [
-        (m.start(), m.group("heading").strip())
+    # Collect (match_start, match_end, heading_string) so we can separate
+    # the heading from its body when checking length.
+    heading_matches = [
+        (m.start(), m.end(), m.group("heading").strip())
         for m in _SECTION_HEADING_RE.finditer(text)
     ]
 
-    if not heading_positions:
+    if not heading_matches:
         return [("general", text)]
 
     sections = []
-    pre = text[: heading_positions[0][0]].strip()
+    pre = text[: heading_matches[0][0]].strip()
     if pre:
         sections.append(("general", pre))
 
-    for i, (start_pos, heading) in enumerate(heading_positions):
+    for i, (start_pos, heading_end, heading) in enumerate(heading_matches):
         end_pos = (
-            heading_positions[i + 1][0]
-            if i + 1 < len(heading_positions)
+            heading_matches[i + 1][0]
+            if i + 1 < len(heading_matches)
             else len(text)
         )
+        # Body is the text AFTER the heading match ends, up to the next heading.
+        # We check body length separately — if the body is too short, the section
+        # is just a heading line (title page, chapter break) and we skip it.
+        body = text[heading_end:end_pos].strip()
+        if len(body) < MIN_SECTION_TEXT_LENGTH:
+            continue
+
+        # section_text still includes the heading for context passed to the LLM.
         section_text = text[start_pos:end_pos].strip()
-        if section_text:
-            sections.append((heading, section_text))
+        sections.append((heading, section_text))
 
     return sections
 
@@ -411,7 +530,12 @@ def _chunk_generic(
                 texts=[text],
                 metadatas=[_create_chunk_metadata(fname, "general", page_num, assessment)],
             )
-            all_chunks.extend(sub_docs)
+            all_chunks.extend(
+                doc for doc in sub_docs
+                if len(doc.page_content.split()) >= MIN_CHUNK_WORDS
+                and not _COPYRIGHT_BLOCK_RE.search(doc.page_content)
+                and not is_structural_table_chunk(doc.page_content)
+            )
         else:
             # Section-aware splitting
             sections = _extract_sections(text)
@@ -424,7 +548,12 @@ def _chunk_generic(
                     texts=[section_text],
                     metadatas=[_create_chunk_metadata(fname, section_title, page_num, assessment)],
                 )
-                all_chunks.extend(sub_docs)
+                all_chunks.extend(
+                    doc for doc in sub_docs
+                    if len(doc.page_content.split()) >= MIN_CHUNK_WORDS
+                    and not _COPYRIGHT_BLOCK_RE.search(doc.page_content)
+                    and not is_structural_table_chunk(doc.page_content)
+                )
 
     return all_chunks
 
