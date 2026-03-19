@@ -37,14 +37,8 @@ function computeMetrics(answers) {
   if (scores.length < 6) return null;
 
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  let level = "";
-  if (avg >= 4.31) level = "Très haute résilience";
-  else if (avg >= 3.61) level = "Haute résilience";
-  else if (avg >= 3.0) level = "Résilience moyenne";
-  else if (avg >= 2.4) level = "Faible résilience";
-  else level = "Très faible résilience";
 
-  return { average: avg.toFixed(2), level, scores };
+  return { average: avg.toFixed(2), scores };
 }
 
 /* ---------- Component ---------- */
@@ -219,7 +213,7 @@ export default function BrsTest() {
             {metrics && (
               <div className="b5-card">
                 <div className="b5-card-title">Score moyen</div>
-                <div className="b5-card-sub">{metrics.average} / 5 → {metrics.level}</div>
+                <div className="b5-card-sub">{metrics.average} / 5</div>
               </div>
             )}
 

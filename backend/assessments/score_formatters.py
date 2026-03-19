@@ -185,23 +185,18 @@ def format_jss_scores(metrics: dict) -> str:
 def format_brs_scores(metrics: dict) -> str:
     """Format BRS scores. Average is 1.00–5.00; reverse items already applied."""
     average = float(metrics.get("average", 0))
-    level = str(metrics.get("level", ""))
 
     def band(a):
-        if a >= 4.31: return "Very High Resilience (4.31–5.00)"
-        if a >= 3.61: return "High Resilience (3.61–4.30)"
-        if a >= 3.0:  return "Average Resilience (3.00–3.60)"
-        if a >= 2.4:  return "Low Resilience (2.40–2.99)"
-        return        "Very Low Resilience (1.00–2.39)"
+        if a >= 4.31: return "High Resilience"
+        if a >= 3.00: return "Normal Resilience"
+        return "Low Resilience"
 
     return (
         "Brief Resilience Scale (BRS) Scores:\n"
         "6 items, Likert 1–5 (reverse-scored items 2, 4, 6 already corrected):\n"
         f"  Average Score: {average:.2f}/5.00  →  {band(average)}\n"
-        f"  Level label:   {level}\n"
         "\n"
-        "Bands: Very High (4.31–5.00) | High (3.61–4.30) | Average (3.00–3.60)\n"
-        "       Low (2.40–2.99) | Very Low (1.00–2.39)"
+        "Bands: High (4.31–5.00) | Normal (3.00–4.30) | Low (1.00–2.99)"
     )
 
 

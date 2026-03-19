@@ -141,7 +141,7 @@ def _disc_metrics(answers: dict) -> dict:
     mapping = {"a": "D", "b": "I", "c": "C", "d": "S"}
 
     for qid, val in answers.items():
-        if not val:  # sécurité
+        if not val:  # safety
             continue
         t = mapping.get(str(val).lower())
         if t:
@@ -202,15 +202,15 @@ def _jss_metrics(answers: dict) -> dict:
     interpretation = {}
     for sub, val in subscores.items():
         if val >= 19:
-            interpretation[sub] = "Très haute satisfaction"
+            interpretation[sub] = "Very high satisfaction"
         elif val >= 14:
-            interpretation[sub] = "Satisfaction modérée"
+            interpretation[sub] = "Moderate satisfaction"
         elif val >= 9:
-            interpretation[sub] = "Faible satisfaction"
+            interpretation[sub] = "Low satisfaction"
         elif val >= 4:
-            interpretation[sub] = "Très faible satisfaction"
+            interpretation[sub] = "Very low satisfaction"
         else:
-            interpretation[sub] = "Non répondu"
+            interpretation[sub] = "Not answered"
 
     return {
         "subscores": subscores,
@@ -307,7 +307,7 @@ def _karasek_metrics(answers: dict) -> dict:
 def _brs_metrics(answers: dict) -> dict:
     """
     Brief Resilience Scale (BRS).
-    Items 2, 4, 6 sont inversés : 1->5, 2->4, 3->3, 4->2, 5->1
+    Items 2, 4, 6 are reverse-scored: 1->5, 2->4, 3->3, 4->2, 5->1
     """
     if not answers:
         return {}
@@ -329,17 +329,17 @@ def _brs_metrics(answers: dict) -> dict:
 
     avg = round(sum(scores) / len(scores), 2)
 
-    # Interprétation
+    # Interpretation
     if avg >= 4.31:
-        level = "Très haute résilience"
+        level = "Very high resilience"
     elif avg >= 3.61:
-        level = "Haute résilience"
+        level = "High resilience"
     elif avg >= 3.00:
-        level = "Résilience moyenne"
+        level = "Average resilience"
     elif avg >= 2.40:
-        level = "Faible résilience"
+        level = "Low resilience"
     else:
-        level = "Très faible résilience"
+        level = "Very low resilience"
 
     return {"average": avg, "level": level, "scores": scores}
 
@@ -372,11 +372,11 @@ def _cdrisc10_metrics(answers: dict) -> dict:
 
     # Level interpretation
     if total <= 20:
-        level = "Résilience faible"
+        level = "Low resilience"
     elif total <= 30:
-        level = "Résilience modérée"
+        level = "Moderate resilience"
     else:
-        level = "Haute résilience"
+        level = "High resilience"
 
     return {
         "total": total,
@@ -400,11 +400,11 @@ def _wses_metrics(answers: dict) -> dict:
     avg = round(total / count, 2) if count else 0
 
     if avg <= 2.5:
-        level = "Faible auto-efficacité"
+        level = "Low self-efficacy"
     elif avg <= 3.5:
-        level = "Auto-efficacité moyenne"
+        level = "Average self-efficacy"
     else:
-        level = "Forte auto-efficacité"
+        level = "High self-efficacy"
 
     return {"average": avg, "total": total, "range": "1–5", "level": level}
 
@@ -454,11 +454,11 @@ def _ribs_metrics(answers: dict) -> dict:
 
     avg = round(total / count, 2) if count else 0
     if avg <= 2.5:
-        level = "Faible idéation"
+        level = "Low ideation"
     elif avg <= 3.5:
-        level = "Idéation moyenne"
+        level = "Average ideation"
     else:
-        level = "Forte idéation"
+        level = "High ideation"
 
     return {"average": avg, "total": total, "range": "1–5", "level": level}
 def _caq_metrics(answers: dict) -> dict:
@@ -491,11 +491,11 @@ def _caq_metrics(answers: dict) -> dict:
         total += score
 
     level = (
-        "Faible réalisations créatives"
+        "Low creative achievement"
         if total <= 6
-        else "Modérées"
+        else "Moderate"
         if total <= 14
-        else "Élevées"
+        else "High"
     )
 
     return {
@@ -527,11 +527,11 @@ def _ise_metrics(answers: dict) -> dict:
     total = sum(vals)
 
     if avg <= 2.5:
-        level = "Faible auto-efficacité en innovation"
+        level = "Low innovation self-efficacy"
     elif avg <= 3.5:
-        level = "Auto-efficacité modérée"
+        level = "Moderate self-efficacy"
     else:
-        level = "Forte auto-efficacité en innovation"
+        level = "High innovation self-efficacy"
 
     return {
         "average": avg,

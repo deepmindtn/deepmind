@@ -514,13 +514,16 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
                 queries.append(f"Job Satisfaction Survey very low {dim_name} impact on employee motivation")
 
     elif name == 'BRS':
-        level = str(metrics.get("level", "")).lower()
-        if "low" in level:
-            queries.append("Brief Resilience Scale low resilience workplace coping mechanisms")
-        elif "high" in level:
-            queries.append("Brief Resilience Scale high resilience traits in employees")
+        average = float(metrics.get("average", 0))
+        if average < 3.00:
+            queries.append("Brief Resilience Scale low score employee workplace stress management recovery")
+            queries.append("improving workplace resilience occupational health organizational support for employees")
+        elif average >= 4.31:
+            queries.append("Brief Resilience Scale high score employee workplace performance adaptability")
+            queries.append("high workplace resilience team level positive psychological capacities organizational")
         else:
-            queries.append("Brief Resilience Scale interpretation and workplace application")
+            queries.append("Brief Resilience Scale interpretation employee workplace resilience occupational")
+            queries.append("workplace resilience organizational response to adversity healthy workers")
 
     elif name == 'CD_RISC':
         total = int(metrics.get("total", 0))
@@ -657,14 +660,14 @@ class GenerateBigFiveReportView(APIView):
                 OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
-            # MMR retriever — fetches 6 diverse chunks from top-20 candidates.
+            # MMR retriever — fetches 8 diverse chunks from top-30 candidates.
             # lambda_mult=0.7 balances relevance (1.0) vs diversity (0.0).
             # This avoids returning 4 near-duplicate passages about the same facet.
             retriever = vectorstore.as_retriever(
                 search_type="mmr",
                 search_kwargs={
-                    "k": 6,           # final chunks returned to the prompt
-                    "fetch_k": 20,    # candidate pool before MMR re-ranking
+                    "k": 8,           # final chunks returned to the prompt
+                    "fetch_k": 30,    # candidate pool before MMR re-ranking
                     "lambda_mult": 0.7,  # 0.7 = slightly favour relevance over diversity
                     "filter": lambda meta: meta.get("section_type") != "methodology",
                 },
@@ -676,10 +679,6 @@ class GenerateBigFiveReportView(APIView):
             # than methodology/statistics sections of academic papers.
             dyn_queries = build_dynamic_queries("BIG_FIVE", metrics)
             combined_query = " ".join(dyn_queries)
-            
-            # Use wider fetch_k and query combined
-            retriever.search_kwargs["k"] = 8 
-            retriever.search_kwargs["fetch_k"] = 30
             
             docs = retriever.invoke(combined_query)
 
@@ -1179,16 +1178,38 @@ class GenerateBRSReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 40,
+                "filter": lambda meta: meta.get("section_type") != "methodology"
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(BrsReport)
 
         dyn_queries = build_dynamic_queries("BRS", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+        
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[BRS RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a workplace psychologist specialising in resilience and stress management.
 Using the reference material below AND the employee's precise BRS scores, produce a structured BRS report.
@@ -1200,11 +1221,15 @@ Employee: {employee_name}
 
 {scores_text}
 
+CRITICAL:
+1. The reference material contains general workplace studies and multiple frameworks (such as the ADPRI Workplace Resilience Scale). 
+2. The employee DID NOT take the ADPRI scale. They took the 6-item Brief Resilience Scale (BRS) by Smith et al., which measures ONLY the speed and efficiency of bouncing back from stress.
+
 Instructions:
 - summary: 3–4 sentence overview of the employee's resilience capacity.
 - average_score: the BRS average score (1.00–5.00).
-- resilience_level: High Resilience (4.31–5.00), Normal Resilience (2.99–4.30), or Low Resilience (1.00–2.98).
-- strengths: 2–3 resilience strengths observed.
+- resilience_level: High Resilience (4.31–5.00), Normal Resilience (3.00–4.30), or Low Resilience (1.00–2.99).
+- strengths: 2–3 strengths STRICTLY related to stress recovery/bouncing back. DO NOT invent strengths about teamwork or social support.
 - risks: 2–3 resilience vulnerabilities or stress-coping challenges.
 - action_points: 3–4 practical strategies to maintain or improve resilience.
 - profile_archetype: short resilience profile label.
