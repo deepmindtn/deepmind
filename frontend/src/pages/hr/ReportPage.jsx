@@ -148,7 +148,6 @@ export default function ReportPage() {
         break;
 
       case "CDRISC10":
-      case "CDRISC":
         // Connor-Davidson Resilience Scale
         if (metrics.total !== undefined) {
           extraInfo = `Level: ${metrics.level || 'N/A'}`;

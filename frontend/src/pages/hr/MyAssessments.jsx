@@ -242,7 +242,7 @@ export default function MyAssessments() {
       DISC: "/disc",
       JSS: "/jss",
       BRS: "/brs",
-      CDRISC: "/cdrisc",
+      CDRISC10: "/cdrisc",
       WSES: "/wses",
       GCOS: "/gcos",
       RIBS: "/ribs",

@@ -245,7 +245,7 @@ REPORT_SCHEMA_REGISTRY = {
     "MASLACH":    MaslachReport,
     "JSS":        JssReport,
     "BRS":        BrsReport,
-    "CDRISC":     CdriscReport,
+    "CDRISC10":   CdriscReport,
     "WSES":       WsesReport,
     "GCOS":       GcosReport,
     "RIBS":       RibsReport,
