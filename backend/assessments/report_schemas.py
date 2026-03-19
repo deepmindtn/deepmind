@@ -44,8 +44,8 @@ class BigFiveReport(BaseModel):
 # ---------------------------------------------------------------------------
 
 class DiscDimension(BaseModel):
-    name: str = Field(description="Dimension name: Dominance, Influence, Steadiness, or Conscientiousness")
-    percentage: int = Field(description="Percentage score for this dimension (0–100)")
+    name: str = Field(description="Dimension name: Dominance, Influence, Steadiness, or Compliance")
+    score: int = Field(description="Raw score for this dimension (0-15). Do NOT use percentages.")
     description: str = Field(description="1–2 sentence description of this dimension in the employee's profile")
 
 

@@ -118,12 +118,14 @@ def format_disc_scores(metrics: dict) -> str:
     for key, label in DISC_LABELS.items():
         v = scores[key]
         p = pct(v)
-        lines.append(f"  {label} ({key}): {v}/15  ({p}%)  →  {band(p)}")
+        lines.append(f"  {label} ({key}): {v}/15  →  {band(p)}")
     lines += [
         f"Dominant DISC style: {DISC_LABELS[dominant]} ({dominant})",
         "",
         "Interpretation bands: High >40% | Moderate 25–40% | Low <25%",
         "Note: DISC measures communication / behavioural style, not ability.",
+        "",
+        "CRITICAL INSTRUCTION: In the JSON output for 'disc_dimensions', use the EXACT raw scores shown above (e.g., 4, 6) for the 'score' field. Do NOT calculate or output percentages."
     ]
     return "\n".join(lines)
 

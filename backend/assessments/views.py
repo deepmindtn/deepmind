@@ -494,10 +494,17 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
         scores = {k: int(metrics.get(k, 0)) for k in ('D', 'I', 'S', 'C')}
         labels = {"D": "Dominance", "I": "Influence", "S": "Steadiness", "C": "Compliance"}
         if any(scores.values()):
-            dominant = max(scores, key=scores.get)
-            queries.append(f"DISC profile dominant {labels.get(dominant)} behavioral style communication")
+            # Sort scores by primary and secondary dominant traits
+            sorted_traits = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            primary = labels.get(sorted_traits[0][0])
+            secondary = labels.get(sorted_traits[1][0])
+            
+            queries.append(
+                f"Workplace behaviors, strengths, communication style, and blind spots "
+                f"for a High {primary} and moderate {secondary} personality style."
+            )
         else:
-            queries.append("DISC profile styles dominance influence steadiness compliance")
+            queries.append("Practical workplace application, behaviors, strengths, and risks of DISC profile styles")
 
     elif name == 'JSS':
         global_score = int(metrics.get("global", 0))
@@ -527,12 +534,14 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
 
     elif name == 'CD_RISC':
         total = int(metrics.get("total", 0))
+        corporate_anchor = "corporate workplace employee occupational performance HR coaching"
         if total <= 19:
-            queries.append("CD-RISC 10 low resilience stress management interventions")
+            queries.append(f"CD-RISC 10 low resilience {corporate_anchor} professional development coping with work challenges")
         elif total >= 30:
-            queries.append("CD-RISC 10 high resilience protective factors workplace")
+            queries.append(f"CD-RISC 10 high resilience {corporate_anchor} leadership potential change management strengths")
         else:
-            queries.append("CD-RISC 10 resilience scale moderate score meaning")
+            queries.append(f"CD-RISC 10 moderate resilience {corporate_anchor} motivation daily work balance improvement")
+        queries.append("actionable employee workplace strategies professional strengths career risks")
 
     elif name == 'WSES':
         avg = float(metrics.get("average", 0))
@@ -568,17 +577,18 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
 
     elif name == 'CAQ':
         total = int(metrics.get("total", 0))
+        # Broad queries targeted at the paper's Validity / Norms sections
         if total >= 13:
-            queries.append("Creative Achievement Questionnaire high score exceptional creative talent")
+            queries.append("Creative Achievement Questionnaire high score highly creative individuals validity")
         elif total <= 3:
-            queries.append("Creative Achievement Questionnaire minimal activity interpretation")
+            queries.append("Creative Achievement Questionnaire normative data low score distribution")
         else:
-            queries.append("Creative Achievement Questionnaire domain involvement interpretation")
-            
+            queries.append("Creative Achievement Questionnaire average score norm variance")
+        # Domain-specific queries targeted at the Appendix/Scoring Rubric chunks
         domains = metrics.get("domainScores") or {}
         for dom, score in domains.items():
-            if int(score) >= 2:
-                queries.append(f"CAQ recognized published achievement in {dom}")
+            if int(score) > 0:
+                queries.append(f"Creative Achievement Questionnaire {dom} domain scoring rubric items appendix")
 
     elif name == 'ISE':
         avg = float(metrics.get("average", 0))
@@ -937,9 +947,7 @@ class GenerateDiscReportView(APIView):
         assignment = None
         user_name = "Unknown"
 
-        # ---------------------------------------------------------------
-        # 🔍 PHASE 1: Resolve User & Assignment (Hybrid Logic)
-        # ---------------------------------------------------------------
+        # Resolve User & Assignment (Hybrid Logic)
         try:
             # CASE A: CANDIDATE (Authenticated via Token)
             if isinstance(request.user, Recruitee):
@@ -967,9 +975,6 @@ class GenerateDiscReportView(APIView):
             print(f"❌ DB/AUTH ERROR: {str(e)}")
             return Response({"error": f"Server Error during lookup: {str(e)}"}, status=500)
 
-        # ---------------------------------------------------------------
-        # 📊 PHASE 2: Prepare Metrics
-        # ---------------------------------------------------------------
         # Try to take metrics from request body first (Real-time submission)
         metrics = request.data.get("metrics")
         
@@ -987,9 +992,6 @@ class GenerateDiscReportView(APIView):
 
         print(f"📝 Generating Report for: {user_name}")
 
-        # ---------------------------------------------------------------
-        # 🤖 PHASE 3: AI Generation (Wrapped to catch AI-specific errors)
-        # ---------------------------------------------------------------
         try:
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "discindex")
             
@@ -1007,7 +1009,15 @@ class GenerateDiscReportView(APIView):
                 ),
                 allow_dangerous_deserialization=True,
             )
-            retriever = vectorstore.as_retriever()
+            retriever = vectorstore.as_retriever(
+                search_type="mmr",
+                search_kwargs={
+                    "k": 8,
+                    "fetch_k": 40,
+                    "lambda_mult": 0.6,
+                    "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+                }
+            )
             llm = ChatOpenAI(
                 model="gpt-4o-mini",
                 temperature=0.1,
@@ -1017,10 +1027,25 @@ class GenerateDiscReportView(APIView):
 
             dyn_queries = build_dynamic_queries("DISC", metrics)
             combined_query = " ".join(dyn_queries)
-            retriever.search_kwargs["k"] = 8
-            retriever.search_kwargs["fetch_k"] = 30
             docs = retriever.invoke(combined_query)
-            context = "\n\n".join([d.page_content for d in docs])
+
+            # ── Retrieval debug log ──
+            print(f"\n{'='*60}")
+            print(f"[DISC RAG] Retrieved {len(docs)} chunks")
+            for i, doc in enumerate(docs):
+                m = doc.metadata
+                print(
+                    f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                    f"section_title={m.get('section_title','—')!r:30s} "
+                    f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                    f"page={m.get('page_number', m.get('page','?'))}"
+                )
+                print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+            print(f"{'='*60}\n")
+            
+            # Deduplicate identical chunks
+            unique_docs_map = {doc.page_content: doc for doc in docs}
+            context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
             prompt = f"""You are a workplace psychologist specialising in DISC profiling.
 Using the reference material below AND the employee's precise DISC scores, produce a structured DISC report.
@@ -1047,20 +1072,18 @@ Supportive, professional tone.
             print("✅ AI Report Generated Successfully")
 
             import json
-            # Save AI report to database
+
             assignment.ai_report = json.dumps(result.model_dump())
             assignment.save(update_fields=["ai_report"])
 
             return Response({"report": result.model_dump()})
 
         except Exception as e:
-            # This catches ONLY AI/LangChain errors
             print(f"❌ AI GENERATION ERROR: {str(e)}")
-            # Return a generic success so the frontend doesn't break, or return the error if you prefer
             return Response({
                 "report": "Unable to generate detailed AI report at this time. Please proceed with the standard results.",
                 "debug_error": str(e)
-            }, status=200) # Status 200 allows the frontend flow to finish even if AI fails
+            }, status=200)
     
 
 class GenerateJssReportView(APIView):
@@ -1270,7 +1293,7 @@ class GenerateCDRISC10ReportView(APIView):
         scores_text = format_cdrisc_scores(metrics)
 
         # Load the FAISS vectorstore
-        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriskindex")
+        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriscindex")
         
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
@@ -1285,7 +1308,15 @@ class GenerateCDRISC10ReportView(APIView):
             allow_dangerous_deserialization=True,
         )
 
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 7,
+                "fetch_k": 30,
+                "lambda_mult": 0.6,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
         llm = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0.1,
@@ -1295,10 +1326,25 @@ class GenerateCDRISC10ReportView(APIView):
 
         dyn_queries = build_dynamic_queries("CD_RISC", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[CD_RISC RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a workplace psychologist specialising in resilience assessment.
 Using the reference material below AND the employee's precise CD-RISC 10 scores, produce a structured report.
@@ -1314,9 +1360,9 @@ Instructions:
 - summary: 3–4 sentence overview of the employee's resilience capacity.
 - total_score: the CD-RISC 10 total score (0–40).
 - resilience_level: High (30–40), Moderate (20–29), or Low (0–19).
-- strengths: 2–3 resilience strengths based on the score.
+- strengths: 2–3 resilience strengths based on the score (do not hallucinate strengths they scored poorly on).
 - risks: 2–3 areas where resilience may be challenged.
-- action_points: 3–4 strategies to strengthen resilience.
+- action_points: 3–4 actionable workplace strategies to strengthen resilience.
 - profile_archetype: short resilience profile label.
 Professional, clear, supportive tone.
 """
@@ -1628,16 +1674,38 @@ class GenerateCAQReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 6,
+                "fetch_k": 25,
+                "lambda_mult": 0.6
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(CaqReport)
 
         dyn_queries = build_dynamic_queries("CAQ", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[CAQ RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a psychologist specialising in creativity and creative achievement.
 Using the reference material below AND the employee's precise CAQ scores, produce a structured CAQ report.

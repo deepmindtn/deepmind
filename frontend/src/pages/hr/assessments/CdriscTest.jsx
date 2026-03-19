@@ -76,6 +76,7 @@ export default function CDRISCTest() {
     }
     setLoading(true);
     try {
+      // 1. Report
       const res = await fetch(`${API_BASE}/api/cdrisc/report/${assignmentId}/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
@@ -83,7 +84,24 @@ export default function CDRISCTest() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Erreur génération rapport.");
-      setAiReport(data.report || null);
+      const reportObj = data.report || null;
+      
+      // 2. Submit 
+      const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          answers,
+          metrics,
+          ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""),
+          assessment_type: "CDRISC10",
+          overwrite: true
+        }),
+      });
+      const submitData = await submitRes.json();
+      if (!submitRes.ok) throw new Error(submitData?.detail || submitData?.error || "Erreur lors du submit.");
+
+      setAiReport(reportObj);
       setStep(2);
     } catch (e) {
       alert(e.message);
@@ -146,6 +164,17 @@ export default function CDRISCTest() {
                 URL.revokeObjectURL(url);
               }}>
                 <Download size={18}/> Télécharger
+              </button>
+              <button 
+                className="b5-btn b5-btn-outline" 
+                onClick={() => {
+                  setAnswers({});
+                  setAiReport(null);
+                  setStep(1);
+                }}
+                style={{ marginLeft: '10px' }}
+              >
+                <RotateCcw size={18}/> Recommencer
               </button>
             </div>
           )}
