@@ -320,12 +320,15 @@ export default function RIBSTest() {
     const config = getFetchConfig();
     try {
       // 1. Generate Report
+      const questionsDict = Object.fromEntries(
+        QUESTIONS.map((text, i) => [String(i + 1), text])
+      );
       const reportRes = await fetch(
         `${API_BASE}/api/ribs/report/${assignmentId}/`,
         {
           method: "POST",
           headers: config.headers,
-          body: JSON.stringify({ answers, metrics }),
+          body: JSON.stringify({ answers, metrics, questions: questionsDict }),
         }
       );
       const reportData = await reportRes.json();

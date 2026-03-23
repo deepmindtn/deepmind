@@ -61,7 +61,8 @@ def format_karasek_scores(metrics: dict) -> str:
 
 def format_maslach_scores(metrics: dict) -> str:
     """Format Maslach MBI scores for LLM prompt. PA scale is INVERTED."""
-    sub = metrics.get("subScores") or {}
+    sub = metrics.get("subScores") if "subScores" in metrics else metrics
+    
     EE = int(sub.get("EE", 0))
     DP = int(sub.get("DP", 0))
     PA = int(sub.get("PA", 0))
@@ -71,16 +72,24 @@ def format_maslach_scores(metrics: dict) -> str:
         if s <= 40: return "Low"
         return "Moderate"
 
+    ee_risk = "High Risk" if EE >= 60 else "Low Risk" if EE <= 40 else "Moderate Risk"
+    dp_risk = "High Risk" if DP >= 60 else "Low Risk" if DP <= 40 else "Moderate Risk"
+    # PA is INVERSE: Low score = High Risk
+    pa_risk = "High Risk" if PA <= 40 else "Low Risk" if PA >= 60 else "Moderate Risk"
+
     return (
-        "Maslach Burnout Inventory (MBI) Subscale Scores (0–100 normalised):\n"
-        f"  Emotional Exhaustion (EE):    {EE:>3}/100  →  {mbi_band(EE)}\n"
-        f"  Depersonalisation (DP):       {DP:>3}/100  →  {mbi_band(DP)}\n"
-        f"  Personal Accomplishment (PA): {PA:>3}/100  →  {mbi_band(PA)}\n"
+        "EMPLOYEE MBI SCORES (0–100 Normalised Scale):\n"
+        f" - Emotional Exhaustion (EE):    {EE:>3}/100  →  {mbi_band(EE)} ({ee_risk})\n"
+        f" - Depersonalisation (DP):       {DP:>3}/100  →  {mbi_band(DP)} ({dp_risk})\n"
+        f" - Personal Accomplishment (PA): {PA:>3}/100  →  {mbi_band(PA)} ({pa_risk})\n"
         "\n"
-        "⚠️  CRITICAL – Direction of burnout risk:\n"
-        "  EE and DP : HIGH scores = higher burnout risk.\n"
-        "  PA        : LOW  scores = higher burnout risk  (PA is a PROTECTIVE factor — lower means more burned out).\n"
-        "Score bands (0–100): Low ≤40 | Moderate 41–59 | High ≥60"
+        "--- CLINICAL INTERPRETATION RULES FOR AI ---\n"
+        "1. Emotional Exhaustion (EE): Measures feelings of being overextended/exhausted by work. (High score = Burnout)\n"
+        "2. Depersonalization (DP): Measures unfeeling/impersonal response toward recipients of service. (High score = Burnout)\n"
+        "3. Personal Accomplishment (PA): Measures feelings of competence and successful achievement. (LOW score = Burnout)\n"
+        "\n"
+        "SCORING CONTEXT: High ≥ 60 | Moderate 41-59 | Low ≤ 40.\n"
+        "Note: A 'Low' score in PA is clinically concerning, while a 'Low' score in EE/DP is positive."
     )
 
 
@@ -286,24 +295,33 @@ def format_gcos_scores(metrics: dict) -> str:
 # 10. RIBS  –  Runco Ideational Behavior Scale
 # ──────────────────────────────────────────────────────────────────────────────
 
-def format_ribs_scores(metrics: dict) -> str:
-    """Format RIBS scores. 10 items × 1-4 Likert; average 1.00–4.00."""
+def format_ribs_scores(metrics: dict, answers: dict = None, questions: dict = None) -> str:
+    """Format RIBS scores. 10 items, Likert 1–5; average 1.00–5.00, total 10–50."""
     average = float(metrics.get("average", 0))
     total = int(metrics.get("total", 0))
 
     def band(a):
-        if a >= 3.0: return "High Ideation (3.00–4.00)"
-        if a >= 2.0: return "Moderate Ideation (2.00–2.99)"
-        return       "Low Ideation (1.00–1.99)"
+        if a >= 3.5: return "High Ideation (3.50–5.00)"
+        if a >= 2.5: return "Moderate Ideation (2.50–3.49)"
+        return       "Low Ideation (1.00–2.49)"
 
-    return (
-        "Runco Ideational Behavior Scale (RIBS) Scores:\n"
-        "10 items, Likert 1–4 (1=Strongly Disagree  →  4=Strongly Agree):\n"
-        f"  Average Score: {average:.2f}/4.00  →  {band(average)}\n"
-        f"  Total Score:   {total}/40\n"
-        "\n"
-        "Bands: Low 1.00–1.99 | Moderate 2.00–2.99 | High 3.00–4.00"
-    )
+    lines = [
+        "Runco Ideational Behavior Scale (RIBS) Scores:",
+        "10 items, Likert 1–5:",
+        f"  Average Score: {average:.2f}/5.00  →  {band(average)}",
+        f"  Total Score:   {total}/50",
+        "",
+        "Bands: Low 1.00–2.49 | Moderate 2.50–3.49 | High 3.50–5.00"
+    ]
+
+    # Map candidate's specific responses
+    if answers and questions:
+        lines.append("\n--- CANDIDATE'S SPECIFIC RESPONSES ---")
+        for key, score in sorted(answers.items(), key=lambda x: int(x[0])):
+            question_text = questions.get(str(key), f"Question {key}")
+            lines.append(f"- '{question_text}': Scored {score}/5")
+
+    return "\n".join(lines)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

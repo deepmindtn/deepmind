@@ -488,18 +488,21 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
             queries.append("Karasek low social support risk buffering effect")
 
     elif name == 'MASLACH':
-        sub = metrics.get("subScores") or {}
+        sub = metrics.get("subScores") if "subScores" in metrics else metrics
+        
         EE = int(sub.get("EE", 0))
         DP = int(sub.get("DP", 0))
         PA = int(sub.get("PA", 0))
-        if EE >= 60:
-            queries.append("Maslach Burnout Inventory high emotional exhaustion workplace intervention")
+        
+        if EE >= 60: 
+            queries.append("emotional exhaustion job demands control social support interventions")
         if DP >= 60:
-            queries.append("Maslach Burnout Inventory high depersonalisation cynicism coping strategies")
-        if PA <= 40:
-            queries.append("Maslach Burnout Inventory low personal accomplishment protective factors")
+            queries.append("depersonalization cynicism organizational communication climate social support")
+        if PA <= 40: # PA is inversely scored
+            queries.append("low personal accomplishment professional efficacy engagement vigor dedication")
+            
         if not queries:
-            queries.append("Maslach Burnout Inventory subscales interpretation")
+            queries.append("Maslach Burnout Inventory MBI subscales interpretation and prevention")
 
     elif name == 'DISC':
         scores = {k: int(metrics.get(k, 0)) for k in ('D', 'I', 'S', 'C')}
@@ -557,12 +560,11 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
     elif name == 'WSES':
         avg = float(metrics.get("average", 0))
         if avg < 3.0:
-            queries.append("Work Self-Efficacy Scale low confidence strategies to improve")
+            queries.append("low occupational self-efficacy workplace risks lack of confidence coaching strategies HR interventions support")
         elif avg >= 4.0:
-            queries.append("Work Self-Efficacy Scale high self-efficacy employee performance")
+            queries.append("high occupational self-efficacy behavioral strengths leadership potential overconfidence risks management strategies")
         else:
-            queries.append("Work Self-Efficacy Scale moderate score")
-
+            queries.append("moderate occupational self-efficacy behavioral traits workplace risks coaching strategies interventions")
     elif name == 'GCOS':
         orientations = {
             "Autonomous": float(metrics.get("autonomous", 0) or 0),
@@ -585,12 +587,30 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
 
     elif name == 'RIBS':
         avg = float(metrics.get("average", 0))
-        if avg >= 3.0:
-            queries.append("Runco Ideational Behavior Scale high ideation creativity innovation workplace")
-        elif avg < 2.0:
-            queries.append("Runco Ideational Behavior Scale low ideation barriers to creativity")
+
+        queries.append("Runco Ideational Behavior Scale everyday creativity divergent thinking")
+        
+        if avg >= 3.5:
+            # Profile
+            queries.append("high ideation creative potential generating ideas strengths")
+            # Actionable Advice
+            queries.append("translating divergent thinking into creative accomplishment practical applications")
+            # Risks
+            queries.append("over-ideation fluency without originality negative variance risks")
+            
+        elif avg < 2.5:
+            # Profile
+            queries.append("low ideational behavior conventional thinking standard procedures")
+            # Risks
+            queries.append("limitations in divergent thinking barriers to originality")
+            # Actionable Advice
+            queries.append("interventions improving ideation developing creative potential")
+            
         else:
-            queries.append("Runco Ideational Behavior Scale moderate score interpretation")
+            # Profile
+            queries.append("moderate ideation balancing conventional problem solving with creativity")
+            # Actionable Advice
+            queries.append("enhancing everyday creativity transitioning to creative accomplishment")
 
     elif name == 'CAQ':
         total = int(metrics.get("total", 0))
@@ -927,16 +947,39 @@ class GenerateMaslachReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 30,
+                "lambda_mult": 0.7,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(MaslachReport)
 
         dyn_queries = build_dynamic_queries("MASLACH", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[MASLACH RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a senior occupational psychologist specialising in burnout and the Maslach Burnout Inventory.
 Using the reference material below AND the employee's precise MBI scores, produce a structured burnout report.
@@ -948,6 +991,8 @@ Reference Material:
 Employee: {employee_name}
 
 {scores_text}
+
+IMPORTANT: Personal Accomplishment (PA) is scored INVERSELY — a LOW PA score indicates burnout risk.
 
 Instructions:
 - summary: 3–4 sentence overall burnout profile summary.
@@ -970,6 +1015,7 @@ Maintain a compassionate, professional tone."""
 
         return Response({"report": result.model_dump()})
     
+
 import os
 import logging
 from django.conf import settings
@@ -1474,16 +1520,39 @@ class GenerateWSESReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 5,
+                "fetch_k": 30,
+                "lambda_mult": 0.5,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(WsesReport)
 
         dyn_queries = build_dynamic_queries("WSES", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[WSES RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a workplace psychologist specialising in self-efficacy and professional development.
 Using the reference material below AND the employee's precise WSES scores, produce a structured WSES report.
@@ -1664,8 +1733,10 @@ class GenerateRIBSReportView(APIView):
         if not metrics or "average" not in metrics:
             return Response({"error": "No RIBS metrics found."}, status=400)
 
+        answers = request.data.get("answers") or getattr(assignment, "answers", {})
+        questions = request.data.get("questions", {})
         employee_name = str(assignment.employee)
-        scores_text = format_ribs_scores(metrics)
+        scores_text = format_ribs_scores(metrics, answers, questions)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "ribsindex")
         
@@ -1681,16 +1752,80 @@ class GenerateRIBSReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        # Multi-query fetching
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 6,   # Fetch top 3 PER query (not total)
+                "fetch_k": 40,
+                "lambda_mult": 0.6,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(RibsReport)
 
         dyn_queries = build_dynamic_queries("RIBS", metrics)
-        combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
-        docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+        
+        # MULTI-QUERY RETRIEVAL: Execute each query separately
+        all_docs = []
+        for query in dyn_queries:
+            raw_docs = retriever.invoke(query)
+            
+            for doc in raw_docs:
+                m = doc.metadata
+                page = m.get("page", m.get("page_number", -1))
+                
+                try:
+                    page = int(page)
+                except (ValueError, TypeError):
+                    page = -1
+                
+                title = str(m.get("section_title", "")).lower()
+                
+                # No Title Pages (0) or Reference/Stat Pages
+                if page == 0 or page >= 13:
+                    continue
+                    
+                # No Statistical/Abstract sections
+                bad_sections = ["methodology", "abstract", "comparison", "validating"]
+                if any(bad in title for bad in bad_sections):
+                    continue
+                    
+                all_docs.append(doc)
+        
+        # Deduplicate identical chunks
+        seen = set()
+        unique_docs = []
+        for doc in all_docs:
+            m = doc.metadata
+            key = (
+                m.get("source_pdf") or m.get("source"),
+                m.get("page_number") or m.get("page"),
+                m.get("section_title")
+            )
+            if key not in seen:
+                seen.add(key)
+                unique_docs.append(doc)
+
+        # Enforce limit explicitly
+        final_docs = unique_docs[:6]
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[RIBS RAG] Retrieved {len(final_docs)} chunks")
+        for i, doc in enumerate(final_docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+
+        context = "\n\n".join([d.page_content for d in final_docs])
 
         prompt = f"""You are a psychologist specialising in creativity and ideation.
 Using the reference material below AND the employee's precise RIBS scores, produce a structured RIBS report.
