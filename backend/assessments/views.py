@@ -464,17 +464,28 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
 
     elif name == 'KARASEK':
         quadrant = str(metrics.get("quadrant", "")).lower().replace("_", " ")
-        if quadrant:
-            queries.append(f"Karasek JDC-S model {quadrant} strain burnout risk definition")
         
+        queries.append("Karasek Job Demands Control Support JDC-S theory definition")
+        
+        # 2. Quadrant-specific queries
+        if quadrant:
+            queries.append(f"Karasek JDC-S {quadrant} job characteristics workplace implications")
+            queries.append(f"{quadrant} profile action points interventions wellbeing")
+        
+        queries.append("Psychological Demands workload time pressure definition")
+        queries.append("Decision Latitude skill discretion autonomy definition")
+        queries.append("Social Support workplace buffer isolation definition")
+
+        # 4. Keep threshold logic for extreme risks
         dim = metrics.get("dimScores") or metrics.get("dim") or {}
         D = int(dim.get("D", 50))
         C = int(dim.get("C", 50))
         S = int(dim.get("S", 50))
+        
         if D >= 67 and C <= 33:
-            queries.append("Karasek high psychological demands low decision latitude control stress")
+            queries.append("Karasek high psychological demands low decision latitude high strain risk")
         if S <= 33:
-            queries.append("Karasek low social support isolation workplace buffer")
+            queries.append("Karasek low social support risk buffering effect")
 
     elif name == 'MASLACH':
         sub = metrics.get("subScores") or {}
@@ -558,13 +569,19 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
             "Controlled": float(metrics.get("controlled", 0) or 0),
             "Impersonal": float(metrics.get("impersonal", 0) or 0)
         }
+        queries.extend([
+                "autonomous causality orientation intrinsic motivation",
+                "controlled causality orientation external rewards deadlines",
+                "impersonal causality orientation amotivation lack of intentionality"
+            ])
         if any(orientations.values()):
             dominant = max(orientations, key=orientations.get)
-            queries.append(f"General Causality Orientations Scale {dominant.lower()} orientation workplace motivation")
-            if dominant == "Impersonal":
-                queries.append("GCOS impersonal orientation amotivation burnout intervention")
-        else:
-            queries.append("General Causality Orientations Scale autonomous controlled impersonal")
+            if dominant == "Controlled":
+                queries.append("control orientation negative affect frustration burnout pressure")
+            elif dominant == "Autonomous":
+                queries.append("autonomy orientation psychological need satisfaction well-being positive affect")
+            elif dominant == "Impersonal":
+                queries.append("impersonal orientation behavioral desistence incompetence apathy")
 
     elif name == 'RIBS':
         avg = float(metrics.get("average", 0))
@@ -592,16 +609,27 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
 
     elif name == 'ISE':
         avg = float(metrics.get("average", 0))
-        if avg >= 4.0:
-            queries.append("Innovation Self-Efficacy Scale high confidence innovation leadership")
-        elif avg <= 2.99:
-            queries.append("Innovation Self-Efficacy Scale low innovation self-efficacy improvement")
-        else:
-            queries.append("Innovation Self-Efficacy Scale interpretation")
+        answers = metrics.get("answers", {})
 
-    # Fallback to ensure we always run at least one query
-    if not queries:
-        queries.append(f"{name} assessment psychological interpretation in workplace")
+        search_construct_map = {
+            "1": "Questioning",
+            "2": "Questioning",
+            "3": "Associational Thinking",
+            "4": "Associational Thinking",
+            "5": "Observing",
+            "6": "Observing",
+            "7": "Networking",
+            "8": "Networking",
+            "9": "Experimenting",
+            "10": "Experimenting"
+        }
+        
+        # Identify the top 2 weaknesses for targeted search
+        sorted_items = sorted((answers).items(), key=lambda x: int(x[1]))
+        lowest_traits = list(set([search_construct_map[k] for k, v in sorted_items[:3]]))[:2]
+        weakness_keywords = " and ".join(lowest_traits)
+        
+        queries.append(f"practical exercises, workplace activities, and behavioral strategies to improve and develop {weakness_keywords} skills for innovation")
 
     return queries
 
@@ -797,16 +825,39 @@ class GenerateKarasekReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 40,
+                "lambda_mult": 0.65,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(KarasekReport)
 
         dyn_queries = build_dynamic_queries("KARASEK", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[KARASEK RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a senior occupational psychologist specialising in the Job Demands-Control-Support model.
 Using the reference material below AND the employee's precise JDC-S scores, produce a structured report.
@@ -817,6 +868,9 @@ Reference Material:
 Employee: {employee_name}
 
 {scores_text}
+
+CRITICAL INSTRUCTION: You MUST use the exact 'High' or 'Low' labels provided above when interpreting the dimensions in the report.
+"Do NOT describe a dimension as 'Moderate'.
 
 Instructions:
 - summary: 3–4 sentence overview of the work environment based on JDC-S scores.
@@ -838,6 +892,7 @@ Professional tone, grounded in JDC-S theory."""
         print("✅ AI Report Generated Successfully (structured JSON)")
 
         return Response({"report": result.model_dump()})
+
 
 class GenerateMaslachReportView(APIView):
     authentication_classes = [
@@ -1162,6 +1217,7 @@ Supportive, professional tone.
 
         return Response({"report": result.model_dump()})
     
+
 class GenerateBRSReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -1267,6 +1323,8 @@ Supportive, professional tone."""
         assignment.save(update_fields=["ai_report"])
 
         return Response({"report": result.model_dump()})
+
+
 class GenerateCDRISC10ReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -1376,6 +1434,8 @@ Professional, clear, supportive tone.
         assignment.save(update_fields=["ai_report"])
 
         return Response({"report": result.model_dump()})
+
+
 # ---------- WSES ----------
 class GenerateWSESReportView(APIView):
     authentication_classes = [
@@ -1514,16 +1574,39 @@ class GenerateGCOSReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 40,
+                "lambda_mult": 0.5,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(GcosReport)
 
         dyn_queries = build_dynamic_queries("GCOS", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[GCOS RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
         prompt = f"""You are a workplace psychologist specialising in motivation and self-determination theory.
 Using the reference material below AND the employee's precise GCOS scores, produce a structured GCOS motivation profile.
@@ -1544,7 +1627,10 @@ Instructions:
 - risks: 2–3 motivational risks or engagement concerns.
 - action_points: 3–4 development actions to foster intrinsic motivation.
 - profile_archetype: short motivational style label.
-Supportive, professional tone."""
+Supportive, professional tone.
+
+IMPORTANT: Ignore any statistical variables, p-values, or study methodology mentioned in the context. 
+Focus strictly on the behavioral descriptions and psychological definitions of the orientations."""
 
         result = structured_llm.invoke(prompt)
 
@@ -1636,6 +1722,8 @@ Supportive, professional tone.
         assignment.save(update_fields=["ai_report"])
 
         return Response({"report": result.model_dump()})
+
+
 # ---------- CAQ Report ----------
 class GenerateCAQReportView(APIView):
     authentication_classes = [
@@ -1757,12 +1845,17 @@ class GenerateISEReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        metrics = request.data.get("metrics") or assignment.metrics
+        raw_data = request.data or assignment.metrics
+        
+        if not raw_data:
+            return Response({"error": "No ISE data found."}, status=400)
+
+        metrics = raw_data.get("metrics")
         if not metrics or "average" not in metrics:
-            return Response({"error": "No ISE metrics found."}, status=400)
+            return Response({"error": "No ISE metrics found in request or assignment."}, status=400)
 
         employee_name = str(assignment.employee)
-        scores_text = format_ise_scores(metrics)
+        scores_text = format_ise_scores(raw_data)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "iseindex")
         
@@ -1778,18 +1871,41 @@ class GenerateISEReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={
+                "k": 5,
+                # "fetch_k": 20,
+                # "lambda_mult": 0.65,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(IseReport)
 
         dyn_queries = build_dynamic_queries("ISE", metrics)
         combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
         docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
 
-        prompt = f"""You are a workplace psychologist specialising in innovation and self-efficacy.
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[ISE RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
+
+        prompt = f"""You are a workplace psychologist specialising in innovation and self-efficacy based on Schar et al. (2017) Innovator's DNA model.
 Using the reference material below AND the employee's precise ISE scores, produce a structured ISE report.
 
 Reference Material:
@@ -1808,6 +1924,10 @@ Instructions:
 - action_points: 3–4 practical recommendations to build innovation self-efficacy.
 - profile_archetype: short innovation profile label.
 Supportive, engaging, professional tone.
+
+CRITICAL RULES:
+1. Base 'strengths' and 'risks' ONLY on the scores provided in "EXPLICIT AI INSTRUCTIONS" above. Do NOT invent constructs or behaviors not mentioned.
+2. The 'action_points' should directly target the lowest-scoring constructs with concrete practices from the reference material.
 """
 
         result = structured_llm.invoke(prompt)
@@ -1819,6 +1939,8 @@ Supportive, engaging, professional tone.
         assignment.save(update_fields=["ai_report"])
 
         return Response({"report": result.model_dump()})
+
+
 # recruitment/views.py
 import os
 import numpy as np

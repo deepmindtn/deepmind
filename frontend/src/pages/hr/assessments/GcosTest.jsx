@@ -387,7 +387,8 @@ export default function GCOSTest() {
             answers, 
             metrics, 
             ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""),
-            assessment_type: "GCOS" // explicit type often helps backend
+            assessment_type: "GCOS", // explicit type often helps backend
+            overwrite: true
         }),
       });
 

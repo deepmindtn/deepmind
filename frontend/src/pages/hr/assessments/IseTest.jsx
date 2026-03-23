@@ -35,12 +35,25 @@ const SCALE = [
 ];
 
 const QUESTIONS = [
-  { id: 1, text: "Je suis confiant(e) dans ma capacité à proposer de nouvelles idées au travail." },
-  { id: 2, text: "Je crois que je peux développer des solutions originales aux problèmes professionnels." },
-  { id: 3, text: "Je suis capable d’améliorer des processus ou méthodes existants." },
-  { id: 4, text: "Même face à des obstacles, je peux persévérer pour concrétiser mes idées." },
-  { id: 5, text: "Je peux convaincre les autres de la valeur de mes idées." },
-  { id: 6, text: "Je suis capable de mettre en œuvre des idées innovantes efficacement." },
+  // Questioning
+  { id: 1, text: "Je suis confiant(e) dans ma capacité à poser des questions qui remettent en cause le statu quo." },
+  { id: 2, text: "J'aime explorer les 'pourquoi' derrière les processus établis pour découvrir de nouvelles opportunités." },
+  
+  // Associational Thinking
+  { id: 3, text: "Je crois que je peux faire des liens entre des idées différentes pour développer des solutions originales." },
+  { id: 4, text: "Je suis capable de combiner des concepts de domaines distincts pour créer des approches novatrices." },
+  
+  // Observing
+  { id: 5, text: "Je suis capable d'observer attentivement le fonctionnement des processus pour identifier des améliorations." },
+  { id: 6, text: "Je remarque régulièrement les détails que d'autres manquent, ce qui m'aide à innover." },
+  
+  // Networking
+  { id: 7, text: "Je peux convaincre les autres de la valeur de mes idées en créant un réseau d'alliés." },
+  { id: 8, text: "Je suis à l'aise pour établir des connexions avec des personnes de horizons différents pour co-créer." },
+
+  // Experimenting
+  { id: 9, text: "Je suis capable de mener des expérimentations pour tester de nouvelles idées ou méthodes." },
+  { id: 10, text: "Je n'hésite pas à essayer de nouvelles approches, même si elles risquent d'échouer à court terme." },
 ];
 
 // Theme Colors mapped from CSS Variables
@@ -258,7 +271,7 @@ export default function ISETest() {
   const [fetching, setFetching] = useState(true);
 
   // Pagination Logic
-  const questionsPerPage = 3; 
+  const questionsPerPage = 5;
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
 
   // 3. Load Assessment Data (Check if valid and if already completed)

@@ -36,8 +36,7 @@ def format_karasek_scores(metrics: dict) -> str:
     quadrant = KARASEK_QUADRANT_LABELS.get(quadrant_raw, quadrant_raw.replace("_", " ").title())
 
     def band(s):
-        if s >= 67: return "High"
-        if s >= 34: return "Moderate"
+        if s >= 50: return "High"
         return "Low"
 
     return (
@@ -47,12 +46,12 @@ def format_karasek_scores(metrics: dict) -> str:
         f"  Social Support (S):             {S:>3}/100  →  {band(S)}\n"
         f"JDC-S Quadrant: {quadrant}\n"
         "\n"
-        "Score bands: Low 0–33 | Moderate 34–66 | High 67–100\n"
+        "Score bands: Low 0–49 | High 50–100 (Median Split)\n"
         "Quadrant logic:\n"
         "  High Strain  = High Demands + Low Control   (burnout risk)\n"
         "  Active       = High Demands + High Control  (stretch & growth)\n"
         "  Passive      = Low Demands  + Low Control   (boredom, disengagement)\n"
-        "  Low Strain   = Low Demands  + High Control  (comfortable, relaxed)"
+        "  Low Strain   = Low Demands  + High Control  (comfortable, relaxed)\n"
     )
 
 
@@ -362,21 +361,84 @@ def format_caq_scores(metrics: dict) -> str:
 # 12. ISE  –  Innovation Self-Efficacy Scale
 # ──────────────────────────────────────────────────────────────────────────────
 
-def format_ise_scores(metrics: dict) -> str:
-    """Format ISE scores. 6 items × 1-5 Likert; average 1.00–5.00."""
-    average = float(metrics.get("average", 0))
-    total = int(metrics.get("total", 0))
+def format_ise_scores(data: dict) -> str:
+    metrics_block = data.get("metrics", data) 
+    
+    average = float(metrics_block.get("average", 0))
+    total = int(metrics_block.get("total", 0))
+    
+    answers = data.get("answers", metrics_block.get("answers", {}))
+
+    construct_map = {
+        "1": "Questioning",
+        "2": "Questioning",
+        "3": "Associational Thinking",
+        "4": "Associational Thinking",
+        "5": "Observing",
+        "6": "Observing",
+        "7": "Networking",
+        "8": "Networking",
+        "9": "Experimenting",
+        "10": "Experimenting"
+    }
+
+    valid_answers = {}
+    for k, v in answers.items():
+        str_k = str(k)
+        if str_k in construct_map:
+            try:
+                valid_answers[str_k] = int(float(v))
+            except (ValueError, TypeError):
+                continue
+    
+    if valid_answers:
+        # Group questions by construct and get min/max scores for each
+        construct_scores = {}
+        for q_id, score in valid_answers.items():
+            construct = construct_map[q_id]
+            if construct not in construct_scores:
+                construct_scores[construct] = []
+            construct_scores[construct].append(score)
+        
+        # Get min score for each construct (represents weakest point)
+        # and average score for each construct
+        construct_stats = {}
+        for c, scores in construct_scores.items():
+            construct_stats[c] = {
+                'min': min(scores),
+                'avg': sum(scores) / len(scores)
+            }
+        
+        # Sort constructs by  minimum score
+        sorted_by_min = sorted(construct_stats.items(), key=lambda x: x[1]['min'])
+        
+        # Get 2 lowest-scoring constructs
+        weaknesses_constructs = [c for c, _ in sorted_by_min[:2]]
+        weaknesses = [f"{c} (Score: {construct_stats[c]['min']}/5)" for c in weaknesses_constructs]
+        
+        # Get 2 highest-scoring constructs
+        strengths_constructs = [c for c, _ in sorted_by_min[-2:]]
+        strengths = [f"{c} (Score: {construct_stats[c]['min']}/5)" for c in strengths_constructs]
+        strengths.reverse()  # Highest first
+    else:
+        weaknesses = ["Not enough item-level data"]
+        strengths = ["Not enough item-level data"]
 
     def band(a):
-        if a >= 4.0: return "High Innovation Confidence (4.00–5.00)"
-        if a >= 3.0: return "Moderate Innovation Confidence (3.00–3.99)"
-        return       "Low Innovation Confidence (1.00–2.99)"
+        if a >= 4.0: return "High Innovation Confidence"
+        if a >= 3.0: return "Moderate Innovation Confidence"
+        return       "Low Innovation Confidence"
 
-    return (
-        "Innovation Self-Efficacy Scale (ISE) Scores:\n"
-        "6 items, Likert 1–5 (1=Strongly Disagree  →  5=Strongly Agree):\n"
-        f"  Average Score: {average:.2f}/5.00  →  {band(average)}\n"
-        f"  Total Score:   {total}/30\n"
-        "\n"
-        "Bands: High (4.00–5.00) | Moderate (3.00–3.99) | Low (1.00–2.99)"
-    )
+    lines = [
+        f"ISE Average Score: {average:.2f} / 5.00  →  {band(average)}",
+        f"Total Score: {total} / 50",
+        "",
+        "--- EXPLICIT AI INSTRUCTIONS FOR THIS CANDIDATE ---",
+        "You MUST use the following behavioral constructs as the candidate's 'strengths':",
+        *["- " + s for s in strengths],
+        "",
+        "You MUST use the following behavioral constructs as the candidate's 'risks / areas for improvement':",
+        *["- " + w for w in weaknesses],
+    ]
+    
+    return "\n".join(lines)
