@@ -26,6 +26,7 @@ import {
   Cell,
 } from "recharts";
 import bigFiveImage from "../../../assets/big-five-personality.png";
+import StructuredReport from "./StructuredReport";
 // -----------------------
 // Theme Configuration
 // -----------------------
@@ -349,7 +350,7 @@ export default function BigFiveAssessment() {
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0); // 0=Intro, 1..=Questions, >Total=Results
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [fetching, setFetching] = useState(true);
 
   const questionsPerPage = 4;
@@ -383,9 +384,7 @@ export default function BigFiveAssessment() {
           }
           
           // Restore AI report if available
-          if (data.ai_report) {
-            setAiReport(data.ai_report);
-          }
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           
           // Skip to results page - metrics will be computed from restored answers via useMemo
           setStep(totalPages + 1);
@@ -437,18 +436,18 @@ export default function BigFiveAssessment() {
         body: JSON.stringify({ answers, metrics }),
       });
       const reportData = await reportRes.json();
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // B) Submit to Assignment
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
         headers: config.headers,
-        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+        body: JSON.stringify({ answers, metrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
       });
       const submitData = await submitRes.json();
       if (!submitRes.ok) throw new Error(submitData?.error || "Error submitting assessment.");
 
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1);
     } catch (err) {
       console.error(err);
@@ -875,9 +874,7 @@ export default function BigFiveAssessment() {
               <Loader2 className="spin" size={20} /> Generating analysis...
             </div>
           ) : (
-            <p style={{ lineHeight: "1.7", color: VARS.textPrimary }}>
-              {aiReport}
-            </p>
+            <StructuredReport report={aiReport} />
           )}
         </div>
       </div>

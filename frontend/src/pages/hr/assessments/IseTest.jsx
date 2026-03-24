@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   Lightbulb, // Icon for Innovation
   ChevronRight,
@@ -34,12 +35,25 @@ const SCALE = [
 ];
 
 const QUESTIONS = [
-  { id: 1, text: "Je suis confiant(e) dans ma capacité à proposer de nouvelles idées au travail." },
-  { id: 2, text: "Je crois que je peux développer des solutions originales aux problèmes professionnels." },
-  { id: 3, text: "Je suis capable d’améliorer des processus ou méthodes existants." },
-  { id: 4, text: "Même face à des obstacles, je peux persévérer pour concrétiser mes idées." },
-  { id: 5, text: "Je peux convaincre les autres de la valeur de mes idées." },
-  { id: 6, text: "Je suis capable de mettre en œuvre des idées innovantes efficacement." },
+  // Questioning
+  { id: 1, text: "Je suis confiant(e) dans ma capacité à poser des questions qui remettent en cause le statu quo." },
+  { id: 2, text: "J'aime explorer les 'pourquoi' derrière les processus établis pour découvrir de nouvelles opportunités." },
+  
+  // Associational Thinking
+  { id: 3, text: "Je crois que je peux faire des liens entre des idées différentes pour développer des solutions originales." },
+  { id: 4, text: "Je suis capable de combiner des concepts de domaines distincts pour créer des approches novatrices." },
+  
+  // Observing
+  { id: 5, text: "Je suis capable d'observer attentivement le fonctionnement des processus pour identifier des améliorations." },
+  { id: 6, text: "Je remarque régulièrement les détails que d'autres manquent, ce qui m'aide à innover." },
+  
+  // Networking
+  { id: 7, text: "Je peux convaincre les autres de la valeur de mes idées en créant un réseau d'alliés." },
+  { id: 8, text: "Je suis à l'aise pour établir des connexions avec des personnes de horizons différents pour co-créer." },
+
+  // Experimenting
+  { id: 9, text: "Je suis capable de mener des expérimentations pour tester de nouvelles idées ou méthodes." },
+  { id: 10, text: "Je n'hésite pas à essayer de nouvelles approches, même si elles risquent d'échouer à court terme." },
 ];
 
 // Theme Colors mapped from CSS Variables
@@ -252,12 +266,12 @@ export default function ISETest() {
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0); // 0=Intro, 1..N=Questions, N+1=Results
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
   // Pagination Logic
-  const questionsPerPage = 3; 
+  const questionsPerPage = 5;
   const totalPages = Math.ceil(QUESTIONS.length / questionsPerPage);
 
   // 3. Load Assessment Data (Check if valid and if already completed)
@@ -283,7 +297,7 @@ export default function ISETest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1); // Show results page
         }
       })
@@ -324,18 +338,18 @@ export default function ISETest() {
       
       const reportData = await reportRes.json();
       if (!reportRes.ok) throw new Error(reportData?.error || "Erreur génération rapport.");
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // B) Submit to Assignment
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
         headers: config.headers,
-        body: JSON.stringify({ answers, metrics, ai_report: reportText, overwrite: true }),
+        body: JSON.stringify({ answers, metrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
       });
       const submitData = await submitRes.json();
       if (!submitRes.ok) throw new Error(submitData?.error || "Erreur lors du submit.");
 
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1); // Move to results
     } catch (err) {
       console.error(err);
@@ -353,7 +367,8 @@ export default function ISETest() {
   ];
 
   function downloadReport() {
-    const blob = new Blob([aiReport], { type: "text/plain" });
+    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
+        const blob = new Blob([_reportStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -524,7 +539,7 @@ export default function ISETest() {
                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
                    setAnswers({});
                    setStep(1);
-                   setAiReport("");
+                   setAiReport(null);
                 }}>
                   <RotateCcw size={16} /> Recommencer
                 </button>
@@ -588,7 +603,7 @@ export default function ISETest() {
                     </div>
                     
                     <div style={styles.aiReportBox}>
-                      {aiReport}
+                      <StructuredReport report={aiReport} />
                     </div>
                  </div>
               )}

@@ -288,8 +288,7 @@ const TakeAssessment = () => {
       
       // New Assessments
       ISE: "/candidate/ise",
-      CDRISC: "/candidate/cdrisc",
-      "CD-RISC": "/candidate/cdrisc", // Handle variation
+      CDRISC10: "/candidate/cdrisc",
       WSES: "/candidate/wses",
       GCOS: "/candidate/gcos",
       RIBS: "/candidate/ribs",

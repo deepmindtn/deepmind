@@ -5,6 +5,9 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+parent_env = BASE_DIR.parent / ".env"
+if parent_env.exists():
+    load_dotenv(parent_env)
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 SECRET_KEY = "change-me"

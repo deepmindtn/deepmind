@@ -64,11 +64,18 @@ const ASSESSMENT_OPTIONS = [
     ],
   },
   {
+    group: "Resilience & Self-Efficacy",
+    items: [
+      { code: "BRS", label: "💪 Brief Resilience Scale" },
+      { code: "CDRISC10", label: "🛡️ Connor-Davidson Resilience" },
+      { code: "WSES", label: "✨ Work Self-Efficacy Scale" },
+    ],
+  },
+  {
     group: "Work Style & Motivation",
     items: [
       { code: "KARASEK", label: "⚖️ Karasek Job Demand-Control" },
       { code: "GCOS", label: "🎯 General Causality Orientations" },
-      { code: "WSES", label: "✨ Work Self-Efficacy Scale" },
     ],
   },
   {

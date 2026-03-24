@@ -137,7 +137,7 @@ const ASSESSMENT_OPTIONS = [
     group: "Resilience & Self-Efficacy",
     items: [
       { code: "BRS", label: "💪 Brief Resilience Scale (BRS)" },
-      { code: "CDRISC", label: "🛡️ Connor-Davidson Resilience (CD-RISC 10)" },
+      { code: "CDRISC10", label: "🛡️ Connor-Davidson Resilience (CD-RISC 10)" },
       { code: "WSES", label: "✨ Work Self-Efficacy Scale (WSES)" },
     ],
   },

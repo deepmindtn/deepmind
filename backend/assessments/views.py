@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
@@ -13,8 +15,18 @@ from django.utils import timezone
 import logging
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
+from langchain_openai import ChatOpenAI
+from .report_schemas import (
+    BigFiveReport, DiscReport, KarasekReport, MaslachReport,
+    JssReport, BrsReport, CdriscReport, WsesReport, GcosReport,
+    RibsReport, CaqReport, IseReport,
+)
+from .score_formatters import (
+    format_karasek_scores, format_maslach_scores, format_disc_scores,
+    format_jss_scores, format_brs_scores, format_cdrisc_scores,
+    format_wses_scores, format_gcos_scores, format_ribs_scores,
+    format_caq_scores, format_ise_scores,
+)
 
 from .serializers import (
     AssignRequestSerializer,
@@ -29,6 +41,7 @@ User = get_user_model()
 from django.template import Template, Context
 from django.core.mail import EmailMultiAlternatives
 from accounts.models import EmailTemplate
+from django.db import transaction
 
 
 class AssignAssessmentView(generics.CreateAPIView):
@@ -338,13 +351,14 @@ class UploadPDFView(generics.UpdateAPIView):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
+from accounts.authentication import CandidateTokenAuthentication
+from django.conf import settings
+from .models import Assignment
 
 import os
-from dotenv import load_dotenv
-from assessments.models import Assignment  # adjust to your app
-from django.conf import settings
-load_dotenv()
 
 class GenerateHRReportView(APIView):
     permission_classes = [IsAuthenticated]
@@ -373,51 +387,35 @@ class GenerateHRReportView(APIView):
                 "details": f"Missing index at: {index_path}"
             }, status=503)
 
-        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),allow_dangerous_deserialization=True)
+        vectorstore = FAISS.load_local(index_path, OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY), allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=settings.OPENAI_API_KEY)
+        docs = retriever.invoke("HR organizational assessment overview employee well-being burnout stress motivation")
+        context = "\n\n".join([d.page_content for d in docs])
 
-        # Build the prompt
-        prompt = f"""
-        You are a senior HR consultant. Based on the psychological assessment data below, generate a comprehensive decision-support report for HR leadership.
+        prompt = f"""You are a senior HR consultant. Based on the psychological assessment data below and the reference material, generate a comprehensive decision-support report for HR leadership.
 
-        Objective:
-        Provide strategic insights and concrete recommendations to help the HR department understand employees' psychological profiles and take action to improve well-being, engagement, and performance. (no markdown marks no * just paragraphs)
+Reference Material:
+{context}
 
-        ## Assessment Data:
-        {assessment_data}
+Assessment Data:
+{assessment_data}
 
-        ## Guidelines:
-        1. **Summarize Key Trends**:
-        - Overall mental health state of the organization.
-        - Distribution across assessment types (BIG_FIVE, KARASEK, MASLACH).
-        - Detect patterns like high stress, burnout, lack of motivation, etc.
+Guidelines:
+1. Summarize Key Trends: overall mental health state, distribution across assessment types, patterns like high stress, burnout, low motivation.
+2. Deep Analysis: highlight at-risk individuals or groups, cross-compare assessments where possible.
+3. Actionable Recommendations: trainings, coaching, reorganization, burnout prevention, cultural improvements, per-department suggestions if relevant.
+4. Reference Best Practices: mention key psychological models from the reference material.
+5. Tone: clear and supportive language, structured with headings and paragraphs suitable for HR leadership.
+End with a next-step checklist for HR. Do not use markdown symbols.
+"""
 
-        2. **Deep Analysis**:
-        - Highlight at-risk individuals or groups.
-        - Cross-compare assessments if possible (e.g. stress + low agreeableness).
+        from langchain_core.messages import HumanMessage
+        ai_response = llm.invoke([HumanMessage(content=prompt)])
+        result = ai_response.content
 
-        3. **Actionable Recommendations**:
-        - Tailored advice for HR: trainings, coaching, reorganization.
-        - Burnout prevention and mental wellness initiatives.
-        - Cultural or leadership improvements.
-        - Suggestions per department if relevant.
+        print("✅ AI Report Generated Successfully")
 
-        4. **Reference Best Practices**:
-        - Mention key psychological models from the uploaded knowledge PDFs.
-        - Justify suggestions using evidence from known psychological research.
-
-        5. **Tone**:
-        - Use clear, supportive language.
-        - Structure the report with headings and paragraphs.
-        - Write in a way suitable to be shared directly with HR leadership.
-
-        End the report with a **next-step checklist** for HR.(no markdown marks)
-        """
-
-
-        result = chain.run(prompt)
         return Response({"report": result})
 		
 # ---------- Detail ----------
@@ -443,6 +441,254 @@ from .models import Assignment
 
 import os
 
+def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
+    """
+    Build targeted RAG retrieval queries based on specific employee scores.
+    This dynamically guides the vectorstore to fetch the most relevant psychological text.
+    """
+    queries = []
+    name = assessment_name.upper()
+
+    if name == 'BIG_FIVE':
+        if not isinstance(metrics, dict): return ["Big Five OCEAN personality trait descriptions facets behavioural interpretation workplace scores"]
+        raw_traits = metrics.get("traitScores") or metrics.get("trait") or {}
+        for trait, score in raw_traits.items():
+            if isinstance(score, (int, float)):
+                if score >= 70:
+                    queries.append(f"Big Five High {trait} personality trait workplace behavior interpretation")
+                elif score <= 30:
+                    queries.append(f"Big Five Low {trait} personality trait workplace behavior interpretation")
+        if not queries:
+            queries.append("Big Five OCEAN personality trait descriptions facets behavioural interpretation workplace scores")
+
+    elif name == 'KARASEK':
+        quadrant = str(metrics.get("quadrant", "")).lower().replace("_", " ")
+        
+        queries.append("Karasek Job Demands Control Support JDC-S theory definition")
+        
+        # 2. Quadrant-specific queries
+        if quadrant:
+            queries.append(f"Karasek JDC-S {quadrant} job characteristics workplace implications")
+            queries.append(f"{quadrant} profile action points interventions wellbeing")
+        
+        queries.append("Psychological Demands workload time pressure definition")
+        queries.append("Decision Latitude skill discretion autonomy definition")
+        queries.append("Social Support workplace buffer isolation definition")
+
+        # 4. Keep threshold logic for extreme risks
+        dim = metrics.get("dimScores") or metrics.get("dim") or {}
+        D = int(dim.get("D", 50))
+        C = int(dim.get("C", 50))
+        S = int(dim.get("S", 50))
+        
+        if D >= 67 and C <= 33:
+            queries.append("Karasek high psychological demands low decision latitude high strain risk")
+        if S <= 33:
+            queries.append("Karasek low social support risk buffering effect")
+
+    elif name == 'MASLACH':
+        sub = metrics.get("subScores") if "subScores" in metrics else metrics
+        
+        EE = int(sub.get("EE", 0))
+        DP = int(sub.get("DP", 0))
+        PA = int(sub.get("PA", 0))
+        
+        if EE >= 60: 
+            queries.append("emotional exhaustion job demands control social support interventions")
+        if DP >= 60:
+            queries.append("depersonalization cynicism organizational communication climate social support")
+        if PA <= 40: # PA is inversely scored
+            queries.append("low personal accomplishment professional efficacy engagement vigor dedication")
+            
+        if not queries:
+            queries.append("Maslach Burnout Inventory MBI subscales interpretation and prevention")
+
+    elif name == 'DISC':
+        scores = {k: int(metrics.get(k, 0)) for k in ('D', 'I', 'S', 'C')}
+        labels = {"D": "Dominance", "I": "Influence", "S": "Steadiness", "C": "Compliance"}
+        if any(scores.values()):
+            # Sort scores by primary and secondary dominant traits
+            sorted_traits = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            primary = labels.get(sorted_traits[0][0])
+            secondary = labels.get(sorted_traits[1][0])
+            
+            queries.append(
+                f"Workplace behaviors, strengths, communication style, and blind spots "
+                f"for a High {primary} and moderate {secondary} personality style."
+            )
+        else:
+            queries.append("Practical workplace application, behaviors, strengths, and risks of DISC profile styles")
+
+    elif name == 'JSS':
+        # Dimension mapping: → Academic terms for FAISS queries
+        dimension_labels = {
+            "pay": "pay",
+            "benefits": "benefits",
+            "promotion": "career development and promotion",
+            "supervision": "supervision",
+            "working_conditions": "working conditions",
+            "coworkers": "social support from coworkers",
+            "work_nature": "work nature and job content",
+            "policies": "organizational policies",
+            "communication": "communication",
+        }
+        
+        queries = []
+        global_score = int(metrics.get("global", 0))
+        
+        # 1. Global context query
+        if global_score <= 125:
+            queries.append("Job Satisfaction Survey low overall satisfaction consequences turnover interventions")
+        elif global_score >= 171:
+            queries.append("Job Satisfaction Survey high overall satisfaction organizational commitment retention")
+        else:
+            queries.append("Job Satisfaction Survey moderate satisfaction employee engagement improvement interventions")
+
+        # 2. Analyze ALL dimensions
+        dim = metrics.get("dimScores") or {}
+        sorted_dims = sorted(dim.items(), key=lambda x: int(x[1]))  # Lowest → Highest
+        
+        if sorted_dims:
+            # Get lowest 2 (weaknesses)
+            lowest_dims = sorted_dims[:2]
+            for dim_name, score in lowest_dims:
+                academic_term = dimension_labels.get(dim_name, dim_name)
+                queries.append(f"Job Satisfaction Survey low satisfaction {academic_term} workplace intervention")
+            
+            # Get highest 2 (strengths)
+            highest_dims = sorted_dims[-2:]
+            for dim_name, score in highest_dims:
+                academic_term = dimension_labels.get(dim_name, dim_name)
+                queries.append(f"Job Satisfaction Survey high satisfaction {academic_term} employee retention")
+            
+            # For moderate scores: Add exploratory queries for middle dimensions too
+            if len(sorted_dims) > 4:
+                middle_dims = sorted_dims[2:-2]
+                for dim_name, score in middle_dims:
+                    academic_term = dimension_labels.get(dim_name, dim_name)
+                    queries.append(f"Job Satisfaction Survey {academic_term} satisfaction moderate score employee well-being")
+
+    elif name == 'BRS':
+        average = float(metrics.get("average", 0))
+        if average < 3.00:
+            queries.append("Brief Resilience Scale low score employee workplace stress management recovery")
+            queries.append("improving workplace resilience occupational health organizational support for employees")
+        elif average >= 4.31:
+            queries.append("Brief Resilience Scale high score employee workplace performance adaptability")
+            queries.append("high workplace resilience team level positive psychological capacities organizational")
+        else:
+            queries.append("Brief Resilience Scale interpretation employee workplace resilience occupational")
+            queries.append("workplace resilience organizational response to adversity healthy workers")
+
+    elif name == 'CD_RISC':
+        total = int(metrics.get("total", 0))
+        corporate_anchor = "corporate workplace employee occupational performance HR coaching"
+        if total <= 19:
+            queries.append(f"CD-RISC 10 low resilience {corporate_anchor} professional development coping with work challenges")
+        elif total >= 30:
+            queries.append(f"CD-RISC 10 high resilience {corporate_anchor} leadership potential change management strengths")
+        else:
+            queries.append(f"CD-RISC 10 moderate resilience {corporate_anchor} motivation daily work balance improvement")
+        queries.append("actionable employee workplace strategies professional strengths career risks")
+
+    elif name == 'WSES':
+        avg = float(metrics.get("average", 0))
+        if avg < 3.0:
+            queries.append("low occupational self-efficacy workplace risks lack of confidence coaching strategies HR interventions support")
+        elif avg >= 4.0:
+            queries.append("high occupational self-efficacy behavioral strengths leadership potential overconfidence risks management strategies")
+        else:
+            queries.append("moderate occupational self-efficacy behavioral traits workplace risks coaching strategies interventions")
+
+    elif name == 'GCOS':
+        orientations = {
+            "Autonomous": float(metrics.get("autonomous", 0) or 0),
+            "Controlled": float(metrics.get("controlled", 0) or 0),
+            "Impersonal": float(metrics.get("impersonal", 0) or 0)
+        }
+        queries.extend([
+                "autonomous causality orientation intrinsic motivation",
+                "controlled causality orientation external rewards deadlines",
+                "impersonal causality orientation amotivation lack of intentionality"
+            ])
+        if any(orientations.values()):
+            dominant = max(orientations, key=orientations.get)
+            if dominant == "Controlled":
+                queries.append("control orientation negative affect frustration burnout pressure")
+            elif dominant == "Autonomous":
+                queries.append("autonomy orientation psychological need satisfaction well-being positive affect")
+            elif dominant == "Impersonal":
+                queries.append("impersonal orientation behavioral desistence incompetence apathy")
+
+    elif name == 'RIBS':
+        avg = float(metrics.get("average", 0))
+
+        queries.append("Runco Ideational Behavior Scale everyday creativity divergent thinking")
+        
+        if avg >= 3.5:
+            # Profile
+            queries.append("high ideation creative potential generating ideas strengths")
+            # Actionable Advice
+            queries.append("translating divergent thinking into creative accomplishment practical applications")
+            # Risks
+            queries.append("over-ideation fluency without originality negative variance risks")
+            
+        elif avg < 2.5:
+            # Profile
+            queries.append("low ideational behavior conventional thinking standard procedures")
+            # Risks
+            queries.append("limitations in divergent thinking barriers to originality")
+            # Actionable Advice
+            queries.append("interventions improving ideation developing creative potential")
+            
+        else:
+            # Profile
+            queries.append("moderate ideation balancing conventional problem solving with creativity")
+            # Actionable Advice
+            queries.append("enhancing everyday creativity transitioning to creative accomplishment")
+
+    elif name == 'CAQ':
+        total = int(metrics.get("total", 0))
+        # Broad queries targeted at the paper's Validity / Norms sections
+        if total >= 13:
+            queries.append("Creative Achievement Questionnaire high score highly creative individuals validity")
+        elif total <= 3:
+            queries.append("Creative Achievement Questionnaire normative data low score distribution")
+        else:
+            queries.append("Creative Achievement Questionnaire average score norm variance")
+        # Domain-specific queries targeted at the Appendix/Scoring Rubric chunks
+        domains = metrics.get("domainScores") or {}
+        for dom, score in domains.items():
+            if int(score) > 0:
+                queries.append(f"Creative Achievement Questionnaire {dom} domain scoring rubric items appendix")
+
+    elif name == 'ISE':
+        avg = float(metrics.get("average", 0))
+        answers = metrics.get("answers", {})
+
+        search_construct_map = {
+            "1": "Questioning",
+            "2": "Questioning",
+            "3": "Associational Thinking",
+            "4": "Associational Thinking",
+            "5": "Observing",
+            "6": "Observing",
+            "7": "Networking",
+            "8": "Networking",
+            "9": "Experimenting",
+            "10": "Experimenting"
+        }
+        
+        # Identify the top 2 weaknesses for targeted search
+        sorted_items = sorted((answers).items(), key=lambda x: int(x[1]))
+        lowest_traits = list(set([search_construct_map[k] for k, v in sorted_items[:3]]))[:2]
+        weakness_keywords = " and ".join(lowest_traits)
+        
+        queries.append(f"practical exercises, workplace activities, and behavioral strategies to improve and develop {weakness_keywords} skills for innovation")
+
+    return queries
+
+
 class GenerateBigFiveReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -454,13 +700,44 @@ class GenerateBigFiveReportView(APIView):
     def post(self, request, assignment_id):
         try:
             assignment = Assignment.objects.select_related("employee", "template").get(id=assignment_id)
+        except Assignment.DoesNotExist:
+            return Response({"error": "Assignment not found"}, status=404)
 
-            assessment_data = {
-                "employee": str(assignment.employee),
-                "template": assignment.template.code,
-                "status": assignment.status,
-                "score": assignment.metrics,
+        try:
+            #  read metrics from request body first.
+            metrics = request.data.get("metrics") or assignment.metrics or {}
+
+            # Normalise key
+            raw_traits = (
+                metrics.get("traitScores")
+                or metrics.get("trait")
+                or {}
+            )
+
+            def _level(score):
+                if score >= 80: return "Very High"
+                if score >= 60: return "High"
+                if score >= 40: return "Moderate"
+                if score >= 20: return "Low"
+                return "Very Low"
+
+            TRAIT_LABELS = {
+                "E": "Extraversion",
+                "A": "Agreeableness",
+                "C": "Conscientiousness",
+                "N": "Neuroticism",
+                "O": "Openness to Experience",
             }
+
+            if raw_traits:
+                scores_text = "\n".join(
+                    f"  - {TRAIT_LABELS.get(k, k)}: {v}/100 ({_level(v)})"
+                    for k, v in sorted(raw_traits.items())
+                )
+            else:
+                scores_text = "  Score data unavailable."
+
+            employee_name = str(assignment.employee)
 
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "bigfiveindex")
             
@@ -470,44 +747,102 @@ class GenerateBigFiveReportView(APIView):
                     "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                     "details": f"Missing index at: {index_path}"
                 }, status=503)
-            
+
             vectorstore = FAISS.load_local(
                 index_path,
                 OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
                 allow_dangerous_deserialization=True
             )
-            retriever = vectorstore.as_retriever()
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-            chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+            # MMR retriever — fetches 8 diverse chunks from top-30 candidates.
+            # lambda_mult=0.7 balances relevance (1.0) vs diversity (0.0).
+            # This avoids returning 4 near-duplicate passages about the same facet.
+            retriever = vectorstore.as_retriever(
+                search_type="mmr",
+                search_kwargs={
+                    "k": 8,           # final chunks returned to the prompt
+                    "fetch_k": 30,    # candidate pool before MMR re-ranking
+                    "lambda_mult": 0.7,  # 0.7 = slightly favour relevance over diversity
+                    "filter": lambda meta: meta.get("section_type") != "methodology",
+                },
+            )
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+            structured_llm = llm.with_structured_output(BigFiveReport)
 
-            prompt = f"""
-            You are a workplace psychologist. Generate a detailed Big Five psychometric profile report for the following employee based on their score (0–100 per trait and facet).
+            # Targeted query focuses on trait-level interpretation content rather
+            # than methodology/statistics sections of academic papers.
+            dyn_queries = build_dynamic_queries("BIG_FIVE", metrics)
+            combined_query = " ".join(dyn_queries)
             
-            ## Data:
-            {assessment_data}
+            docs = retriever.invoke(combined_query)
 
-            ## Instructions:
-            - Start with a short summary
-            - Provide deep insights per trait
-            - Highlight strong/weak facets
-            - List strengths and risks (as bullets)
-            - End with tailored action points (habits, work style, coaching ideas)
+            # ── Retrieval debug log ──────────────────────────────────────
+            print(f"\n{'='*60}")
+            print(f"[BigFive RAG] Retrieved {len(docs)} chunks")
+            for i, doc in enumerate(docs):
+                m = doc.metadata
+                print(
+                    f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                    f"section_title={m.get('section_title','—')!r:30s} "
+                    f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                    f"page={m.get('page_number', m.get('page','?'))}"
+                )
+                print(f"       preview: {doc.page_content.replace(chr(10),' ')!r}")
+            print(f"{'='*60}\n")
+            # ────────────────────────────────────────────────────────────
+            
+            # Deduplicate
+            unique_docs_map = {doc.page_content: doc for doc in docs}
+            unique_docs = list(unique_docs_map.values())
+            context = "\n\n".join([d.page_content for d in unique_docs])
 
-            Use a professional and supportive tone. Format with clear paragraphs.(no markdown marks)
-            """
+            prompt = f"""You are a senior workplace psychologist specialising in the Big Five / OCEAN model.
+Using the reference material below AND the employee's precise scores, produce a structured psychometric report.
+Where the reference material is general or introductory, draw on your deep psychometric expertise to provide
+specific, facet-level interpretations grounded in Big Five theory (Costa & McCrae NEO-PI-R framework).
 
-            result = chain.run(prompt)
+Reference Material:
+{context}
 
-            print("✅ AI Report Generated Successfully")
+Employee: {employee_name}
 
-            # Save AI report to database
-            assignment.ai_report = result
+OCEAN Trait Scores (0–100):
+{scores_text}
+
+Score bands: Very High (80–100), High (60–79), Moderate (40–59), Low (20–39), Very Low (0–19).
+
+⚠️  CRITICAL SCORING RULES — read before writing any trait interpretation:
+1. NEUROTICISM direction: N is scored POSITIVELY for emotional instability / negative affect.
+   - N ≥ 60 (High / Very High) = prone to stress, anxiety, moodiness.
+   - N 40–59 (Moderate) = AVERAGE emotional reactivity: experiences normal stress and frustration;
+     NOT emotionally stable, NOT managing stress especially well — just typical.
+   - N ≤ 39 (Low) = genuinely calm, emotionally resilient, rarely distressed.
+   NEVER describe Moderate N as "manages stress effectively", "emotionally stable", or "resilient".
+   Moderate N means ordinary / typical — acknowledge both the everyday stress and the coping capacity.
+2. ALL traits: anchor every sentence to the actual numeric score and band. 50 = right in the middle.
+3. Facets must match the score direction, e.g., High C → strong Self-Discipline and Dutifulness;
+   Moderate E → neither highly assertive nor highly reserved.
+4. For Moderate scores (40-59), do NOT list extreme facets as "strong" or "weak". Instead, populate both the `strong_facets` and `weak_facets` lists with exactly ["Balanced"] or ["Average"]. Do not invent strong/weak facets for moderate traits.
+
+Instructions:
+- summary: 3–5 sentence executive summary referencing the actual scores; do NOT speculate beyond what the scores indicate.
+- traits: For each of the 5 OCEAN traits state the score, level, a 2–3 sentence workplace interpretation,
+  2–3 strong facets implied by the score, and 1–2 weaker facets. Use NEO-PI-R facet names where possible. (See Rule 4 for Moderate scores).
+- strengths: 3–4 key professional strengths derived from the full profile.
+- risks: 2–3 potential risks or development areas.
+- action_points: 4 tailored, concrete action points (title + description each).
+- profile_archetype: a 2–4 word archetype label that captures the dominant personality pattern.
+Use a professional, supportive tone grounded in psychometric science."""
+
+            result = structured_llm.invoke(prompt)
+
+            print("✅ AI Report Generated Successfully (structured JSON)")
+
+            # Save AI report to database as JSON
+            import json
+            assignment.ai_report = json.dumps(result.model_dump())
             assignment.save(update_fields=["ai_report"])
 
-            print(result)
-            return Response({"report": result})
-        except Assignment.DoesNotExist:
-            return Response({"error": "Assignment not found"}, status=404)
+            return Response({"report": result.model_dump()})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
@@ -526,52 +861,93 @@ class GenerateKarasekReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": assignment.metrics,
-        }
+        # read metrics from request body first (sent before submit completes).
+        metrics = request.data.get("metrics") or assignment.metrics or {}
+        employee_name = str(assignment.employee)
+        scores_text = format_karasek_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
-        
+
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
             return Response({
                 "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                 "details": f"Missing index at: {index_path}"
             }, status=503)
-        
+
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 40,
+                "lambda_mult": 0.65,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(KarasekReport)
 
-        prompt = f"""
-        You are a senior psychologist. Based on the following Karasek assessment results, write a professional report for the employee.
+        dyn_queries = build_dynamic_queries("KARASEK", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        ## Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[KARASEK RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        ## Guidelines:
-        - Summarize the psychological demands, decision latitude, and social support.
-        - Interpret the quadrant (low strain, high strain, active, passive).
-        - Offer clear, concrete suggestions for the employee to improve well-being or manage stress.
-        - Justify insights with reference to known psychological theories and the uploaded PDFs.
-        - Use structured paragraphs, professional tone, avoid clinical jargon.
+        prompt = f"""You are a senior occupational psychologist specialising in the Job Demands-Control-Support model.
+Using the reference material below AND the employee's precise JDC-S scores, produce a structured report.
 
-        End the report with 3 actionable suggestions.(no markdown marks)
-        """
+Reference Material:
+{context}
 
-        result = chain.run(prompt)
+Employee: {employee_name}
 
-        print("✅ AI Report Generated Successfully")
+{scores_text}
 
-        return Response({"report": result})
+CRITICAL INSTRUCTION: You MUST use the exact 'High' or 'Low' labels provided above when interpreting the dimensions in the report.
+"Do NOT describe a dimension as 'Moderate'.
+
+Instructions:
+- summary: 3–4 sentence overview of the work environment based on JDC-S scores.
+- quadrant: one of High Strain, Low Strain, Active, or Passive.
+- quadrant_meaning: 2–3 sentences explaining what this quadrant implies for the employee.
+- dimensions: interpret Psychological Demands, Decision Latitude, and Social Support with level and 1–2 sentence meaning.
+- strengths: 2–3 positive aspects of the work situation.
+- risks: 2–3 risk factors for stress or burnout.
+- action_points: 3–4 actionable well-being improvement suggestions.
+- profile_archetype: a short label, e.g. 'The Overloaded Expert'.
+Professional tone, grounded in JDC-S theory."""
+
+        result = structured_llm.invoke(prompt)
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
+        assignment.save(update_fields=["ai_report"])
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        return Response({"report": result.model_dump()})
+
 
 class GenerateMaslachReportView(APIView):
     authentication_classes = [
@@ -587,57 +963,94 @@ class GenerateMaslachReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": assignment.metrics,
-        }
+        # read metrics from request body first (sent before submit completes).
+        metrics = request.data.get("metrics") or assignment.metrics or {}
+        employee_name = str(assignment.employee)
+        scores_text = format_maslach_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
-        
+
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
             return Response({
                 "error": "FAISS index not found. AI report generation requires index files to be uploaded.",
                 "details": f"Missing index at: {index_path}"
             }, status=503)
-        
+
         vectorstore = FAISS.load_local(
             index_path,
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5,api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 30,
+                "lambda_mult": 0.7,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(MaslachReport)
 
-        prompt = f"""
-        You are a senior psychologist. Based on the following maslach assessment results, write a professional report for the employee.
+        dyn_queries = build_dynamic_queries("MASLACH", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        ## Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[MASLACH RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        ## Guidelines:
-        - Summarize the psychological demands, decision latitude, and social support.
-        - Interpret the quadrant (low strain, high strain, active, passive).
-        - Offer clear, concrete suggestions for the employee to improve well-being or manage stress.
-        - Justify insights with reference to known psychological theories and the uploaded PDFs.
-        - Use structured paragraphs, professional tone, avoid clinical jargon.
+        prompt = f"""You are a senior occupational psychologist specialising in burnout and the Maslach Burnout Inventory.
+Using the reference material below AND the employee's precise MBI scores, produce a structured burnout report.
+IMPORTANT: Personal Accomplishment (PA) is scored INVERSELY — a LOW PA score indicates burnout risk.
 
-        End the report with 3 actionable suggestions.(no markdown marks)
-        """
+Reference Material:
+{context}
 
-        result = chain.run(prompt)
+Employee: {employee_name}
 
-        print("✅ AI Report Generated Successfully")
+{scores_text}
 
-        # Save AI report to database
-        assignment.ai_report = result
+IMPORTANT: Personal Accomplishment (PA) is scored INVERSELY — a LOW PA score indicates burnout risk.
+
+Instructions:
+- summary: 3–4 sentence overall burnout profile summary.
+- burnout_level: overall risk level (High Risk, Moderate Risk, or Low Risk).
+- subscales: for each of the 3 MBI subscales (Emotional Exhaustion, Depersonalization, Personal Accomplishment),
+  provide the score, level, and 1–2 sentence interpretation.
+- strengths: 2–3 protective factors in the profile.
+- risks: 2–3 burnout risk areas requiring attention.
+- action_points: 3–4 recovery and prevention strategies.
+- profile_archetype: short label for this burnout profile.
+Maintain a compassionate, professional tone."""
+
+        result = structured_llm.invoke(prompt)
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        return Response({"report": result.model_dump()})
     
+
 import os
 import logging
 from django.conf import settings
@@ -669,11 +1082,8 @@ class GenerateDiscReportView(APIView):
     def post(self, request, assignment_id):
         assignment = None
         user_name = "Unknown"
-        template_code = "DISC" # Default fallback
 
-        # ---------------------------------------------------------------
-        # 🔍 PHASE 1: Resolve User & Assignment (Hybrid Logic)
-        # ---------------------------------------------------------------
+        # Resolve User & Assignment (Hybrid Logic)
         try:
             # CASE A: CANDIDATE (Authenticated via Token)
             if isinstance(request.user, Recruitee):
@@ -682,9 +1092,6 @@ class GenerateDiscReportView(APIView):
                     recruitee=request.user
                 )
                 user_name = str(assignment.recruitee)
-                # If CandidateAssignment has a template link, use it, else default
-                if hasattr(assignment, 'template') and assignment.template:
-                    template_code = assignment.template.code
             
             # CASE B: EMPLOYEE (Authenticated via Login/Session)
             elif request.user.is_authenticated:
@@ -693,7 +1100,6 @@ class GenerateDiscReportView(APIView):
                     employee=request.user
                 )
                 user_name = str(assignment.employee)
-                template_code = assignment.template.code
             
             # CASE C: UNAUTHORIZED
             else:
@@ -705,9 +1111,6 @@ class GenerateDiscReportView(APIView):
             print(f"❌ DB/AUTH ERROR: {str(e)}")
             return Response({"error": f"Server Error during lookup: {str(e)}"}, status=500)
 
-        # ---------------------------------------------------------------
-        # 📊 PHASE 2: Prepare Metrics
-        # ---------------------------------------------------------------
         # Try to take metrics from request body first (Real-time submission)
         metrics = request.data.get("metrics")
         
@@ -721,18 +1124,10 @@ class GenerateDiscReportView(APIView):
         if not metrics:
             return Response({"error": "No DISC metrics provided or stored."}, status=400)
 
-        assessment_data = {
-            "employee": user_name,
-            "template": template_code,
-            "status": assignment.status,
-            "score": metrics,
-        }
+        scores_text = format_disc_scores(metrics)
 
-        print(f"📝 Generating Report for: {user_name} | Data: {assessment_data}")
+        print(f"📝 Generating Report for: {user_name}")
 
-        # ---------------------------------------------------------------
-        # 🤖 PHASE 3: AI Generation (Wrapped to catch AI-specific errors)
-        # ---------------------------------------------------------------
         try:
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "discindex")
             
@@ -750,50 +1145,81 @@ class GenerateDiscReportView(APIView):
                 ),
                 allow_dangerous_deserialization=True,
             )
-            retriever = vectorstore.as_retriever()
+            retriever = vectorstore.as_retriever(
+                search_type="mmr",
+                search_kwargs={
+                    "k": 8,
+                    "fetch_k": 40,
+                    "lambda_mult": 0.6,
+                    "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+                }
+            )
             llm = ChatOpenAI(
                 model="gpt-4o-mini",
-                temperature=0.5,
+                temperature=0.1,
                 api_key=settings.OPENAI_API_KEY,
             )
-            chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+            structured_llm = llm.with_structured_output(DiscReport)
 
-            prompt = f"""
-            You are a workplace psychologist. Based on the following DISC assessment results, write a professional decision-support report for the employee.
+            dyn_queries = build_dynamic_queries("DISC", metrics)
+            combined_query = " ".join(dyn_queries)
+            docs = retriever.invoke(combined_query)
 
-            Assessment Data:
-            {assessment_data}
+            # ── Retrieval debug log ──
+            print(f"\n{'='*60}")
+            print(f"[DISC RAG] Retrieved {len(docs)} chunks")
+            for i, doc in enumerate(docs):
+                m = doc.metadata
+                print(
+                    f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                    f"section_title={m.get('section_title','—')!r:30s} "
+                    f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                    f"page={m.get('page_number', m.get('page','?'))}"
+                )
+                print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+            print(f"{'='*60}\n")
+            
+            # Deduplicate identical chunks
+            unique_docs_map = {doc.page_content: doc for doc in docs}
+            context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-            Guidelines:
-            - Begin with a short overview of the employee’s dominant DISC traits (Dominance, Influence, Steadiness, Conscientiousness).
-            - Explain the implications of their profile for workplace behavior, communication, and teamwork.
-            - Highlight strengths (3–4 points).
-            - Highlight potential challenges or blind spots (2–3 points).
-            - Provide 3–5 practical recommendations for personal development and better collaboration at work.
-            - Ground insights in recognized DISC theory and the uploaded reference PDFs.
-            - Use a supportive, professional, and constructive tone.
-            - Do not use markdown or bullet symbols, write in structured paragraphs.
-            - End the report with exactly 3 clear, actionable suggestions.
-            """
+            prompt = f"""You are a workplace psychologist specialising in DISC profiling.
+Using the reference material below AND the employee's precise DISC scores, produce a structured DISC report.
 
-            result = chain.run(prompt)
+Reference Material:
+{context}
+
+Employee: {user_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the DISC profile.
+- disc_dimensions: for each of D/I/S/C provide score, level, and a 1-sentence interpretation.
+- strengths: 2–3 key workplace strengths from this DISC profile.
+- risks: 2–3 potential blind spots or challenges.
+- action_points: 3–5 practical development recommendations.
+- profile_archetype: short label describing this DISC combination.
+Supportive, professional tone.
+"""
+
+            result = structured_llm.invoke(prompt)
 
             print("✅ AI Report Generated Successfully")
 
-            # Save AI report to database
-            assignment.ai_report = result
+            import json
+
+            assignment.ai_report = json.dumps(result.model_dump())
             assignment.save(update_fields=["ai_report"])
 
-            return Response({"report": result})
+            return Response({"report": result.model_dump()})
 
         except Exception as e:
-            # This catches ONLY AI/LangChain errors
             print(f"❌ AI GENERATION ERROR: {str(e)}")
-            # Return a generic success so the frontend doesn't break, or return the error if you prefer
             return Response({
                 "report": "Unable to generate detailed AI report at this time. Please proceed with the standard results.",
                 "debug_error": str(e)
-            }, status=200) # Status 200 allows the frontend flow to finish even if AI fails
+            }, status=200)
     
 
 class GenerateJssReportView(APIView):
@@ -817,12 +1243,8 @@ class GenerateJssReportView(APIView):
         if not metrics:
             return Response({"error": "No JSS metrics found. Report not generated."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_jss_scores(metrics)
 
         # Charger l’index FAISS
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "jssindex")
@@ -831,44 +1253,85 @@ class GenerateJssReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 3,
+                "fetch_k": 20,
+                "lambda_mult": 0.65,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(JssReport)
 
-        prompt = f"""
-        You are an organizational psychologist. Based on the following Job Satisfaction Survey (JSS) results, 
-        write a professional report for the employee it needs to be report not letter and no markdowns .
+        #  Unbundle the queries
+        dyn_queries = build_dynamic_queries("JSS", metrics)
+        all_docs = []
+        for query in dyn_queries:
+            docs = retriever.invoke(query)
+            all_docs.extend(docs)
+            
+        # 4. Deduplicate chunks
+        unique_docs_map = {doc.page_content: doc for doc in all_docs}
 
-        Assessment Data:
-        {assessment_data}
+        final_docs = list(unique_docs_map.values())[:8]
 
-        Guidelines:
-        - Explain the global score (36–216) and what it reflects about overall satisfaction.
-        - Go through each of the 9 dimensions (Rémunération, Avantages sociaux, Promotion, Supervision, Conditions de travail,
-          Relations avec collègues, Nature du travail, Politiques organisationnelles, Communication).
-        - For each dimension, interpret the score according to the interpretation scale:
-          19–24: Very high satisfaction
-          14–18: Moderate satisfaction
-          9–13: Low satisfaction
-          4–8: Very low satisfaction
-        - Highlight the strongest dimensions (strengths).
-        - Highlight the weakest dimensions (areas for improvement).
-        - Provide 4–5 concrete recommendations to improve satisfaction at work.
-        - Keep a supportive, professional tone.
-        - Do not use markdown or bullet symbols, write in clear structured paragraphs.
-        - End with a concise summary of key next steps.
-        """
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[JSS RAG] Retrieved {len(final_docs)} chunks")
+        for i, doc in enumerate(final_docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+                
+        context = "\n\n---\n\n".join([d.page_content for d in final_docs])
 
-        result = chain.run(prompt)
+        prompt = f"""You are an organisational psychologist specialising in job satisfaction measurement.
+Using the reference material below AND the employee's precise JSS scores, produce a structured JSS report.
+
+Reference Material:
+{context}
+
+Employee: {employee_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the overall job satisfaction profile.
+- global_score: the total JSS score (numeric).
+- overall_level: Very High, Moderate, Low, or Very Low.
+- dimensions: for each of the 9 JSS dimensions provide score, satisfaction_level, and 1 sentence interpretation.
+  Bands per dimension: Very High (19–24), Moderate (14–18), Low (9–13), Very Low (4–8).
+- strengths: 2–3 highest satisfaction dimensions.
+- risks: 2–3 lowest satisfaction dimensions needing improvement.
+- action_points: 4–5 concrete recommendations to improve satisfaction.
+- profile_archetype: short label for the satisfaction profile.
+Supportive, professional tone.
+
+CRITICAL INSTRUCTIONS (YOU MUST FOLLOW THESE TO AVOID FAILURE):
+1. NO GENERIC FLUFF: Every claim in the 'summary', 'dimensions', and 'action_points' MUST be tied directly to a specific concept found in the Reference Material (e.g., burnout, absenteeism, turnover, mobbing, feeling stuck).
+2. If the text mentions "burnout", "turnover", or "absenteeism" in relation to a dimension, you must explicitly mention it.
+"""
+
+        result = structured_llm.invoke(prompt)
 
         print("✅ AI Report Generated Successfully")
 
-        # Sauvegarder dans l’assignment
-        assignment.ai_report = result
+        import json
+        # Save to assignment
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
     
+
 class GenerateBRSReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -885,21 +1348,14 @@ class GenerateBRSReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        # take metrics/answers from body first, fallback to assignment
+        # take metrics from body first, fallback to assignment
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
 
-        # ✅ FIX: validate on metrics, not assignment.metrics
         if not metrics or not metrics.get("average"):
             return Response({"error": "No BRS metrics found in request or assignment."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_brs_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "brsindex")
         
@@ -912,39 +1368,77 @@ class GenerateBRSReportView(APIView):
         
         vectorstore = FAISS.load_local(
             index_path,
-            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),  # replace with env variable ideally
+            OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 40,
+                "filter": lambda meta: meta.get("section_type") != "methodology"
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(BrsReport)
 
-        prompt = f"""
-        You are a workplace psychologist. Based on the following Brief Resilience Scale (BRS) results, 
-        write a professional report for the employee it needs to be report not letter and no markdowns .    
+        dyn_queries = build_dynamic_queries("BRS", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
+        
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[BRS RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        Assessment Data:
-        {assessment_data}
+        prompt = f"""You are a workplace psychologist specialising in resilience and stress management.
+Using the reference material below AND the employee's precise BRS scores, produce a structured BRS report.
 
-        Guidelines:
-        - Summarize the resilience capacity of the employee.
-        - Explain the implications for coping with stress and adaptation in the workplace.
-        - Provide strengths and vulnerabilities related to resilience.
-        - Provide 3–5 practical recommendations to improve resilience.
-        - Use supportive and professional tone.
-        - Do not use markdown or bullet symbols.
-        - End the report with exactly 3 clear, actionable suggestions.
-        """
+Reference Material:
+{context}
 
-        result = chain.run(prompt)
+Employee: {employee_name}
 
-        print("✅ AI Report Generated Successfully")
+{scores_text}
 
-        # Save AI report to database
-        assignment.ai_report = result
+CRITICAL:
+1. The reference material contains general workplace studies and multiple frameworks (such as the ADPRI Workplace Resilience Scale). 
+2. The employee DID NOT take the ADPRI scale. They took the 6-item Brief Resilience Scale (BRS) by Smith et al., which measures ONLY the speed and efficiency of bouncing back from stress.
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's resilience capacity.
+- average_score: the BRS average score (1.00–5.00).
+- resilience_level: High Resilience (4.31–5.00), Normal Resilience (3.00–4.30), or Low Resilience (1.00–2.99).
+- strengths: 2–3 strengths STRICTLY related to stress recovery/bouncing back. DO NOT invent strengths about teamwork or social support.
+- risks: 2–3 resilience vulnerabilities or stress-coping challenges.
+- action_points: 3–4 practical strategies to maintain or improve resilience.
+- profile_archetype: short resilience profile label.
+Supportive, professional tone."""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
+
+
 class GenerateCDRISC10ReportView(APIView):
     authentication_classes = [
         CandidateTokenAuthentication,
@@ -961,23 +1455,17 @@ class GenerateCDRISC10ReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        # Take metrics either from request or DB
+        # Take metrics from request or DB
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
 
         if not metrics or "total" not in metrics:
             return Response({"error": "No CD-RISC 10 metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_cdrisc_scores(metrics)
 
         # Load the FAISS vectorstore
-        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriskindex")
+        index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "cdriscindex")
         
         # Check if FAISS index exists
         if not os.path.exists(os.path.join(index_path, "index.faiss")):
@@ -992,40 +1480,76 @@ class GenerateCDRISC10ReportView(APIView):
             allow_dangerous_deserialization=True,
         )
 
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 7,
+                "fetch_k": 30,
+                "lambda_mult": 0.6,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
         llm = ChatOpenAI(
             model="gpt-4o-mini",
-            temperature=0.5,
+            temperature=0.1,
             api_key=settings.OPENAI_API_KEY,
         )
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        structured_llm = llm.with_structured_output(CdriscReport)
 
-        prompt = f"""
-        You are a workplace psychologist. Based on the following Connor-Davidson Resilience Scale (CD-RISC 10) results,
-        write a professional and detailed report for the employee.
+        dyn_queries = build_dynamic_queries("CD_RISC", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[CD_RISC RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        Guidelines:
-        - Interpret the total resilience score (0–40) and explain its meaning.
-        - Discuss the employee’s capacity to adapt to stress and adversity.
-        - Highlight resilience strengths and possible areas for growth.
-        - Provide 3–5 practical strategies to enhance resilience in workplace contexts.
-        - Maintain a professional, clear, and supportive tone.
-        - Do not use markdown symbols.
-        - End the report with exactly 3 concrete, actionable suggestions.
-        """
+        prompt = f"""You are a workplace psychologist specialising in resilience assessment.
+Using the reference material below AND the employee's precise CD-RISC 10 scores, produce a structured report.
 
-        result = chain.run(prompt)
+Reference Material:
+{context}
 
-        print("✅ AI Report Generated Successfully")
+Employee: {employee_name}
 
-        # Save AI report to database
-        assignment.ai_report = result
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's resilience capacity.
+- total_score: the CD-RISC 10 total score (0–40).
+- resilience_level: High (30–40), Moderate (20–29), or Low (0–19).
+- strengths: 2–3 resilience strengths based on the score (do not hallucinate strengths they scored poorly on).
+- risks: 2–3 areas where resilience may be challenged.
+- action_points: 3–4 actionable workplace strategies to strengthen resilience.
+- profile_archetype: short resilience profile label.
+Professional, clear, supportive tone.
+"""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
+
+
 # ---------- WSES ----------
 class GenerateWSESReportView(APIView):
     authentication_classes = [
@@ -1044,17 +1568,11 @@ class GenerateWSESReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "average" not in metrics:
             return Response({"error": "No WSES metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_wses_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "wsesindex")
         
@@ -1070,33 +1588,69 @@ class GenerateWSESReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 5,
+                "fetch_k": 30,
+                "lambda_mult": 0.5,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(WsesReport)
 
-        prompt = f"""
-        You are a workplace psychologist. Based on the following Work Self-Efficacy Scale (WSES) results,
-        write a detailed professional report for the employee.
+        dyn_queries = build_dynamic_queries("WSES", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[WSES RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        Guidelines:
-        - Interpret the overall efficacy level.
-        - Explain implications for confidence, problem-solving, and autonomy at work.
-        - Identify strengths and development areas.
-        - Provide 3–5 strategies to enhance work self-efficacy.
-        - Professional, supportive tone. No markdown. End with 3 actionable suggestions.
-        """
-        result = chain.run(prompt)
+        prompt = f"""You are a workplace psychologist specialising in self-efficacy and professional development.
+Using the reference material below AND the employee's precise WSES scores, produce a structured WSES report.
 
-        print("✅ AI Report Generated Successfully")
+Reference Material:
+{context}
 
-        # Save AI report to database
-        assignment.ai_report = result
+Employee: {employee_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's work self-efficacy.
+- average_score: the WSES average score.
+- efficacy_level: High, Moderate, or Low.
+- strengths: 2–3 self-efficacy strengths observed.
+- risks: 2–3 areas where self-efficacy limits performance.
+- action_points: 3–4 strategies to develop work self-efficacy.
+- profile_archetype: short efficacy profile label.
+Professional, supportive tone."""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
 
 
 # ---------- GCOS-mini ----------
@@ -1111,7 +1665,6 @@ class GenerateGCOSReportView(APIView):
     def post(self, request, assignment_id):
         assignment = None
         user_name = "Unknown"
-        template_code = "GCOS"
 
         # Support both candidates and employees
         try:
@@ -1122,8 +1675,6 @@ class GenerateGCOSReportView(APIView):
                     recruitee=request.user
                 )
                 user_name = str(assignment.recruitee)
-                if hasattr(assignment, 'template') and assignment.template:
-                    template_code = assignment.template.code
             
             # CASE B: EMPLOYEE
             elif request.user.is_authenticated:
@@ -1132,7 +1683,6 @@ class GenerateGCOSReportView(APIView):
                     employee=request.user
                 )
                 user_name = str(assignment.employee)
-                template_code = assignment.template.code
             
             # CASE C: UNAUTHORIZED
             else:
@@ -1142,17 +1692,10 @@ class GenerateGCOSReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "autonomous" not in metrics:
             return Response({"error": "No GCOS metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": user_name,
-            "template": template_code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        scores_text = format_gcos_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "gcosindex")
         
@@ -1168,34 +1711,73 @@ class GenerateGCOSReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 8,
+                "fetch_k": 40,
+                "lambda_mult": 0.5,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(GcosReport)
 
-        prompt = f"""
-        You are a workplace psychologist. Based on the following General Causality Orientations Scale (GCOS-mini) results,
-        write a professional motivation profile for the employee.
+        dyn_queries = build_dynamic_queries("GCOS", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[GCOS RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        Guidelines:
-        - Interpret the three orientations (autonomous, controlled, impersonal).
-        - Discuss motivational tendencies and implications for work engagement.
-        - Suggest how to leverage autonomy and manage extrinsic or amotivated aspects.
-        - Provide 3–5 development actions to foster intrinsic motivation.
-        - Supportive tone, structured paragraphs, no markdown.
-        - End with 3 actionable suggestions.
-        """
-        result = chain.run(prompt)
+        prompt = f"""You are a workplace psychologist specialising in motivation and self-determination theory.
+Using the reference material below AND the employee's precise GCOS scores, produce a structured GCOS motivation profile.
 
-        print("✅ AI Report Generated Successfully")
+Reference Material:
+{context}
 
-        # Save AI report to database
-        assignment.ai_report = result
+Employee: {user_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's motivational orientations.
+- orientations: for each of the 3 GCOS orientations (Autonomous, Controlled, Impersonal), provide the score,
+  level (Dominant/Moderate/Low), and 1–2 sentence workplace implication.
+- dominant_orientation: the strongest orientation name.
+- strengths: 2–3 motivational strengths observed.
+- risks: 2–3 motivational risks or engagement concerns.
+- action_points: 3–4 development actions to foster intrinsic motivation.
+- profile_archetype: short motivational style label.
+Supportive, professional tone.
+
+IMPORTANT: Ignore any statistical variables, p-values, or study methodology mentioned in the context. 
+Focus strictly on the behavioral descriptions and psychological definitions of the orientations."""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
 
 
 # ---------- RIBS ----------
@@ -1216,17 +1798,13 @@ class GenerateRIBSReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "average" not in metrics:
             return Response({"error": "No RIBS metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        answers = request.data.get("answers") or getattr(assignment, "answers", {})
+        questions = request.data.get("questions", {})
+        employee_name = str(assignment.employee)
+        scores_text = format_ribs_scores(metrics, answers, questions)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "ribsindex")
         
@@ -1242,35 +1820,113 @@ class GenerateRIBSReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        # Multi-query fetching
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 6,   # Fetch top 3 PER query (not total)
+                "fetch_k": 40,
+                "lambda_mult": 0.6,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(RibsReport)
 
-        prompt = f"""
-        You are a psychologist specializing in creativity and innovation.
-        Based on the following Runco Ideational Behavior Scale (RIBS-SF) results,
-        write a detailed professional report.
+        dyn_queries = build_dynamic_queries("RIBS", metrics)
+        
+        # MULTI-QUERY RETRIEVAL: Execute each query separately
+        all_docs = []
+        for query in dyn_queries:
+            raw_docs = retriever.invoke(query)
+            
+            for doc in raw_docs:
+                m = doc.metadata
+                page = m.get("page", m.get("page_number", -1))
+                
+                try:
+                    page = int(page)
+                except (ValueError, TypeError):
+                    page = -1
+                
+                title = str(m.get("section_title", "")).lower()
+                
+                # No Title Pages (0) or Reference/Stat Pages
+                if page == 0 or page >= 13:
+                    continue
+                    
+                # No Statistical/Abstract sections
+                bad_sections = ["methodology", "abstract", "comparison", "validating"]
+                if any(bad in title for bad in bad_sections):
+                    continue
+                    
+                all_docs.append(doc)
+        
+        # Deduplicate identical chunks
+        seen = set()
+        unique_docs = []
+        for doc in all_docs:
+            m = doc.metadata
+            key = (
+                m.get("source_pdf") or m.get("source"),
+                m.get("page_number") or m.get("page"),
+                m.get("section_title")
+            )
+            if key not in seen:
+                seen.add(key)
+                unique_docs.append(doc)
 
-        Assessment Data:
-        {assessment_data}
+        # Enforce limit explicitly
+        final_docs = unique_docs[:6]
 
-        Guidelines:
-        - Interpret the ideation level and creativity potential.
-        - Discuss implications for innovation, problem-solving, and work adaptability.
-        - Identify strengths and possible developmental opportunities.
-        - Suggest 3–5 actionable strategies to enhance creative thinking at work.
-        - Supportive tone, clear paragraphs, no markdown.
-        - End with 3 actionable suggestions.
-        """
-        result = chain.run(prompt)
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[RIBS RAG] Retrieved {len(final_docs)} chunks")
+        for i, doc in enumerate(final_docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
 
-        print("✅ AI Report Generated Successfully")
+        context = "\n\n".join([d.page_content for d in final_docs])
 
-        # Save AI report to database
-        assignment.ai_report = result
+        prompt = f"""You are a psychologist specialising in creativity and ideation.
+Using the reference material below AND the employee's precise RIBS scores, produce a structured RIBS report.
+
+Reference Material:
+{context}
+
+Employee: {employee_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's ideational creativity.
+- average_score: the RIBS average score.
+- ideation_level: High Ideation, Moderate Ideation, or Low Ideation.
+- strengths: 2–3 creativity strengths observed.
+- risks: 2–3 potential limitations in creative thinking.
+- action_points: 3–4 strategies to enhance creative ideation at work.
+- profile_archetype: short creativity label.
+Supportive, professional tone.
+"""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
+
+
 # ---------- CAQ Report ----------
 class GenerateCAQReportView(APIView):
     authentication_classes = [
@@ -1289,17 +1945,11 @@ class GenerateCAQReportView(APIView):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
         if not metrics or "total" not in metrics:
             return Response({"error": "No CAQ metrics found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        employee_name = str(assignment.employee)
+        scores_text = format_caq_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "caqindex")
         
@@ -1315,34 +1965,70 @@ class GenerateCAQReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 6,
+                "fetch_k": 25,
+                "lambda_mult": 0.6
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(CaqReport)
 
-        prompt = f"""
-        You are a psychologist specializing in creativity and innovation.
-        Based on the following Creative Achievement Questionnaire (CAQ-SF) results,
-        write a professional report.
+        dyn_queries = build_dynamic_queries("CAQ", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[CAQ RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
 
-        Guidelines:
-        - Summarize the overall creative achievement level.
-        - Highlight the strongest creative domains (e.g., arts, science, design).
-        - Discuss the implications for professional or academic creativity.
-        - Provide 3–5 personalized recommendations for leveraging creative potential.
-        - Maintain supportive tone. No markdown. End with 3 clear actionable suggestions.
-        """
-        result = chain.run(prompt)
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        print("✅ AI Report Generated Successfully")
+        prompt = f"""You are a psychologist specialising in creativity and creative achievement.
+Using the reference material below AND the employee's precise CAQ scores, produce a structured CAQ report.
 
-        # Save AI report to database
-        assignment.ai_report = result
+Reference Material:
+{context}
+
+Employee: {employee_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's creative achievement profile.
+- total_score: the CAQ total score (integer).
+- overall_level: High, Moderate, Low, or Minimal.
+- creative_domains: list key creative domains with achievement level and 1 sentence note each.
+- strengths: 2–3 strongest creative areas.
+- risks: 2–3 underdeveloped domains or creative barriers.
+- action_points: 3–4 personalised recommendations to leverage or expand creative potential.
+- profile_archetype: short creative profile label.
+Supportive, professional tone.
+"""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
 
 
 # ---------- ISE Report ----------
@@ -1362,18 +2048,17 @@ class GenerateISEReportView(APIView):
         except Assignment.DoesNotExist:
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
-        metrics = request.data.get("metrics") or assignment.metrics
-        answers = request.data.get("answers") or assignment.answers
-        if not metrics or "average" not in metrics:
-            return Response({"error": "No ISE metrics found."}, status=400)
+        raw_data = request.data or assignment.metrics
+        
+        if not raw_data:
+            return Response({"error": "No ISE data found."}, status=400)
 
-        assessment_data = {
-            "employee": str(assignment.employee),
-            "template": assignment.template.code,
-            "status": assignment.status,
-            "score": metrics,
-            "answers": answers,
-        }
+        metrics = raw_data.get("metrics")
+        if not metrics or "average" not in metrics:
+            return Response({"error": "No ISE metrics found in request or assignment."}, status=400)
+
+        employee_name = str(assignment.employee)
+        scores_text = format_ise_scores(raw_data)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "iseindex")
         
@@ -1389,33 +2074,76 @@ class GenerateISEReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, api_key=settings.OPENAI_API_KEY)
-        chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff")
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={
+                "k": 5,
+                # "fetch_k": 20,
+                # "lambda_mult": 0.65,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology")
+            }
+        )
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
+        structured_llm = llm.with_structured_output(IseReport)
 
-        prompt = f"""
-        You are a workplace psychologist. Based on the following Innovation Self-Efficacy Scale (ISE-SF) results,
-        write a professional innovation-focused report.
+        dyn_queries = build_dynamic_queries("ISE", metrics)
+        combined_query = " ".join(dyn_queries)
+        docs = retriever.invoke(combined_query)
 
-        Assessment Data:
-        {assessment_data}
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[ISE RAG] Retrieved {len(docs)} chunks")
+        for i, doc in enumerate(docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+        
+        # Deduplicate identical chunks
+        unique_docs_map = {doc.page_content: doc for doc in docs}
+        context = "\n\n".join([d.page_content for d in unique_docs_map.values()])
 
-        Guidelines:
-        - Interpret the confidence level to innovate and apply creative ideas.
-        - Explain implications for problem-solving, experimentation, and leadership.
-        - Highlight strengths and development zones in innovation mindset.
-        - Provide 3–5 practical recommendations to enhance innovation confidence.
-        - Supportive, engaging tone. No markdown. End with 3 actionable suggestions.
-        """
-        result = chain.run(prompt)
+        prompt = f"""You are a workplace psychologist specialising in innovation and self-efficacy based on Schar et al. (2017) Innovator's DNA model.
+Using the reference material below AND the employee's precise ISE scores, produce a structured ISE report.
 
-        print("✅ AI Report Generated Successfully")
+Reference Material:
+{context}
 
-        # Save AI report to database
-        assignment.ai_report = result
+Employee: {employee_name}
+
+{scores_text}
+
+Instructions:
+- summary: 3–4 sentence overview of the employee's innovation confidence.
+- average_score: the ISE average score.
+- innovation_level: High Innovation Confidence, Moderate, or Low.
+- strengths: 2–3 innovation confidence strengths.
+- risks: 2–3 areas where innovation confidence is limited.
+- action_points: 3–4 practical recommendations to build innovation self-efficacy.
+- profile_archetype: short innovation profile label.
+Supportive, engaging, professional tone.
+
+CRITICAL RULES:
+1. Base 'strengths' and 'risks' ONLY on the scores provided in "EXPLICIT AI INSTRUCTIONS" above. Do NOT invent constructs or behaviors not mentioned.
+2. The 'action_points' should directly target the lowest-scoring constructs with concrete practices from the reference material.
+"""
+
+        result = structured_llm.invoke(prompt)
+
+        print("✅ AI Report Generated Successfully (structured JSON)")
+
+        import json
+        assignment.ai_report = json.dumps(result.model_dump())
         assignment.save(update_fields=["ai_report"])
 
-        return Response({"report": result})
+        return Response({"report": result.model_dump()})
+
+
 # recruitment/views.py
 import os
 import numpy as np

@@ -38,7 +38,7 @@ import BrsTest from "./pages/hr/assessments/BrsTest";
 
 // New Assessments
 import ReportPage from "./pages/hr/ReportPage";
-import CDRISCTest from "./pages/hr/assessments/CdriskTest";
+import CDRISCTest from "./pages/hr/assessments/CdriscTest";
 import WSESTest from "./pages/hr/assessments/WsesTest";
 import GCOSTest from "./pages/hr/assessments/GcosTest";
 import RIBSTest from "./pages/hr/assessments/RibsTest";

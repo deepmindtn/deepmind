@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   Trophy,
   Star,
@@ -275,7 +276,7 @@ export default function CAQTest() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
 
   // Check if assignment is already completed and restore results
   useEffect(() => {
@@ -294,7 +295,7 @@ export default function CAQTest() {
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1); // Show results page
         }
       })
@@ -343,7 +344,7 @@ export default function CAQTest() {
         body: JSON.stringify({ answers, metrics }),
       });
       const data = await res.json();
-      const reportText = data.report || "";
+      const reportObj = data.report || null;
       
       // 2. Submit
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
@@ -352,7 +353,7 @@ export default function CAQTest() {
         body: JSON.stringify({ 
           answers, 
           metrics, 
-          ai_report: reportText, 
+          ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), 
           assessment_type: "CAQ", 
           overwrite: true 
         }),
@@ -360,7 +361,7 @@ export default function CAQTest() {
 
       if (!submitRes.ok) throw new Error("Erreur soumission.");
       
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1);
     } catch (err) {
       alert(err.message);
@@ -574,7 +575,7 @@ export default function CAQTest() {
                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", color: COLORS.textPrimary }}>
                          <FileText size={18} /> <strong>Interprétation IA</strong>
                        </div>
-                       {aiReport}
+                       <StructuredReport report={aiReport} />
                     </div>
                   </div>
                 ) : (

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
+import StructuredReport from "./StructuredReport";
 import {
   Activity,
   ArrowRight,
@@ -332,7 +333,7 @@ export default function KarasekTest() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
-  const [aiReport, setAiReport] = useState("");
+  const [aiReport, setAiReport] = useState(null);
   const [fetching, setFetching] = useState(true);
   
   // Navigation constants - must be defined before useEffect
@@ -360,7 +361,7 @@ export default function KarasekTest() {
         // If already completed, restore previous answers and go to results
         if (data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
-          if (data.ai_report) setAiReport(data.ai_report);
+          if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
           setStep(totalPages + 1);
         }
         return data;
@@ -413,7 +414,7 @@ export default function KarasekTest() {
         body: JSON.stringify({ answers, metrics }),
       });
       const reportData = await reportRes.json();
-      const reportText = reportData.report || "";
+      const reportObj = reportData.report || null;
 
       // 2. Submit Data
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
@@ -422,7 +423,7 @@ export default function KarasekTest() {
         body: JSON.stringify({ 
           answers, 
           metrics, 
-          ai_report: reportText, 
+          ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), 
           assessment_type: "KARASEK", 
           overwrite: true 
         }),
@@ -430,7 +431,7 @@ export default function KarasekTest() {
 
       if (!submitRes.ok) throw new Error("Erreur soumission");
       
-      setAiReport(reportText);
+      setAiReport(reportObj);
       setStep(totalPages + 1);
     } catch (e) {
       alert(e.message);
@@ -676,7 +677,7 @@ export default function KarasekTest() {
                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", color: COLORS.textPrimary }}>
                          <FileText size={18} /> <strong>Rapport IA</strong>
                        </div>
-                       {aiReport}
+                       <StructuredReport report={aiReport} />
                      </div>
                   </div>
                 )}
