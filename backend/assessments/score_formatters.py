@@ -143,15 +143,15 @@ def format_disc_scores(metrics: dict) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 
 JSS_DIMENSION_LABELS = {
-    "remuneration": "Rémunération (Pay)",
-    "avantages":    "Avantages sociaux (Benefits)",
-    "promotion":    "Promotion",
-    "supervision":  "Supervision",
-    "conditions":   "Conditions de travail (Working Conditions)",
-    "collegues":    "Relations avec collègues (Co-workers)",
-    "nature":       "Nature du travail (Work Nature)",
-    "politiques":   "Politiques organisationnelles (Org. Policies)",
-    "communication":"Communication",
+    "pay":                "Rémunération (Pay)",
+    "benefits":           "Avantages sociaux (Benefits)",
+    "promotion":          "Promotion",
+    "supervision":        "Supervision",
+    "working_conditions": "Conditions de travail (Working Conditions)",
+    "coworkers":          "Relations avec collègues (Co-workers)",
+    "work_nature":        "Nature du travail (Work Nature)",
+    "policies":           "Politiques organisationnelles (Org. Policies)",
+    "communication":      "Communication",
 }
 
 
@@ -179,11 +179,17 @@ def format_jss_scores(metrics: dict) -> str:
     for key, label in JSS_DIMENSION_LABELS.items():
         v = int(dim.get(key, 0))
         lines.append(f"  {label}: {v}/24  →  {dim_band(v)}")
+
     lines += [
         f"Global Total Score: {global_score}/216  →  {global_band(global_score)}",
         "",
         "Per-dimension bands: Very Low 4–8 | Low 9–13 | Moderate 14–18 | Very High 19–24",
         "Global score bands:  Very Low ≤80 | Low 81–125 | Moderate 126–170 | Very High 171–216",
+        "",
+        "--- EXPLICIT AI INSTRUCTIONS FOR THIS CANDIDATE ---",
+        "WARNING: You are acting as an academic researcher.",
+        "You MUST wrap exact phrases from the provided Reference Material in quotation marks inside your JSON fields.",
+        "If Ahmed scored poorly, strictly cite the negative psychological outcomes (e.g., burnout, turnover, absenteeism) mentioned in the text."
     ]
     return "\n".join(lines)
 

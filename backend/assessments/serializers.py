@@ -171,14 +171,14 @@ def _jss_metrics(answers: dict) -> dict:
     """
     # mapping subscale -> item ids
     SUBSCALES = {
-        "remuneration": [1, 2, 3, 4],
-        "avantages": [5, 6, 7, 8],
+        "pay": [1, 2, 3, 4],
+        "benefits": [5, 6, 7, 8],
         "promotion": [9, 10, 11, 12],
         "supervision": [13, 14, 15, 16],
-        "conditions": [17, 18, 19, 20],
-        "relations": [21, 22, 23, 24],
-        "nature": [25, 26, 27, 28],
-        "politiques": [29, 30, 31, 32],
+        "working_conditions": [17, 18, 19, 20],
+        "coworkers": [21, 22, 23, 24],
+        "work_nature": [25, 26, 27, 28],
+        "policies": [29, 30, 31, 32],
         "communication": [33, 34, 35, 36],
     }
 

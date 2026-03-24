@@ -108,7 +108,7 @@ class JssDimension(BaseModel):
     name: str = Field(description="Dimension name, e.g. Pay, Promotion, Supervision, etc.")
     score: float = Field(description="Numeric score for this dimension")
     satisfaction_level: str = Field(description="One of: Very High, Moderate, Low, Very Low")
-    interpretation: str = Field(description="1 sentence interpretation of this satisfaction dimension")
+    interpretation: str = Field(description="1 sentence interpretation of this satisfaction dimension that MUST include an exact quote from the reference material linking the score to an outcome.")
 
 
 class JssReport(BaseModel):
@@ -118,7 +118,7 @@ class JssReport(BaseModel):
     dimensions: List[JssDimension] = Field(description="All 9 JSS dimensions with scores and interpretations")
     strengths: List[str] = Field(description="2–3 highest satisfaction areas (strengths)")
     risks: List[str] = Field(description="2–3 lowest satisfaction areas (improvement needed)")
-    action_points: List[ActionPoint] = Field(description="4–5 concrete recommendations to improve satisfaction")
+    action_points: List[ActionPoint] = Field(description="4–5 concrete recommendations to improve satisfaction. The 'description' string inside each ActionPoint MUST contain a direct quote from the reference material to justify the action.")
     profile_archetype: str = Field(description="Short label for the satisfaction profile, e.g. 'The Disengaged Performer'")
 
 

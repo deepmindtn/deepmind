@@ -441,7 +441,6 @@ from .models import Assignment
 
 import os
 
-
 def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
     """
     Build targeted RAG retrieval queries based on specific employee scores.
@@ -521,18 +520,53 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
             queries.append("Practical workplace application, behaviors, strengths, and risks of DISC profile styles")
 
     elif name == 'JSS':
-        global_score = int(metrics.get("global", 0))
-        if global_score <= 125:
-            queries.append("Job Satisfaction Survey low overall satisfaction causes remedies")
-        elif global_score >= 171:
-            queries.append("Job Satisfaction Survey high overall satisfaction retention")
-        else:
-            queries.append("Job Satisfaction Survey subscales interpretation")
+        # Dimension mapping: → Academic terms for FAISS queries
+        dimension_labels = {
+            "pay": "pay",
+            "benefits": "benefits",
+            "promotion": "career development and promotion",
+            "supervision": "supervision",
+            "working_conditions": "working conditions",
+            "coworkers": "social support from coworkers",
+            "work_nature": "work nature and job content",
+            "policies": "organizational policies",
+            "communication": "communication",
+        }
         
+        queries = []
+        global_score = int(metrics.get("global", 0))
+        
+        # 1. Global context query
+        if global_score <= 125:
+            queries.append("Job Satisfaction Survey low overall satisfaction consequences turnover interventions")
+        elif global_score >= 171:
+            queries.append("Job Satisfaction Survey high overall satisfaction organizational commitment retention")
+        else:
+            queries.append("Job Satisfaction Survey moderate satisfaction employee engagement improvement interventions")
+
+        # 2. Analyze ALL dimensions
         dim = metrics.get("dimScores") or {}
-        for dim_name, score in dim.items():
-            if int(score) <= 8:
-                queries.append(f"Job Satisfaction Survey very low {dim_name} impact on employee motivation")
+        sorted_dims = sorted(dim.items(), key=lambda x: int(x[1]))  # Lowest → Highest
+        
+        if sorted_dims:
+            # Get lowest 2 (weaknesses)
+            lowest_dims = sorted_dims[:2]
+            for dim_name, score in lowest_dims:
+                academic_term = dimension_labels.get(dim_name, dim_name)
+                queries.append(f"Job Satisfaction Survey low satisfaction {academic_term} workplace intervention")
+            
+            # Get highest 2 (strengths)
+            highest_dims = sorted_dims[-2:]
+            for dim_name, score in highest_dims:
+                academic_term = dimension_labels.get(dim_name, dim_name)
+                queries.append(f"Job Satisfaction Survey high satisfaction {academic_term} employee retention")
+            
+            # For moderate scores: Add exploratory queries for middle dimensions too
+            if len(sorted_dims) > 4:
+                middle_dims = sorted_dims[2:-2]
+                for dim_name, score in middle_dims:
+                    academic_term = dimension_labels.get(dim_name, dim_name)
+                    queries.append(f"Job Satisfaction Survey {academic_term} satisfaction moderate score employee well-being")
 
     elif name == 'BRS':
         average = float(metrics.get("average", 0))
@@ -565,6 +599,7 @@ def build_dynamic_queries(assessment_name: str, metrics: dict) -> list[str]:
             queries.append("high occupational self-efficacy behavioral strengths leadership potential overconfidence risks management strategies")
         else:
             queries.append("moderate occupational self-efficacy behavioral traits workplace risks coaching strategies interventions")
+
     elif name == 'GCOS':
         orientations = {
             "Autonomous": float(metrics.get("autonomous", 0) or 0),
@@ -1218,16 +1253,45 @@ class GenerateJssReportView(APIView):
             OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY),
             allow_dangerous_deserialization=True,
         )
-        retriever = vectorstore.as_retriever()
+        retriever = vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 3,
+                "fetch_k": 20,
+                "lambda_mult": 0.65,
+                "filter": lambda meta: meta.get("section_type") not in ("methodology", "general")
+            }
+        )
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=settings.OPENAI_API_KEY)
         structured_llm = llm.with_structured_output(JssReport)
 
+        #  Unbundle the queries
         dyn_queries = build_dynamic_queries("JSS", metrics)
-        combined_query = " ".join(dyn_queries)
-        retriever.search_kwargs["k"] = 8
-        retriever.search_kwargs["fetch_k"] = 30
-        docs = retriever.invoke(combined_query)
-        context = "\n\n".join([d.page_content for d in docs])
+        all_docs = []
+        for query in dyn_queries:
+            docs = retriever.invoke(query)
+            all_docs.extend(docs)
+            
+        # 4. Deduplicate chunks
+        unique_docs_map = {doc.page_content: doc for doc in all_docs}
+
+        final_docs = list(unique_docs_map.values())[:8]
+
+        # ── Retrieval debug log ──
+        print(f"\n{'='*60}")
+        print(f"[JSS RAG] Retrieved {len(final_docs)} chunks")
+        for i, doc in enumerate(final_docs):
+            m = doc.metadata
+            print(
+                f"  [{i+1}] section_type={m.get('section_type','—')!r:20s} "
+                f"section_title={m.get('section_title','—')!r:30s} "
+                f"source={m.get('source_pdf', m.get('source','?'))!r} "
+                f"page={m.get('page_number', m.get('page','?'))}"
+            )
+            print(f"      preview: {doc.page_content.replace(chr(10), ' ')!r}")
+        print(f"{'='*60}\n")
+                
+        context = "\n\n---\n\n".join([d.page_content for d in final_docs])
 
         prompt = f"""You are an organisational psychologist specialising in job satisfaction measurement.
 Using the reference material below AND the employee's precise JSS scores, produce a structured JSS report.
@@ -1250,6 +1314,10 @@ Instructions:
 - action_points: 4–5 concrete recommendations to improve satisfaction.
 - profile_archetype: short label for the satisfaction profile.
 Supportive, professional tone.
+
+CRITICAL INSTRUCTIONS (YOU MUST FOLLOW THESE TO AVOID FAILURE):
+1. NO GENERIC FLUFF: Every claim in the 'summary', 'dimensions', and 'action_points' MUST be tied directly to a specific concept found in the Reference Material (e.g., burnout, absenteeism, turnover, mobbing, feeling stuck).
+2. If the text mentions "burnout", "turnover", or "absenteeism" in relation to a dimension, you must explicitly mention it.
 """
 
         result = structured_llm.invoke(prompt)
