@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import ReactDOM from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Upload,
@@ -455,6 +456,7 @@ function Modal({ open, title, onClose, children, actions }) {
 // Main Component
 // -----------------------
 export default function Employees() {
+  const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
@@ -473,7 +475,7 @@ export default function Employees() {
   const [q, setQ] = useState("");
   const [dep, setDep] = useState("All");
   const [status, setStatus] = useState("All");
-  const [page, setPage] = useState(1);
+  const [page, _setPage] = useState(1);
   const pageSize = 6;
 
   const [availableDepts, setAvailableDepts] = useState([]);
@@ -495,6 +497,23 @@ export default function Employees() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportFilters, setReportFilters] = useState({
+    department: "All",
+    status: "All",
+    year: new Date().getFullYear(),
+    quarters: ["Q1", "Q2", "Q3", "Q4"]
+  });
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [pastReports] = useState([
+    { id: "1", date: "Mar 15, 2026", scope: "All Departments", year: 2026, quarters: ["Q1", "Q2"], department: "All" },
+    { id: "2", date: "Mar 10, 2026", scope: "Engineering, Q1", year: 2026, quarters: ["Q1"], department: "Engineering" },
+    { id: "3", date: "Mar 05, 2026", scope: "All Departments, Q4 2025", year: 2025, quarters: ["Q4"], department: "All" },
+    { id: "4", date: "Feb 28, 2026", scope: "Sales, Q1", year: 2026, quarters: ["Q1"], department: "Sales" },
+    { id: "5", date: "Feb 20, 2026", scope: "HR, Q4 2025", year: 2025, quarters: ["Q4"], department: "HR" },
+  ]);
+
   const [addOpen, setAddOpen] = useState(false);
   const [invite, setInvite] = useState({
     email: "",
@@ -503,7 +522,7 @@ export default function Employees() {
     department_id: null,
   });
   const [inviteResult, setInviteResult] = useState(null);
-  const [hrReport, setHrReport] = useState(null);
+  const [hrReport, _setHrReport] = useState(null);
   const [hrReportOpen, setHrReportOpen] = useState(false);
 
   const styles = useMemo(
@@ -668,19 +687,10 @@ export default function Employees() {
     window.location.reload();
   }
 
-  async function generateHRReport() {
-    try {
-      const res = await fetch(`${API_BASE}/api/hr/report/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-      });
-      const data = await res.json();
-      setHrReport(data.report);
-      setHrReportOpen(true);
-    } catch (e) {
-      setToast({ message: "Failed to generate report.", type: "error" });
-    }
-  }
+  // NOTE: server-side report generation moved to the Report modal flow.
+  // The original `generateHRReport` function existed but wasn't referenced
+  // by the UI. If you want to trigger server-side generation directly,
+  // re-add a handler that calls the endpoint and opens `hrReportOpen`.
 
   async function assignAssessment() {
     console.log("🚀 assignAssessment triggered");
@@ -1068,16 +1078,27 @@ export default function Employees() {
               <option key={s}>{s}</option>
             ))}
           </select>
-
-          <button
-            style={{
-              ...styles.btnPrimary,
-              width: isMobile ? "100%" : "auto",
-            }}
-            onClick={generateHRReport}
-          >
-            <FileText size={18} /> Generate Report
-          </button>
+          <div style={{ display: "flex", gap: "8px", flexWrap: isMobile ? "wrap" : "nowrap" }}>
+            
+            <button
+              style={{
+                ...styles.btnPrimary,
+                width: isMobile ? "100%" : "auto",
+              }}
+              onClick={() => setReportOpen(true)}
+            >
+              <FileText size={18} /> Generate Report
+            </button>
+            <button
+              style={{
+                ...styles.btnSecondary,
+                width: isMobile ? "100%" : "auto",
+              }}
+              onClick={() => setHistoryOpen(true)}
+            >
+              <Clock size={18} /> Report History
+            </button>
+          </div>
         </div>
 
         {/* Employee Table */}
@@ -2484,6 +2505,181 @@ export default function Employees() {
           }}
         >
           {hrReport}
+        </div>
+      </Modal>
+
+      {/* Report History Modal */}
+      <Modal
+        open={historyOpen}
+        title="Past Psychometric Reports"
+        onClose={() => setHistoryOpen(false)}
+        actions={
+          <button
+            style={{ ...styles.btnSecondary, width: isMobile ? "100%" : "auto" }}
+            onClick={() => setHistoryOpen(false)}
+          >
+            Close
+          </button>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {pastReports.length > 0 ? (
+            pastReports.map((report) => (
+              <div
+                key={report.id}
+                style={{
+                  padding: "16px",
+                  backgroundColor: COLORS.bgMain,
+                  border: `1px solid ${COLORS.borderColor}`,
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.border = `1px solid ${COLORS.primary}`;
+                  e.currentTarget.style.backgroundColor = COLORS.cardBg;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.border = `1px solid ${COLORS.borderColor}`;
+                  e.currentTarget.style.backgroundColor = COLORS.bgMain;
+                }}
+              >
+                <div>
+                  <p style={{ margin: "0 0 4px 0", fontWeight: "600", fontSize: "14px", color: COLORS.textPrimary }}>
+                    {report.scope}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "12px", color: COLORS.textSecondary }}>
+                    {report.date}
+                  </p>
+                </div>
+                <button
+                  style={{
+                    ...styles.btnPrimary,
+                    padding: "6px 12px",
+                    fontSize: "12px",
+                  }}
+                  onClick={() => {
+                    setHistoryOpen(false);
+                    navigate("/hr/group-report", {
+                      state: {
+                        filters: {
+                          department: report.department,
+                          status: "All",
+                          year: report.year,
+                          quarters: report.quarters,
+                        },
+                        fromHistory: true
+                      }
+                    });
+                  }}
+                >
+                  View
+                </button>
+              </div>
+            ))
+          ) : (
+            <p style={{ color: COLORS.textSecondary, textAlign: "center", padding: "20px" }}>
+              No past reports found
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      {/* Generate Group Report Modal */}
+      <Modal
+        open={reportOpen}
+        title="Generate Group Psychometric Report"
+        onClose={() => setReportOpen(false)}
+        actions={
+          <>
+            <button
+              style={{ ...styles.btnSecondary, width: isMobile ? "100%" : "auto" }}
+              onClick={() => setReportOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              style={{ ...styles.btnPrimary, width: isMobile ? "100%" : "auto" }}
+              onClick={() => {
+                setReportOpen(false);
+                // Navigate to the new report page passing filters as state
+                navigate("/hr/group-report", { state: { filters: reportFilters } });
+              }}
+            >
+              <FileText size={18} /> Initialize Report
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={styles.label}>Department Scope</label>
+            <select
+              style={styles.input}
+              value={reportFilters.department}
+              onChange={(e) => setReportFilters({ ...reportFilters, department: e.target.value })}
+            >
+              <option value="All">All Departments</option>
+              {availableDepts.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={styles.label}>Employment Status</label>
+            <select
+              style={styles.input}
+              value={reportFilters.status}
+              onChange={(e) => setReportFilters({ ...reportFilters, status: e.target.value })}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="On Leave">On Leave</option>
+            </select>
+          </div>
+          
+          <div style={{ display: "flex", gap: "16px", flexDirection: isMobile ? "column" : "row" }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>Year</label>
+              <select
+                style={styles.input}
+                value={reportFilters.year}
+                onChange={(e) => setReportFilters({ ...reportFilters, year: parseInt(e.target.value) })}
+              >
+                {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: 2 }}>
+              <label style={styles.label}>Quarters</label>
+              <div style={{ display: "flex", gap: "12px", marginTop: "8px", flexWrap: "wrap" }}>
+                {["Q1", "Q2", "Q3", "Q4"].map((q) => (
+                  <label key={q} style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={reportFilters.quarters.includes(q)}
+                      onChange={(e) => {
+                        const newQ = e.target.checked
+                          ? [...reportFilters.quarters, q]
+                          : reportFilters.quarters.filter(item => item !== q);
+                        setReportFilters({ ...reportFilters, quarters: newQ });
+                      }}
+                      style={{ width: "16px", height: "16px", accentColor: COLORS.primary }}
+                    />
+                    <span style={{ fontSize: "14px", color: COLORS.textPrimary }}>{q}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
         </div>
       </Modal>
 
