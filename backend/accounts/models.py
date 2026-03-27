@@ -71,6 +71,11 @@ class User(AbstractUser):
         HR = "HR", "HR"
         EMPLOYEE = "EMPLOYEE", "Employee"
 
+    class EmploymentStatus(models.TextChoices):
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+        ON_LEAVE = "on_leave", "On Leave"
+
     class Departments(models.TextChoices):
         ENGINEERING = "engineering", "Engineering"
         MARKETING = "marketing", "Marketing"
@@ -88,6 +93,7 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     role = models.CharField(max_length=16, choices=Roles.choices, default=Roles.HR)
+    employment_status = models.CharField(max_length=16, choices=EmploymentStatus.choices, default=EmploymentStatus.ACTIVE)
 
     # Department now defaults to HR if not provided
     department = models.CharField(

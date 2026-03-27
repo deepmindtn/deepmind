@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # local
     "accounts",
     "assessments",
+    "department_reporting",
 ]
 
 MIDDLEWARE = [

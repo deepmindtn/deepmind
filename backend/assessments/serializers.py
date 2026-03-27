@@ -620,7 +620,7 @@ class CandidateAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CandidateAssignment
         fields = [
-            'id', 'token', 'recruitee', 'template', 
+            'id', 'token', 'recruitee', 'template',
             'status', 'assigned_at', 'completed_at',
             'answers', 'metrics', 'ai_report'
         ]

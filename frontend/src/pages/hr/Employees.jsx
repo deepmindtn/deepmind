@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import ReactDOM from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Upload,
@@ -455,9 +456,13 @@ function Modal({ open, title, onClose, children, actions }) {
 // Main Component
 // -----------------------
 export default function Employees() {
+  const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+  const authHeader = useMemo(
+    () => (access ? { Authorization: `Bearer ${access}` } : {}),
+    [access]
+  );
 
   // --- Responsive States ---
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -473,7 +478,7 @@ export default function Employees() {
   const [q, setQ] = useState("");
   const [dep, setDep] = useState("All");
   const [status, setStatus] = useState("All");
-  const [page, setPage] = useState(1);
+  const [page, _setPage] = useState(1);
   const pageSize = 6;
 
   const [availableDepts, setAvailableDepts] = useState([]);
@@ -495,6 +500,40 @@ export default function Employees() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportFilters, setReportFilters] = useState({
+    department: "All",
+    status: "All",
+    year: new Date().getFullYear(),
+    quarters: ["Q1", "Q2", "Q3", "Q4"]
+  });
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [pastReports, setPastReports] = useState([]);
+
+  useEffect(() => {
+    if (historyOpen) {
+      const fetchPastReports = async () => {
+        try {
+          const access = localStorage.getItem("access");
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/hr/department-reports/`, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: access ? `Bearer ${access}` : undefined,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setPastReports(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch past reports:", err);
+        }
+      };
+      fetchPastReports();
+    }
+  }, [historyOpen]);
+
   const [addOpen, setAddOpen] = useState(false);
   const [invite, setInvite] = useState({
     email: "",
@@ -503,7 +542,7 @@ export default function Employees() {
     department_id: null,
   });
   const [inviteResult, setInviteResult] = useState(null);
-  const [hrReport, setHrReport] = useState(null);
+  const [hrReport, _setHrReport] = useState(null);
   const [hrReportOpen, setHrReportOpen] = useState(false);
 
   const styles = useMemo(
@@ -519,7 +558,7 @@ export default function Employees() {
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [API_BASE, authHeader]);
 
   // --- Toast Timer ---
   useEffect(() => {
@@ -560,6 +599,15 @@ export default function Employees() {
   };
 
   // --- Data Fetching ---
+  const formatEmploymentStatus = (employmentStatus, isActive) => {
+    if (!employmentStatus) return isActive ? "Active" : "Inactive";
+    const normalized = String(employmentStatus).toLowerCase().replace(/[-\s]/g, "_");
+    if (normalized === "on_leave") return "On Leave";
+    if (normalized === "active") return "Active";
+    if (normalized === "inactive") return "Inactive";
+    return employmentStatus;
+  };
+
   useEffect(() => {
     let ignore = false;
     async function run() {
@@ -577,7 +625,7 @@ export default function Employees() {
               `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
             role: u.role,
             department: u.department || "—",
-            status: u.is_active ? "Active" : "Inactive",
+            status: formatEmploymentStatus(u.employment_status, u.is_active),
             lastAssessment: u.last_assessment || null,
             email: u.email,
           }));
@@ -593,7 +641,7 @@ export default function Employees() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [API_BASE, authHeader]);
 
   useEffect(() => {
     async function fetchDepts() {
@@ -610,7 +658,7 @@ export default function Employees() {
       }
     }
     fetchDepts();
-  }, []);
+  }, [API_BASE, authHeader]);
 
   async function viewDetails(r) {
     setDetailRow(r);
@@ -668,19 +716,10 @@ export default function Employees() {
     window.location.reload();
   }
 
-  async function generateHRReport() {
-    try {
-      const res = await fetch(`${API_BASE}/api/hr/report/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-      });
-      const data = await res.json();
-      setHrReport(data.report);
-      setHrReportOpen(true);
-    } catch (e) {
-      setToast({ message: "Failed to generate report.", type: "error" });
-    }
-  }
+  // NOTE: server-side report generation moved to the Report modal flow.
+  // The original `generateHRReport` function existed but wasn't referenced
+  // by the UI. If you want to trigger server-side generation directly,
+  // re-add a handler that calls the endpoint and opens `hrReportOpen`.
 
   async function assignAssessment() {
     console.log("🚀 assignAssessment triggered");
@@ -1068,16 +1107,27 @@ export default function Employees() {
               <option key={s}>{s}</option>
             ))}
           </select>
-
-          <button
-            style={{
-              ...styles.btnPrimary,
-              width: isMobile ? "100%" : "auto",
-            }}
-            onClick={generateHRReport}
-          >
-            <FileText size={18} /> Generate Report
-          </button>
+          <div style={{ display: "flex", gap: "8px", flexWrap: isMobile ? "wrap" : "nowrap" }}>
+            
+            <button
+              style={{
+                ...styles.btnPrimary,
+                width: isMobile ? "100%" : "auto",
+              }}
+              onClick={() => setReportOpen(true)}
+            >
+              <FileText size={18} /> Generate Report
+            </button>
+            <button
+              style={{
+                ...styles.btnSecondary,
+                width: isMobile ? "100%" : "auto",
+              }}
+              onClick={() => setHistoryOpen(true)}
+            >
+              <Clock size={18} /> Report History
+            </button>
+          </div>
         </div>
 
         {/* Employee Table */}
@@ -2484,6 +2534,216 @@ export default function Employees() {
           }}
         >
           {hrReport}
+        </div>
+      </Modal>
+
+      {/* Report History Modal */}
+      <Modal
+        open={historyOpen}
+        title="Past Psychometric Reports"
+        onClose={() => setHistoryOpen(false)}
+        actions={
+          <button
+            style={{ ...styles.btnSecondary, width: isMobile ? "100%" : "auto" }}
+            onClick={() => setHistoryOpen(false)}
+          >
+            Close
+          </button>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {pastReports.length > 0 ? (
+            pastReports.map((report) => (
+              <div
+                key={report.id}
+                style={{
+                  padding: "16px",
+                  backgroundColor: COLORS.bgMain,
+                  border: `1px solid ${COLORS.borderColor}`,
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.border = `1px solid ${COLORS.primary}`;
+                  e.currentTarget.style.backgroundColor = COLORS.cardBg;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.border = `1px solid ${COLORS.borderColor}`;
+                  e.currentTarget.style.backgroundColor = COLORS.bgMain;
+                }}
+              >
+                <div>
+                  <p style={{ margin: "0 0 4px 0", fontWeight: "600", fontSize: "14px", color: COLORS.textPrimary }}>
+                    {report.department === "All" || report.department.toLowerCase() === "all" ? "All Departments" : report.department}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "12px", color: COLORS.textSecondary }}>
+                    {new Date(report.created_at).toLocaleDateString()} at {new Date(report.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <button
+                  style={{
+                    ...styles.btnPrimary,
+                    padding: "6px 12px",
+                    fontSize: "12px",
+                  }}
+                  onClick={async () => {
+                    try {
+                      // Fetch full report details by ID
+                      const access = localStorage.getItem("access");
+                      const response = await fetch(
+                        `${import.meta.env.VITE_API_BASE_URL}/api/hr/department-reports/${report.id}/`,
+                        {
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: access ? `Bearer ${access}` : undefined,
+                          },
+                        }
+                      );
+                      
+                      if (!response.ok) {
+                        throw new Error(`Failed to fetch report: ${response.status}`);
+                      }
+                      
+                      const fullReportData = await response.json();
+                      setHistoryOpen(false);
+                      navigate("/hr/department-report", {
+                        state: {
+                          filters: {
+                            department: fullReportData.department,
+                            status: fullReportData.status_filter || "All",
+                            year: new Date(fullReportData.created_at).getFullYear(),
+                            quarters: [],
+                          },
+                          reportData: fullReportData,
+                          fromHistory: true
+                        }
+                      });
+                    } catch (err) {
+                      console.error("Failed to fetch report details:", err);
+                      // Fallback to minimal data if fetch fails
+                      setHistoryOpen(false);
+                      navigate("/hr/department-report", {
+                        state: {
+                          filters: {
+                            department: report.department,
+                            status: report.status_filter || "All",
+                            year: new Date(report.created_at).getFullYear(),
+                            quarters: [],
+                          },
+                          fromHistory: true
+                        }
+                      });
+                    }
+                  }}
+                >
+                  View
+                </button>
+              </div>
+            ))
+          ) : (
+            <p style={{ color: COLORS.textSecondary, textAlign: "center", padding: "20px" }}>
+              No past reports found
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      {/* Generate Group Report Modal */}
+      <Modal
+        open={reportOpen}
+        title="Generate Group Psychometric Report"
+        onClose={() => setReportOpen(false)}
+        actions={
+          <>
+            <button
+              style={{ ...styles.btnSecondary, width: isMobile ? "100%" : "auto" }}
+              onClick={() => setReportOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              style={{ ...styles.btnPrimary, width: isMobile ? "100%" : "auto" }}
+              onClick={() => {
+                setReportOpen(false);
+                // Navigate to the new report page passing filters as state
+                navigate("/hr/department-report", { state: { filters: reportFilters } });
+              }}
+            >
+              <FileText size={18} /> Initialize Report
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={styles.label}>Department Scope</label>
+            <select
+              style={styles.input}
+              value={reportFilters.department}
+              onChange={(e) => setReportFilters({ ...reportFilters, department: e.target.value })}
+            >
+              <option value="All">All Departments</option>
+              {availableDepts.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={styles.label}>Employment Status</label>
+            <select
+              style={styles.input}
+              value={reportFilters.status}
+              onChange={(e) => setReportFilters({ ...reportFilters, status: e.target.value })}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="On Leave">On Leave</option>
+            </select>
+          </div>
+          
+          <div style={{ display: "flex", gap: "16px", flexDirection: isMobile ? "column" : "row" }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>Year</label>
+              <select
+                style={styles.input}
+                value={reportFilters.year}
+                onChange={(e) => setReportFilters({ ...reportFilters, year: parseInt(e.target.value) })}
+              >
+                {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: 2 }}>
+              <label style={styles.label}>Quarters</label>
+              <div style={{ display: "flex", gap: "12px", marginTop: "8px", flexWrap: "wrap" }}>
+                {["Q1", "Q2", "Q3", "Q4"].map((q) => (
+                  <label key={q} style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={reportFilters.quarters.includes(q)}
+                      onChange={(e) => {
+                        const newQ = e.target.checked
+                          ? [...reportFilters.quarters, q]
+                          : reportFilters.quarters.filter(item => item !== q);
+                        setReportFilters({ ...reportFilters, quarters: newQ });
+                      }}
+                      style={{ width: "16px", height: "16px", accentColor: COLORS.primary }}
+                    />
+                    <span style={{ fontSize: "14px", color: COLORS.textPrimary }}>{q}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
         </div>
       </Modal>
 

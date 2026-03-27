@@ -38,6 +38,7 @@ import BrsTest from "./pages/hr/assessments/BrsTest";
 
 // New Assessments
 import ReportPage from "./pages/hr/ReportPage";
+import DepartmentReportPage from "./pages/hr/DepartmentReportPage";
 import CDRISCTest from "./pages/hr/assessments/CdriscTest";
 import WSESTest from "./pages/hr/assessments/WsesTest";
 import GCOSTest from "./pages/hr/assessments/GcosTest";
@@ -186,6 +187,16 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <ReportPage />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hr/department-report"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <DepartmentReportPage />
               </LayoutComponent>
             </ProtectedRoute>
           }
