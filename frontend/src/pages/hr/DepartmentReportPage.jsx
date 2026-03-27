@@ -791,8 +791,8 @@ export default function DepartmentReportPage() {
                 backgroundColor: alert.type === "danger" ? COLORS.red : alert.type === "warning" ? COLORS.orangeLight : COLORS.blueLight, 
                 border: `1px solid ${alert.type === "danger" ? COLORS.danger : alert.type === "warning" ? COLORS.warning : COLORS.blue}`, 
                 padding: "16px", borderRadius: "12px", display: "flex", alignItems: "center", gap: "12px",
-                color: alert.type === "danger" ? COLORS.danger : alert.type === "warning" ? COLORS.warning : COLORS.blue,
-                opacity: 0.9
+                color: alert.type === "danger" ? '#ffffff' : COLORS.textPrimary,
+                opacity: 0.95
               }}>
                 {alert.type === "warning" ? <AlertTriangle size={20} /> : <Info size={20} />}
                 <span style={{ fontWeight: "500", fontSize: "14px" }}>{alert.message}</span>
