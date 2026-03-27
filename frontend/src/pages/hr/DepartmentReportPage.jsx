@@ -171,10 +171,69 @@ function EmployeeDetailsModal({ employee, onClose, aggregatedMetrics }) {
                 <Lightbulb size={20} />
               </div>
               <div>
-                <h4 style={{ margin: "0 0 8px 0", fontSize: "16px", color: COLORS.purple }}>Evolution & AI Summary</h4>
-                <p style={{ margin: 0, color: COLORS.textPrimary, lineHeight: "1.6", fontSize: "14px" }}>
-                  {employee.ai_summary}
-                </p>
+                <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", color: COLORS.purple }}>
+                  {employee.ai_summary.profile_archetype ? `${employee.ai_summary.profile_archetype} ` : "Professional Well-being Insight"}
+                </h4>
+                {typeof employee.ai_summary === 'string' ? (
+                  <p style={{ margin: 0, color: COLORS.textPrimary, lineHeight: "1.6", fontSize: "14px" }}>
+                    {employee.ai_summary}
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {employee.ai_summary.summary && (
+                      <p style={{ margin: "0 0 8px 0", color: COLORS.textSecondary, fontStyle: "italic", fontSize: "14px", lineHeight: "1.5" }}>
+                        {employee.ai_summary.summary}
+                      </p>
+                    )}
+                    {employee.ai_summary.current_state?.length > 0 && (
+                      <div>
+                        <strong style={{ color: COLORS.purple, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Current Profile</strong>
+                        <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.6" }}>
+                          {employee.ai_summary.current_state.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {employee.ai_summary.evolution_details?.length > 0 && (
+                      <div>
+                        <strong style={{ color: COLORS.purple, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Evolution Trends</strong>
+                        <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.6" }}>
+                          {employee.ai_summary.evolution_details.map((item, idx) => {
+                            const parts = item.split(":");
+                            const hasTitle = parts.length > 1;
+                            return (
+                              <li key={idx} style={{ marginBottom: "6px" }}>
+                                {hasTitle ? <strong style={{color: COLORS.textPrimary}}>{parts[0]}:</strong> : null}
+                                {hasTitle ? parts.slice(1).join(":") : item}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    {employee.ai_summary.strengths?.length > 0 && (
+                      <div>
+                        <strong style={{ color: COLORS.purple, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Core Strengths</strong>
+                        <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.6" }}>
+                          {employee.ai_summary.strengths.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {employee.ai_summary.action_points?.length > 0 && (
+                      <div>
+                        <strong style={{ color: COLORS.purple, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Action Points</strong>
+                        <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.6" }}>
+                          {employee.ai_summary.action_points.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

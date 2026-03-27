@@ -519,16 +519,6 @@ def generate_dynamic_alerts(metrics, employee_breakdown):
                 }
             )
 
-    # Check incomplete assessments
-    incomplete_count = sum(1 for emp in employee_breakdown if len(emp.get("missing", [])) > 0)
-    if incomplete_count > 0:
-        alerts.append(
-            {
-                "type": "info",
-                "message": f"ℹ️ {incomplete_count} employees have pending assessments.",
-            }
-        )
-
     # Default success message if no issues
     if not alerts:
         alerts.append(
@@ -557,6 +547,7 @@ def _calculate_employee_insight(user_assignments):
     Compares metrics across multiple test iterations to detect trends and changes.
     Returns a structured summary with current state and evolution narrative.
     """
+    from .ai_report_generator import generate_employee_evolution_insight
     from assessments.serializers import compute_metrics_for_template
 
     completed_records = []
@@ -568,180 +559,24 @@ def _calculate_employee_insight(user_assignments):
             completed_records.append((assignment, metric_set))
 
     if not completed_records:
-        return "No assessment data available for this employee."
+        return {
+            "summary": "No assessment data available.",
+            "current_state": [],
+            "evolution_details": [],
+            "strengths": [],
+            "action_points": [],
+            "profile_archetype": "N/A"
+        }
 
     # Sort by completion date
     completed_records.sort(key=lambda r: r[0].completed_at or timezone.now())
 
-    # Group by template code to track evolution
-    by_template = defaultdict(list)
+    metrics_history = []
     for assignment, metric_set in completed_records:
-        by_template[assignment.template.code].append((assignment, metric_set))
+        metrics_history.append({
+            "assessment": assignment.template.name,
+            "date": (assignment.completed_at or timezone.now()).strftime("%Y-%m-%d"),
+            "metrics": metric_set
+        })
 
-    current_state = []
-    evolution_details = []
-
-    # ==== BURNOUT & EMOTIONAL EXHAUSTION (MASLACH) ====
-    if "MASLACH" in by_template and len(by_template["MASLACH"]) >= 1:
-        maslach_records = by_template["MASLACH"]
-        latest_maslach = maslach_records[-1][1] or {}
-
-        # Extract metrics with fallback and convert to float
-        ee_score = _metric_value(latest_maslach, "EE", "Emotional_Exhaustion", ("burnout", "exhaustion"))
-        dp_score = _metric_value(
-            latest_maslach,
-            "DP",
-            "Depersonalization",
-            ("burnout", "depersonalization"),
-        )
-        pa_score = _metric_value(
-            latest_maslach,
-            "PA",
-            "Personal_Accomplishment",
-            ("burnout", "accomplishment"),
-        )
-
-        current_state.append(f"Emotional Exhaustion: {ee_score:.1f}")
-        if pa_score:
-            current_state.append(f"Personal Accomplishment: {pa_score:.1f}")
-
-        if len(maslach_records) >= 2:
-            first_maslach = maslach_records[0][1] or {}
-            first_ee = _metric_value(first_maslach, "EE", "Emotional_Exhaustion", ("burnout", "exhaustion"))
-            first_dp = _metric_value(
-                first_maslach,
-                "DP",
-                "Depersonalization",
-                ("burnout", "depersonalization"),
-            )
-
-            ee_change = ee_score - first_ee
-            dp_change = dp_score - first_dp
-
-            if ee_change > 15:
-                evolution_details.append(
-                    f"Significant increase in emotional exhaustion (+{ee_change:.1f}): "
-                    "The employee is experiencing heightened burnout. Recommend immediate "
-                    "wellness intervention with focus on stress management and workload review."
-                )
-            elif ee_change > 5:
-                evolution_details.append(
-                    f"Gradual increase in emotional exhaustion (+{ee_change:.1f}): "
-                    "Early signs of burnout emergence. Proactive support is recommended."
-                )
-            elif ee_change < -10:
-                evolution_details.append(
-                    f"Notable improvement in emotional exhaustion ({ee_change:.1f}): "
-                    "The employee's burnout levels are declining. Current interventions appear effective."
-                )
-
-            if dp_change > 10:
-                evolution_details.append(
-                    f"Rising depersonalization (+{dp_change:.1f}): "
-                    "Employee may feel increasingly detached from work. Consider role adjustments "
-                    "or team engagement activities."
-                )
-            elif dp_change < -5:
-                evolution_details.append(
-                    f"Improving depersonalization ({dp_change:.1f}): "
-                    "The employee is re-engaging emotionally with their work."
-                )
-
-    # ==== JOB SATISFACTION (JSS) ====
-    if "JSS" in by_template and len(by_template["JSS"]) >= 1:
-        jss_records = by_template["JSS"]
-        latest_jss = jss_records[-1][1] or {}
-
-        global_score = _metric_value(latest_jss, "global", "total", "average")
-        current_state.append(f"Job Satisfaction (Global): {global_score:.1f}/216")
-
-        if len(jss_records) >= 2:
-            first_jss = jss_records[0][1] or {}
-            first_global = _metric_value(first_jss, "global", "total", "average")
-
-            jss_change = global_score - first_global
-
-            if jss_change > 20:
-                evolution_details.append(
-                    f"Significant improvement in job satisfaction (+{jss_change:.1f}): "
-                    "The employee reports increased contentment and engagement with their role."
-                )
-            elif jss_change > 5:
-                evolution_details.append(
-                    f"Slight improvement in job satisfaction (+{jss_change:.1f}): "
-                    "Positive trajectory in employee morale."
-                )
-            elif jss_change < -20:
-                evolution_details.append(
-                    f"Notable decline in job satisfaction ({jss_change:.1f}): "
-                    "The employee's satisfaction is declining. Investigation into work conditions "
-                    "and role fit is warranted."
-                )
-            elif jss_change < -5:
-                evolution_details.append(
-                    f"Slight decline in job satisfaction ({jss_change:.1f}): "
-                    "Monitor for potential issues affecting engagement."
-                )
-
-    # ==== PERSONALITY & BEHAVIOR (DISC, BIG_FIVE) ====
-    if "DISC" in by_template and len(by_template["DISC"]) >= 1:
-        disc_records = by_template["DISC"]
-        latest_disc = disc_records[-1][1] or {}
-        disc_source = latest_disc.get("trait", latest_disc) if isinstance(latest_disc, dict) else {}
-
-        # Extract DISC traits and convert to float
-        d_trait = _to_float(disc_source.get("D", 0))
-        i_trait = _to_float(disc_source.get("I", 0))
-        c_trait = _to_float(disc_source.get("C", 0))
-        s_trait = _to_float(disc_source.get("S", 0))
-
-        if max([d_trait, i_trait, c_trait, s_trait]) > 0:
-            current_state.append(f"DISC Profile: D={d_trait}, I={i_trait}, C={c_trait}, S={s_trait}")
-
-    # ==== RESILIENCE & STRESS CAPACITY (KARASEK, BRS) ====
-    if "KARASEK" in by_template and len(by_template["KARASEK"]) >= 1:
-        karasek_records = by_template["KARASEK"]
-        latest_karasek = karasek_records[-1][1] or {}
-
-        demand = _metric_value(latest_karasek, "D", "Demands", ("dim", "D"))
-        control = _metric_value(latest_karasek, "C", "Control", ("dim", "C"))
-        support = _metric_value(latest_karasek, "S", "Support", ("dim", "S"))
-
-        # High demand + low control = high strain
-        if demand > control:
-            evolution_details.append(
-                f"High job strain detected (Demands={demand} > Control={control}): "
-                "The employee faces high demands with limited autonomy. Recommend "
-                "increasing decision-making authority or reducing workload."
-            )
-        elif support < 30:
-            evolution_details.append(
-                "Limited workplace support: Consider enhancing team collaboration "
-                "and managerial support structures."
-            )
-
-    if "BRS" in by_template and len(by_template["BRS"]) >= 1:
-        brs_records = by_template["BRS"]
-        latest_brs = brs_records[-1][1] or {}
-
-        brs_score = _metric_value(latest_brs, "average", "total")
-        if brs_score > 0:
-            current_state.append(f"Resilience Score: {brs_score}")
-
-    # ==== CONSTRUCT NARRATIVE ====
-    narrative = "Well-being & Evolution Profile: "
-
-    # Current state summary
-    if current_state:
-        narrative += f"Currently: {', '.join(current_state)}. "
-
-    # Evolution narrative
-    if evolution_details:
-        narrative += "Evolution: " + " ".join(evolution_details)
-    else:
-        if len(completed_records) >= 2:
-            narrative += "Metrics have remained relatively stable across assessment periods."
-        else:
-            narrative += "Baseline assessment established; future comparisons will track evolution over time."
-
-    return narrative
+    return generate_employee_evolution_insight(metrics_history)

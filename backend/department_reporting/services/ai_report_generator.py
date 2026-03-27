@@ -39,6 +39,13 @@ class DepartmentAISummary(BaseModel):
     risks: list[str] = Field(..., description="List of risks based on metrics")
     recommendations: list[str] = Field(..., description="List of recommendations based on metrics")
 
+class EmployeeEvolutionSummary(BaseModel):
+    summary: str = Field(..., description="Executive summary of the employee's well-being and performance evolution.")
+    current_state: list[str] = Field(..., description="2-3 bullet points describing their current metric profile strengths/states.")
+    evolution_details: list[str] = Field(..., description="2-3 bullet points identifying significant changes or trends over time.")
+    strengths: list[str] = Field(..., description="List of professional strengths or protective factors.")
+    action_points: list[str] = Field(..., description="Tailored development or well-being action points.")
+    profile_archetype: str = Field(..., description="A short label summarizing the profile, e.g. 'The Adapting Performer'")
 
 def generate_department_ai_summary(department_name, metrics, employee_count):
     """
@@ -95,6 +102,45 @@ def generate_department_ai_summary(department_name, metrics, employee_count):
     except Exception as exc:
         logger.error("Failed to generate AI summary: %s", exc)
         return _generate_fallback_summary(department_name, metrics, employee_count)
+
+def generate_employee_evolution_insight(metrics_history):
+    """
+    Calls an LLM with structured outputs to return the employee insights based on historical metrics.
+    """
+    if not settings.OPENAI_API_KEY:
+        return {
+            "summary": "Employee evaluation timeline.",
+            "current_state": ["Metrics available for review."],
+            "evolution_details": ["Stable performance."],
+            "strengths": ["Consistent."],
+            "action_points": ["Continue monitoring."],
+            "profile_archetype": "The Steady Contributor"
+        }
+
+    model_name = getattr(settings, "OPENAI_MODEL", None) or getattr(settings, "OPENAI_CHAT_MODEL", None) or "gpt-4o-mini"
+    llm = ChatOpenAI(model=model_name, temperature=0.0, api_key=settings.OPENAI_API_KEY)
+    structured_llm = llm.with_structured_output(EmployeeEvolutionSummary)
+    
+    prompt_template = PromptTemplate.from_template(
+        "You are an expert organizational psychologist. Analyze the following psychometric assessment history for an individual employee.\n\n"
+        "Metrics History (Chronological):\n{metrics}\n\n"
+        "INSTRUCTIONS (must follow exactly):\n"
+        "- Use ONLY the numeric data present in 'Metrics History' to support any claim. Do NOT hallucinate or invent facts.\n"
+        "- For each descriptive bullet, include the exact numeric evidence (value and date) and any computed delta you use to justify a claim (e.g., 'Emotional Exhaustion: 34/54 on 2026-03-01 (change +6)').\n"
+        "- If a metric is absent, say 'No data available' for that metric rather than inferring.\n"
+        "- Produce a JSON-compatible structured response matching the EmployeeEvolutionSummary schema: 'summary' (1-2 sentences), 'current_state' (2-4 bullets with evidence), 'evolution_details' (2-4 bullets with computed deltas and evidence), 'strengths' (1-3 bullets), 'action_points' (1-4 bullets), 'profile_archetype' (short label).\n"
+        "- Keep language concise and professional. Include no additional fields.\n\n"
+        "Provide the structured analysis now."
+    )
+    prompt = prompt_template.format(metrics=json.dumps(metrics_history, indent=2))
+    try:
+        return structured_llm.invoke(prompt).model_dump()
+    except Exception as exc:
+        logger.error("Failed to generate employee AI insight: %s", exc)
+        return {
+            "summary": "Data available for review.", "current_state": [], 
+            "evolution_details": [], "strengths": [], "action_points": [], "profile_archetype": "Employee"
+        }
 
 
 def _generate_fallback_summary(department_name, metrics, employee_count):
