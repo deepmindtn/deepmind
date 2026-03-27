@@ -212,50 +212,67 @@ function EmployeeDetailsModal({ employee, onClose, aggregatedMetrics }) {
              </p>
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {displayMetrics?.DISC?.D !== undefined ? (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Dominance (D)</span>
-                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.D || 0).toFixed(1)} / 100</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Influence (I)</span>
-                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.I || 0).toFixed(1)} / 100</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Conformity (C)</span>
-                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.C || 0).toFixed(1)} / 100</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Stability (S)</span>
-                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.S || 0).toFixed(1)} / 100</span>
-                    </div>
-                  </>
+                  (() => {
+                    const d = displayMetrics.DISC.D || 0;
+                    const i = displayMetrics.DISC.I || 0;
+                    const s = displayMetrics.DISC.S || 0;
+                    const c = displayMetrics.DISC.C || 0;
+                    const total = d + i + s + c || 15;
+                    return (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                          <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Dominance (D)</span>
+                          <span style={{ fontWeight: "600" }}>{((d / total) * 100).toFixed(1)}%</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                          <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Influence (I)</span>
+                          <span style={{ fontWeight: "600" }}>{((i / total) * 100).toFixed(1)}%</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                          <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Conformity (C)</span>
+                          <span style={{ fontWeight: "600" }}>{((c / total) * 100).toFixed(1)}%</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                          <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Stability (S)</span>
+                          <span style={{ fontWeight: "600" }}>{((s / total) * 100).toFixed(1)}%</span>
+                        </div>
+                      </>
+                    );
+                  })()
                 ) : null}
                 {displayMetrics?.MASLACH?.DP !== undefined ? (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
                       <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Emotional Exhaustion</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.EE || 0) > 25 ? COLORS.danger : (displayMetrics.MASLACH.EE || 0) > 15 ? COLORS.warning : COLORS.success }}>
-                          {(displayMetrics.MASLACH.EE || 0).toFixed(1)} / 54
+                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.EE || 0) >= 60 ? COLORS.danger : (displayMetrics.MASLACH.EE || 0) > 40 ? COLORS.warning : COLORS.success }}>
+                          {(displayMetrics.MASLACH.EE || 0).toFixed(1)} / 100
                         </span>
-                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.EE || 0) > 25 ? COLORS.danger : (displayMetrics.MASLACH.EE || 0) > 15 ? COLORS.warning : COLORS.success, fontWeight: "500" }}>
-                          {(displayMetrics.MASLACH.EE || 0) > 25 ? 'High' : (displayMetrics.MASLACH.EE || 0) > 15 ? 'Moderate' : 'Low'}
+                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.EE || 0) >= 60 ? COLORS.danger : (displayMetrics.MASLACH.EE || 0) > 40 ? COLORS.warning : COLORS.success, fontWeight: "500" }}>
+                          {(displayMetrics.MASLACH.EE || 0) >= 60 ? 'High' : (displayMetrics.MASLACH.EE || 0) > 40 ? 'Moderate' : 'Low'}
                         </span>
                       </div>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
                       <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Depersonalization</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontWeight: "600" }}>{(displayMetrics.MASLACH.DP || 0).toFixed(1)} / 30</span>
-                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.DP || 0) > 15 ? COLORS.danger : COLORS.textSecondary, fontWeight: "500" }}>({(displayMetrics.MASLACH.DP || 0) > 15 ? 'High' : 'Normal'})</span>
+                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.DP || 0) >= 60 ? COLORS.danger : (displayMetrics.MASLACH.DP || 0) > 40 ? COLORS.warning : COLORS.success }}>
+                          {(displayMetrics.MASLACH.DP || 0).toFixed(1)} / 100
+                        </span>
+                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.DP || 0) >= 60 ? COLORS.danger : (displayMetrics.MASLACH.DP || 0) > 40 ? COLORS.warning : COLORS.success, fontWeight: "500" }}>
+                          ({(displayMetrics.MASLACH.DP || 0) >= 60 ? 'High' : (displayMetrics.MASLACH.DP || 0) > 40 ? 'Moderate' : 'Low'})
+                        </span>
                       </div>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px", gridColumn: "1/-1" }}>
                       <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Personal Accomplishment</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.PA || 0) < 30 ? COLORS.danger : COLORS.success }}>{(displayMetrics.MASLACH.PA || 0).toFixed(1)} / 48</span>
-                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.PA || 0) < 30 ? COLORS.danger : COLORS.success, fontWeight: "500" }}>({(displayMetrics.MASLACH.PA || 0) < 30 ? 'Low' : 'Good'})</span>
+                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.PA || 0) <= 40 ? COLORS.danger : (displayMetrics.MASLACH.PA || 0) < 60 ? COLORS.warning : COLORS.success }}>
+                          {(displayMetrics.MASLACH.PA || 0).toFixed(1)} / 100
+                        </span>
+                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.PA || 0) <= 40 ? COLORS.danger : (displayMetrics.MASLACH.PA || 0) < 60 ? COLORS.warning : COLORS.success, fontWeight: "500" }}>
+                          ({(displayMetrics.MASLACH.PA || 0) <= 40 ? 'Low' : (displayMetrics.MASLACH.PA || 0) < 60 ? 'Moderate' : 'Good'})
+                        </span>
                       </div>
                     </div>
                   </>
@@ -264,11 +281,11 @@ function EmployeeDetailsModal({ employee, onClose, aggregatedMetrics }) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px", gridColumn: "1/-1" }}>
                     <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Job Satisfaction (Global)</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontWeight: "600", color: (displayMetrics.JSS.global || 0) > 140 ? COLORS.success : (displayMetrics.JSS.global || 0) > 100 ? COLORS.orange : COLORS.danger }}>
+                      <span style={{ fontWeight: "600", color: (displayMetrics.JSS.global || 0) >= 126 ? COLORS.success : (displayMetrics.JSS.global || 0) > 80 ? COLORS.orange : COLORS.danger }}>
                         {(displayMetrics.JSS.global || 0).toFixed(0)} / 216
                       </span>
-                      <span style={{ fontSize: "12px", color: (displayMetrics.JSS.global || 0) > 140 ? COLORS.success : (displayMetrics.JSS.global || 0) > 100 ? COLORS.orange : COLORS.danger, fontWeight: "500" }}>
-                        {(displayMetrics.JSS.global || 0) > 140 ? 'High' : (displayMetrics.JSS.global || 0) > 100 ? 'Moderate' : 'Low'}
+                      <span style={{ fontSize: "12px", color: (displayMetrics.JSS.global || 0) >= 126 ? COLORS.success : (displayMetrics.JSS.global || 0) > 80 ? COLORS.orange : COLORS.danger, fontWeight: "500" }}>
+                        {(displayMetrics.JSS.global || 0) >= 171 ? 'Very High' : (displayMetrics.JSS.global || 0) >= 126 ? 'Moderate' : (displayMetrics.JSS.global || 0) > 80 ? 'Low' : 'Very Low'}
                       </span>
                     </div>
                   </div>
@@ -499,11 +516,12 @@ export default function DepartmentReportPage() {
     .filter(d => d.value > 0);
 
   const discMetrics = activeData.aggregated_metrics?.DISC || { D: 0, I: 0, S: 0, C: 0 };
+  const _totalDisc = (discMetrics.D || 0) + (discMetrics.I || 0) + (discMetrics.S || 0) + (discMetrics.C || 0) || 15;
   const discData = Object.entries(discMetrics)
     .filter(([k]) => ["D", "I", "C", "S"].includes(k))
     .map(([k, v]) => ({ 
       name: k === "D" ? "Dominance" : k === "I" ? "Influence" : k === "C" ? "Conformity" : "Stability", 
-      value: typeof v === 'number' ? v : 0 
+      value: typeof v === 'number' ? Number(((v / _totalDisc) * 100).toFixed(1)) : 0 
     }));
 
   const jssMetrics = activeData.aggregated_metrics?.JSS || {};
@@ -754,7 +772,7 @@ export default function DepartmentReportPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" tick={{fontSize: 12}} />
                   <YAxis tick={{fontSize: 12}} />
-                  <Tooltip cursor={{fill: 'var(--bg-main)'}} contentStyle={{borderRadius: '8px'}} />
+                  <Tooltip cursor={{fill: 'var(--bg-main)'}} contentStyle={{borderRadius: '8px'}} formatter={(value) => `${value}%`} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                     {discData.map((entry, index) => <Cell key={index} fill={discColors[entry.name] || '#ec4899'} />)}
                   </Bar>
