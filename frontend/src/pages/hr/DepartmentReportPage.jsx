@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, LineChart, Line,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
-import { ArrowLeft, Users, CheckCircle, AlertTriangle, TrendingUp, Info, Shield, Target, Lightbulb, FileText, ChevronRight, X, Loader2, Download, Clock, Zap, Eye } from "lucide-react";
-
+import { ArrowLeft, Users, CheckCircle, AlertTriangle, TrendingUp, TrendingDown, Info, Shield, Target, Lightbulb, FileText, ChevronRight, X, Loader2, Download, Clock, Zap, Eye } from "lucide-react";
 // --- Theme Colors ---
 const COLORS = {
   primary: "var(--primary)",
@@ -39,44 +38,73 @@ const formatMissingTests = (missing) => {
   return `${missing.slice(0, 2).join(", ")}, +${missing.length - 2}`;
 };
 
+const DEFAULT_FILTERS = {
+  department: "All",
+  status: "All",
+  year: new Date().getFullYear(),
+  quarters: ["Q1", "Q2", "Q3", "Q4"],
+};
+
+const normalizeDepartment = (value) => {
+  const dep = String(value || "All").trim();
+  return dep.length === 0 ? "All" : dep;
+};
+
+const normalizeStatus = (value) => {
+  const raw = String(value || "all").toLowerCase().replace(/[\s-]/g, "_");
+  if (raw === "on_leave") return "on_leave";
+  if (raw === "active") return "active";
+  if (raw === "inactive") return "inactive";
+  return "all";
+};
+
+const deriveDateRange = (filters) => {
+  const year = Number.isFinite(Number(filters?.year)) ? Number(filters.year) : new Date().getFullYear();
+  const selected = new Set(Array.isArray(filters?.quarters) ? filters.quarters : []);
+  const quarterRanges = {
+    Q1: [0, 2],
+    Q2: [3, 5],
+    Q3: [6, 8],
+    Q4: [9, 11],
+  };
+
+  const activeRanges = Object.entries(quarterRanges)
+    .filter(([q]) => selected.size === 0 || selected.has(q))
+    .map(([, range]) => range);
+
+  if (activeRanges.length === 0) {
+    return {};
+  }
+
+  const startMonth = Math.min(...activeRanges.map((range) => range[0]));
+  const endMonth = Math.max(...activeRanges.map((range) => range[1]));
+  const lastDay = new Date(year, endMonth + 1, 0).getDate();
+
+  const pad = (v) => String(v).padStart(2, "0");
+  return {
+    date_from: `${year}-${pad(startMonth + 1)}-01`,
+    date_to: `${year}-${pad(endMonth + 1)}-${pad(lastDay)}`,
+  };
+};
+
+const safeLoadFilters = () => {
+  try {
+    const saved = localStorage.getItem("reportFilters");
+    if (!saved) return DEFAULT_FILTERS;
+    const parsed = JSON.parse(saved);
+    return {
+      department: normalizeDepartment(parsed?.department || DEFAULT_FILTERS.department),
+      status: parsed?.status || DEFAULT_FILTERS.status,
+      year: parsed?.year || DEFAULT_FILTERS.year,
+      quarters: Array.isArray(parsed?.quarters) ? parsed.quarters : DEFAULT_FILTERS.quarters,
+    };
+  } catch {
+    return DEFAULT_FILTERS;
+  }
+};
+
 // --- Mock Data Generator ---
 // Generates data per department to simulate sub-pages.
-const generateMockReportData = (departmentName) => ({
-  overview: {
-    total_employees: Math.floor(Math.random() * 50) + 10,
-    completion_rate: (Math.random() * 20 + 80).toFixed(1), // 80 - 100%
-  },
-  ai_summary: `The ${departmentName} department shows solid well-being fundamentals with moderate engagement levels. Team members demonstrate adaptability and cooperative behaviors. However, workload management and work-life balance require attention. We recommend regular 1-on-1s to discuss autonomy and resource allocation.`,
-  aggregated_metrics: {
-    BIG_FIVE: { Openness: 75, Conscientiousness: 80, Extraversion: 65, Agreeableness: 70, Neuroticism: 40 },
-    DISC: { D: 28, I: 35, C: 22, S: 15 },
-    MASLACH: { EE: 22, DP: 10, PA: 35 },
-    KARASEK: { Demands: 60, Control: 40, Support: 55 },
-    JSS: { Pay: 15, Promotion: 12, Supervision: 18, Fringe: 14, Contingent: 13, Operating: 16, Coworkers: 19, Nature: 20, Comm: 15 },
-    BRS: { Resilience: 3.8 },
-  },
-  trends: [
-    { name: "Q1", Exhaustion: 18, Satisfaction: 80, Demands: 55 },
-    { name: "Q2", Exhaustion: 20, Satisfaction: 78, Demands: 58 },
-    { name: "Q3", Exhaustion: 22, Satisfaction: 75, Demands: 60 },
-  ],
-  trend_highlights: {
-    MASLACH: { label: "Exhaustion +4%", type: "warning" },
-    JSS: { label: "Satisfaction -5%", type: "danger" },
-    BRS: { label: "Resilience +2%", type: "success" },
-  },
-  alerts: [
-    { type: "warning", message: "Moderate emotional exhaustion detected. Consider workload redistribution." },
-    { type: "info", message: "Coworker support scores are strong—leverage peer mentorship programs." }
-  ],
-  employee_breakdown: [
-    { id: "1", name: "Alice Johnson", status: "Active", missing: ["CAQ", "GCOS"], trend: "↘️ Burnout Worsening", role: "Sr. Analyst" },
-    { id: "2", name: "Bob Smith", status: "Inactive", missing: ["DISC"], trend: "➡️ Stable", role: "Associate" },
-    { id: "3", name: "Charlie Davis", status: "Active", missing: [], trend: "↗️ Flow Improving", role: "Lead" },
-    { id: "4", name: "Diana Prince", status: "On Leave", missing: ["JSS"], trend: "➡️ Stable", role: "Manager" },
-    { id: "5", name: "Evan Wright", status: "Active", missing: [], trend: "↘️ Resilience Drop", role: "Director" },
-  ]
-});
 
 // --- Lightweight Loading Spinner ---
 function LoadingSpinner() {
@@ -103,8 +131,11 @@ function LoadingSpinner() {
 }
 
 // Floating Employee Modal
-function EmployeeDetailsModal({ employee, onClose }) {
+function EmployeeDetailsModal({ employee, onClose, aggregatedMetrics }) {
   if (!employee) return null;
+
+  // Use employee's personal metrics if available, otherwise fallback to group metrics
+  const displayMetrics = employee.personal_metrics || aggregatedMetrics;
 
   return (
     <div style={{
@@ -112,7 +143,7 @@ function EmployeeDetailsModal({ employee, onClose }) {
       display: "grid", placeItems: "center", zIndex: 9998, padding: "20px",
     }} onClick={onClose}>
       <div style={{
-        backgroundColor: COLORS.cardBg, borderRadius: "20px", maxWidth: "500px", width: "100%",
+        backgroundColor: COLORS.cardBg, borderRadius: "20px", maxWidth: "600px", width: "100%",
         boxShadow: COLORS.shadowHuge, overflow: "hidden", border: `1px solid ${COLORS.borderColor}`,
         display: "flex", flexDirection: "column", maxHeight: "90vh"
       }} onClick={e => e.stopPropagation()}>
@@ -133,49 +164,115 @@ function EmployeeDetailsModal({ employee, onClose }) {
         {/* Content */}
         <div style={{ padding: "24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "24px" }}>
           
-          {/* AI Tailored Summary */}
-          <div style={{ backgroundColor: COLORS.purpleLight, border: `1px solid ${COLORS.borderColor}`, padding: "16px", borderRadius: "12px", display: "flex", gap: "16px" }}>
-            <Zap size={24} color={COLORS.purple} style={{ flexShrink: 0 }} />
+          {/* AI Evolution Insight Summary */}
+          {employee.ai_summary && (
+            <div style={{ backgroundColor: COLORS.purpleLight, padding: "20px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, display: "flex", gap: "16px" }}>
+              <div style={{ backgroundColor: COLORS.purple, padding: "10px", borderRadius: "10px", color: "white", height: "fit-content" }}>
+                <Lightbulb size={20} />
+              </div>
+              <div>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "16px", color: COLORS.purple }}>Evolution & AI Summary</h4>
+                <p style={{ margin: 0, color: COLORS.textPrimary, lineHeight: "1.6", fontSize: "14px" }}>
+                  {employee.ai_summary}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Assessment Status Summary */}
+          <div style={{ backgroundColor: COLORS.blueLight, border: `1px solid ${COLORS.borderColor}`, padding: "16px", borderRadius: "12px", display: "flex", gap: "16px" }}>
+            <Zap size={24} color={COLORS.blue} style={{ flexShrink: 0 }} />
             <div>
-              <h4 style={{ margin: "0 0 8px 0", color: COLORS.purple, fontSize: "16px" }}>AI Behavioral Insight</h4>
+              <h4 style={{ margin: "0 0 8px 0", color: COLORS.blue, fontSize: "16px" }}>Assessment Overview</h4>
               <p style={{ margin: 0, fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.6" }}>
-                {employee.name} exhibits a strong Conscientiousness trait but is currently showing signs of rising Emotional Exhaustion (up 12% since last quarter). Their resilience remains high, yet the demand-control imbalance suggests they are taking on too many operational tasks. A 1-on-1 check-in focusing on task delegation is highly recommended.
+                {employee.name} has completed {employee.completed?.length || 0} assessments. 
+                {employee.missing?.length > 0 ? ` Still pending: ${formatMissingTests(employee.missing)}.` : " All critical assessments completed."}
               </p>
             </div>
           </div>
 
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
              <div style={{ flex: 1, minWidth: "150px", backgroundColor: "#f8fafc", padding: "16px", borderRadius: "12px", border: `1px solid ${COLORS.borderColor}` }}>
-               <span style={{ display: "block", fontSize: "12px", color: COLORS.textSecondary, marginBottom: "4px" }}>Recent Trend</span>
+               <span style={{ display: "block", fontSize: "12px", color: COLORS.textSecondary, marginBottom: "4px" }}>Current Trend</span>
                <span style={{ fontWeight: "600", color: COLORS.textPrimary }}>{employee.trend}</span>
              </div>
              <div style={{ flex: 1, minWidth: "150px", backgroundColor: "#f8fafc", padding: "16px", borderRadius: "12px", border: `1px solid ${COLORS.borderColor}` }}>
-               <span style={{ display: "block", fontSize: "12px", color: COLORS.textSecondary, marginBottom: "4px" }}>Missing Assessments</span>
-               <span style={{ fontWeight: "600", color: employee.missing.length ? COLORS.danger : COLORS.success }}>
-                 {formatMissingTests(employee.missing)}
+               <span style={{ display: "block", fontSize: "12px", color: COLORS.textSecondary, marginBottom: "4px" }}>Employment Status</span>
+               <span style={{ fontWeight: "600", color: employee.status === "Active" ? COLORS.success : COLORS.warning }}>
+                 {employee.status}
                </span>
              </div>
           </div>
 
+          {/* Department Metrics Summary */}
           <div>
-             <h4 style={{ margin: "0 0 12px 0", fontSize: "16px" }}>Core Metric Summary</h4>
+             <h4 style={{ margin: "0 0 12px 0", fontSize: "16px" }}>{employee.personal_metrics ? "Individual Assessment Profile" : "Department Assessment Profile"}</h4>
+             <p style={{ margin: "0 0 12px 0", fontSize: "13px", color: COLORS.textSecondary }}>
+               {employee.personal_metrics ? "Averaged metrics specific to this employee:" : "Average metrics across all employees in this group:"}
+             </p>
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                  <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Resilience (BRS)</span>
-                  <span style={{ fontWeight: "600" }}>4.1 / 5</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                  <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Ext. Exhaustion</span>
-                  <span style={{ fontWeight: "600", color: COLORS.danger }}>High</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                  <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Job Satisfaction</span>
-                  <span style={{ fontWeight: "600", color: COLORS.success }}>Normal</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
-                  <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Autonomy</span>
-                  <span style={{ fontWeight: "600", color: COLORS.warning }}>Low</span>
-                </div>
+                {displayMetrics?.DISC?.D !== undefined ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Dominance (D)</span>
+                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.D || 0).toFixed(1)} / 100</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Influence (I)</span>
+                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.I || 0).toFixed(1)} / 100</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Conformity (C)</span>
+                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.C || 0).toFixed(1)} / 100</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Stability (S)</span>
+                      <span style={{ fontWeight: "600" }}>{(displayMetrics.DISC.S || 0).toFixed(1)} / 100</span>
+                    </div>
+                  </>
+                ) : null}
+                {displayMetrics?.MASLACH?.DP !== undefined ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Emotional Exhaustion</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.EE || 0) > 25 ? COLORS.danger : (displayMetrics.MASLACH.EE || 0) > 15 ? COLORS.warning : COLORS.success }}>
+                          {(displayMetrics.MASLACH.EE || 0).toFixed(1)} / 54
+                        </span>
+                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.EE || 0) > 25 ? COLORS.danger : (displayMetrics.MASLACH.EE || 0) > 15 ? COLORS.warning : COLORS.success, fontWeight: "500" }}>
+                          {(displayMetrics.MASLACH.EE || 0) > 25 ? 'High' : (displayMetrics.MASLACH.EE || 0) > 15 ? 'Moderate' : 'Low'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Depersonalization</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontWeight: "600" }}>{(displayMetrics.MASLACH.DP || 0).toFixed(1)} / 30</span>
+                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.DP || 0) > 15 ? COLORS.danger : COLORS.textSecondary, fontWeight: "500" }}>({(displayMetrics.MASLACH.DP || 0) > 15 ? 'High' : 'Normal'})</span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px", gridColumn: "1/-1" }}>
+                      <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Personal Accomplishment</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontWeight: "600", color: (displayMetrics.MASLACH.PA || 0) < 30 ? COLORS.danger : COLORS.success }}>{(displayMetrics.MASLACH.PA || 0).toFixed(1)} / 48</span>
+                        <span style={{ fontSize: "12px", color: (displayMetrics.MASLACH.PA || 0) < 30 ? COLORS.danger : COLORS.success, fontWeight: "500" }}>({(displayMetrics.MASLACH.PA || 0) < 30 ? 'Low' : 'Good'})</span>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+                {displayMetrics?.JSS?.global !== undefined ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px", gridColumn: "1/-1" }}>
+                    <span style={{ color: COLORS.textSecondary, fontSize: "14px" }}>Job Satisfaction (Global)</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontWeight: "600", color: (displayMetrics.JSS.global || 0) > 140 ? COLORS.success : (displayMetrics.JSS.global || 0) > 100 ? COLORS.orange : COLORS.danger }}>
+                        {(displayMetrics.JSS.global || 0).toFixed(0)} / 216
+                      </span>
+                      <span style={{ fontSize: "12px", color: (displayMetrics.JSS.global || 0) > 140 ? COLORS.success : (displayMetrics.JSS.global || 0) > 100 ? COLORS.orange : COLORS.danger, fontWeight: "500" }}>
+                        {(displayMetrics.JSS.global || 0) > 140 ? 'High' : (displayMetrics.JSS.global || 0) > 100 ? 'Moderate' : 'Low'}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
              </div>
           </div>
 
@@ -195,8 +292,19 @@ function EmployeeDetailsModal({ employee, onClose }) {
 export default function DepartmentReportPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  // Expecting filters to have: { department, status, year, quarters: [] }
-  const filters = location.state?.filters || { department: "All", status: "All", year: new Date().getFullYear(), quarters: ["Q1"] };
+  const filters = useMemo(
+    () => ({
+      ...safeLoadFilters(),
+      ...(location.state?.filters || {}),
+    }),
+    [location.state?.filters]
+  );
+  const reportData = location.state?.reportData;
+
+  // Save filters when they change
+  useEffect(() => {
+    localStorage.setItem("reportFilters", JSON.stringify(filters));
+  }, [filters]);
 
   const [loading, setLoading] = useState(true);
   const [dataCache, setDataCache] = useState({}); // To hold data per department tab
@@ -205,48 +313,234 @@ export default function DepartmentReportPage() {
   
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Parse which tabs to show based on filter. If specific dept, just show that.
+  // Restore active tab from localStorage
   useEffect(() => {
-    if (filters.department !== "All") {
-      setDepartments([filters.department]);
-      setActiveTab(filters.department);
-    } else {
-      setDepartments(["All Departments", "Engineering", "Sales", "HR", "Marketing"]);
-      setActiveTab("All Departments");
+    const saved = localStorage.getItem("activeReportTab");
+    if (saved) setActiveTab(saved);
+  }, []);
+
+  // Parse which tabs to show based on filter. If specific dept, just show that.
+  // If querying "All", extract departments from employee data
+  useEffect(() => {
+    if (!reportData) {
+      if (normalizeDepartment(filters.department) !== "All") {
+        setDepartments([normalizeDepartment(filters.department)]);
+        setActiveTab(normalizeDepartment(filters.department));
+      }
+      // Will be set after data loads - extracted from employee breakdown
     }
-  }, [filters.department]);
+  }, [filters.department, reportData]);
 
   // Simulate Generation Delay with Floating Overlay
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      const newCache = {};
-      departments.forEach(dep => {
-        newCache[dep] = generateMockReportData(dep, filters.year);
-      });
+    if (reportData) {
+      const data = reportData;
+      const deptName = data.department.toLowerCase() === "all" ? "All Departments" : data.department;
+      const newCache = { [deptName]: data };
+      
+      // If querying all departments, extract actual departments from employee breakdown
+      if (data.department.toLowerCase() === "all" && data.employee_breakdown) {
+        const uniqueDepts = [...new Set(data.employee_breakdown.map(emp => emp.department || "Unassigned"))].sort();
+        
+        // Create filtered views for each department while keeping overall metrics
+        uniqueDepts.forEach(dept => {
+          newCache[dept] = {
+            ...data,
+            department: dept,
+            employee_breakdown: data.employee_breakdown.filter(emp => (emp.department || "Unassigned") === dept),
+            // Use original aggregated metrics (they're for the whole org)
+          };
+        });
+        
+        // Also create "All Departments" view with full data
+        newCache["All Departments"] = data;
+        const allDepts = ["All Departments", ...uniqueDepts];
+        
+        setDepartments(allDepts);
+        setActiveTab("All Departments");
+      } else {
+        // Single department report
+        setDepartments([deptName]);
+        setActiveTab(deptName);
+      }
+      
       setDataCache(newCache);
       setLoading(false);
-    }, 1500);
-  }, [departments, filters.year]);
+      return;
+    }
+
+    const fetchReport = async () => {
+      setLoading(true);
+      try {
+        const access = localStorage.getItem("access");
+        const basePayload = {
+          department: normalizeDepartment(filters.department),
+          status_filter: normalizeStatus(filters.status),
+          ...deriveDateRange(filters),
+        };
+        const response = await fetch(`${API_BASE}/api/hr/department-reports/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: access ? `Bearer ${access}` : undefined,
+          },
+          body: JSON.stringify(basePayload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        const newCache = {};
+        const deptName = data.department.toLowerCase() === "all" ? "All Departments" : data.department;
+        
+        // If querying all departments, extract unique departments from employee breakdown
+        if (data.department.toLowerCase() === "all" && data.employee_breakdown) {
+          const uniqueDepts = [...new Set(data.employee_breakdown.map(emp => emp.department || "Unassigned"))].sort();
+
+          // Fetch each department report so charts are truly department-specific.
+          const deptRequests = uniqueDepts
+            .filter((dept) => dept !== "Unassigned")
+            .map(async (dept) => {
+              const deptResponse = await fetch(`${API_BASE}/api/hr/department-reports/`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: access ? `Bearer ${access}` : undefined,
+                },
+                body: JSON.stringify({
+                  ...basePayload,
+                  department: dept,
+                }),
+              });
+              if (!deptResponse.ok) {
+                throw new Error(`Failed to fetch ${dept}: ${deptResponse.status}`);
+              }
+              const deptData = await deptResponse.json();
+              return [dept, deptData];
+            });
+
+          const deptResults = await Promise.allSettled(deptRequests);
+          deptResults.forEach((result) => {
+            if (result.status === "fulfilled") {
+              const [dept, deptData] = result.value;
+              newCache[dept] = deptData;
+            }
+          });
+
+          // Fallback for departments that failed dedicated fetch.
+          uniqueDepts.forEach((dept) => {
+            if (newCache[dept]) return;
+            newCache[dept] = {
+              ...data,
+              department: dept,
+              employee_breakdown: data.employee_breakdown.filter((emp) => (emp.department || "Unassigned") === dept),
+            };
+          });
+          
+          // Also create "All Departments" view
+          newCache["All Departments"] = data;
+          const allDepts = ["All Departments", ...uniqueDepts];
+          
+          setDepartments(allDepts);
+          setActiveTab("All Departments");
+        } else {
+          // Single department report
+          newCache[deptName] = data;
+          setDataCache(prev => ({ ...prev, ...newCache }));
+          if (filters.department !== "All") {
+            setActiveTab(deptName);
+            setDepartments([deptName]);
+          }
+          setLoading(false);
+          return;
+        }
+        
+        setDataCache(prev => ({ ...prev, ...newCache }));
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch department report:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReport();
+  }, [API_BASE, filters, reportData]);
 
   if (loading) return <LoadingSpinner />;
 
-  const activeData = dataCache[activeTab];
-  if (!activeData) return <div />;
+  const activeData = dataCache[activeTab] || dataCache[departments[0]];
+  if (!activeData) return <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh'}}>No data available for {activeTab}</div>;
 
   // Visual Palette
   const chartColors = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16'];
-
-  // Data preps
-  const bigFiveData = Object.entries(activeData.aggregated_metrics.BIG_FIVE).map(([k, v]) => ({ name: k, value: v }));
-  const discData = Object.entries(activeData.aggregated_metrics.DISC || {}).map(([k, v]) => ({ name: k === "D" ? "Dominance" : k === "I" ? "Influence" : k === "C" ? "Conformity" : "Stability", value: v }));
-  const jssData = Object.entries(activeData.aggregated_metrics.JSS).map(([k, v]) => ({ name: k, value: v }));
   
+  // DISC specific colors with hues
+  const discColors = {
+    'Dominance': '#ef4444',    // Red
+    'Influence': '#f59e0b',    // Amber
+    'Conformity': '#8b5cf6',   // Purple
+    'Stability': '#14b8a6'     // Teal
+  };
+
+  // Data preps fallback handling with safe defaults
+  const bigFiveMetrics = activeData.aggregated_metrics?.BIG_FIVE || { N: 0, E: 0, O: 0, A: 0, C: 0 };
+  const bigFiveData = Object.entries(bigFiveMetrics)
+    .filter(([k]) => ["N", "E", "O", "A", "C"].includes(k))
+    .map(([k, v]) => ({ 
+      name: k === 'N' ? 'Neuroticism' : k === 'E' ? 'Extraversion' : k === 'O' ? 'Openness' : k === 'A' ? 'Agreeableness' : 'Conscientiousness', 
+      value: typeof v === 'number' ? v : 0 
+    }))
+    .filter(d => d.value > 0);
+
+  const discMetrics = activeData.aggregated_metrics?.DISC || { D: 0, I: 0, S: 0, C: 0 };
+  const discData = Object.entries(discMetrics)
+    .filter(([k]) => ["D", "I", "C", "S"].includes(k))
+    .map(([k, v]) => ({ 
+      name: k === "D" ? "Dominance" : k === "I" ? "Influence" : k === "C" ? "Conformity" : "Stability", 
+      value: typeof v === 'number' ? v : 0 
+    }));
+
+  const jssMetrics = activeData.aggregated_metrics?.JSS || {};
+  const jssGlobal = typeof jssMetrics.global === "number"
+    ? jssMetrics.global
+    : typeof jssMetrics.total === "number"
+    ? jssMetrics.total
+    : 0;
+  
+  // Handle both flattened and nested JSS structures
+  let jssData = [];
+  if (Object.keys(jssMetrics).length > 0) {
+    // If subscores are nested, extract them
+    const subscoresObj = jssMetrics.subscores || jssMetrics;
+    
+    jssData = Object.entries(subscoresObj)
+      .filter(([k, v]) => {
+        // Exclude meta keys
+        return !['global', 'total', 'average', 'interpretation'].includes(k) && typeof v === 'number' && v >= 0;
+      })
+      .map(([k, v]) => ({ 
+        name: k.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        value: typeof v === 'number' ? v : 0 
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const karasekMetrics = activeData.aggregated_metrics?.KARASEK || { D: 0, C: 0, S: 0 };
   const karasekData = [
-    { subject: 'Demands', A: activeData.aggregated_metrics.KARASEK.Demands, fullMark: 100 },
-    { subject: 'Control', A: activeData.aggregated_metrics.KARASEK.Control, fullMark: 100 },
-    { subject: 'Support', A: activeData.aggregated_metrics.KARASEK.Support, fullMark: 100 },
+    { subject: 'Demands', A: typeof karasekMetrics.D === 'number' ? karasekMetrics.D : 0, fullMark: 100 },
+    { subject: 'Control', A: typeof karasekMetrics.C === 'number' ? karasekMetrics.C : 0, fullMark: 100 },
+    { subject: 'Support', A: typeof karasekMetrics.S === 'number' ? karasekMetrics.S : 0, fullMark: 100 },
   ];
+
+  // Safe trend_highlights from backend API (no hardcoding)
+  const trendHighlights = activeData.trend_highlights || activeData.trends || {};
+  const metricTimeseries = activeData.metric_timeseries || activeData.overview_data?.metric_timeseries || [];
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", backgroundColor: COLORS.bgMain, fontFamily: "'Inter', sans-serif" }}>
@@ -262,7 +556,7 @@ export default function DepartmentReportPage() {
             <div>
               <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "700", color: COLORS.textPrimary }}>{activeTab} Report</h1>
               <p style={{ margin: "4px 0 0 0", color: COLORS.textSecondary, fontSize: "14px" }}>
-                 Year: <strong>{filters.year}</strong> | Quarters: <strong>{filters.quarters.join(", ")}</strong>
+                  Year: <strong>{filters.year}</strong> | Quarters: <strong>{(filters.quarters && filters.quarters.length > 0) ? filters.quarters.join(", ") : "All"}</strong>
               </p>
             </div>
           </div>
@@ -280,7 +574,10 @@ export default function DepartmentReportPage() {
             {departments.map((dep) => (
               <button
                 key={dep} 
-                onClick={() => setActiveTab(dep)}
+                onClick={() => {
+                  setActiveTab(dep);
+                  localStorage.setItem("activeReportTab", dep);
+                }}
                 style={{
                   padding: "10px 20px", borderRadius: "99px", whiteSpace: "nowrap", cursor: "pointer", fontWeight: "600", fontSize: "14px",
                   backgroundColor: activeTab === dep ? COLORS.primary : "transparent",
@@ -296,46 +593,121 @@ export default function DepartmentReportPage() {
         )}
 
         {/* Executive Summary */}
+        {/* Check if empty department and show warning while keeping layout */}
+        {activeData.employee_breakdown && activeData.employee_breakdown.length === 0 ? (
+          <div style={{ backgroundColor: COLORS.orangeLight, padding: "24px", borderRadius: "16px", border: `2px solid ${COLORS.warning}`, marginBottom: "24px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
+            <AlertTriangle size={32} color={COLORS.warning} style={{ flexShrink: 0 }} />
+            <div>
+              <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: "600", color: COLORS.warning }}>No Employees in This Department</h3>
+              <p style={{ margin: 0, fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.5" }}>
+                No employees with assessments were found in the "{activeTab}" department for the selected time period. Try selecting a different department or date range.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Executive Summary - Only show if we have data */}
+        {activeData.employee_breakdown && activeData.employee_breakdown.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" }}>
           <div style={{ backgroundColor: COLORS.cardBg, padding: "20px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "16px" }}>
             <div style={{ backgroundColor: COLORS.blueLight, padding: "12px", borderRadius: "12px", color: COLORS.blue }}><Users size={24} /></div>
             <div>
               <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: COLORS.textSecondary }}>Included Base</h3>
-              <p style={{ margin: 0, fontSize: "24px", fontWeight: "700" }}>{activeData.overview.total_employees}</p>
+              <p style={{ margin: 0, fontSize: "24px", fontWeight: "700" }}>{activeData.overview_data?.total_employees || 0}</p>
             </div>
           </div>
           <div style={{ backgroundColor: COLORS.cardBg, padding: "20px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "16px" }}>
             <div style={{ backgroundColor: COLORS.primaryLight, padding: "12px", borderRadius: "12px", color: COLORS.success }}><CheckCircle size={24} /></div>
             <div>
               <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: COLORS.textSecondary }}>Avg. Completion</h3>
-              <p style={{ margin: 0, fontSize: "24px", fontWeight: "700" }}>{activeData.overview.completion_rate}%</p>
+              <p style={{ margin: 0, fontSize: "24px", fontWeight: "700" }}>{activeData.overview_data?.completion_rate || 0}%</p>
             </div>
           </div>
-          {Object.entries(activeData.trend_highlights).map(([key, info]) => (
-            <div key={key} style={{ backgroundColor: COLORS.cardBg, padding: "20px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "16px" }}>
-              <div style={{ backgroundColor: info.type === 'warning' ? COLORS.orangeLight : info.type === 'danger' ? COLORS.red : COLORS.primaryLight, padding: "12px", borderRadius: "12px", color: info.type === 'warning' ? COLORS.warning : info.type === 'danger' ? COLORS.danger : COLORS.success, opacity: 0.8 }}>
-                <TrendingUp size={24} />
+          {Object.entries(trendHighlights).map(([key, info]) => {
+            // Extract percentage from label if it exists, e.g., "Exhaustion +4%" or "📈 +4%"
+            const percentageMatch = info.label?.match(/([+\-−])(\d+(\.\d+)?)%/);
+            const percentage = percentageMatch ? percentageMatch[1] + percentageMatch[2] + '%' : info.label;
+            const isPositive = info.label?.includes('+') || info.label?.includes('📈');
+            const isNegative = info.label?.includes('-') || info.label?.includes('📉');
+            
+            return (
+              <div key={key} style={{ backgroundColor: COLORS.cardBg, padding: "20px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, display: "flex", alignItems: "center", gap: "16px" }}>
+                <div style={{ backgroundColor: isNegative ? COLORS.red : isPositive ? COLORS.orangeLight : COLORS.primaryLight, padding: "12px", borderRadius: "12px", color: isNegative ? "white" : isPositive ? COLORS.warning : COLORS.success, opacity: 0.9 }}>
+                  {isNegative ? <TrendingDown size={24} /> : <TrendingUp size={24} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: COLORS.textSecondary }}>{key} Shift</h3>
+                  <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: isNegative ? COLORS.danger : isPositive ? COLORS.warning : COLORS.success }}>{percentage}</p>
+                </div>
               </div>
-              <div>
-                <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: COLORS.textSecondary }}>{key} Shift</h3>
-                <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: info.type === 'warning' ? COLORS.warning : info.type === 'danger' ? COLORS.danger : COLORS.success }}>{info.label}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+        )}
 
         {/* AI Insight Section */}
         <div style={{ backgroundColor: COLORS.purpleLight, padding: "24px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, marginBottom: "32px", display: "flex", gap: "16px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: "-20px", right: "-20px", opacity: 0.05 }}><Shield size={160} /></div>
           <div style={{ flexShrink: 0, backgroundColor: COLORS.purple, padding: "12px", borderRadius: "12px", color: "white", height: "fit-content", zIndex: 1 }}><Lightbulb size={24} /></div>
-          <div style={{ zIndex: 1 }}>
-            <h2 style={{ margin: "0 0 8px 0", fontSize: "18px", color: COLORS.purple }}>Well-being Assessment for {activeTab}</h2>
-            <p style={{ margin: 0, color: COLORS.textPrimary, lineHeight: "1.6", fontSize: "15px" }}>{activeData.ai_summary}</p>
+          <div style={{ zIndex: 1, width: "100%" }}>
+            <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", color: COLORS.purple }}>Well-being & Performance Analysis</h2>
+            
+            {/* Executive Summary */}
+            <div style={{ marginBottom: "20px", padding: "16px", backgroundColor: "rgba(255,255,255,0.5)", borderRadius: "8px", borderLeft: `4px solid ${COLORS.purple}` }}>
+              <p style={{ margin: 0, color: COLORS.textPrimary, lineHeight: "1.6", fontSize: "14px" }}>
+                {activeData.ai_summary?.executive_summary || activeData.ai_summary}
+              </p>
+            </div>
+            
+            {/* Strengths */}
+            {activeData.ai_summary?.strengths && activeData.ai_summary.strengths.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: COLORS.success, textTransform: "uppercase", letterSpacing: "0.5px" }}>Strengths</h4>
+                <ul style={{ margin: 0, paddingLeft: "20px", listStyle: "none" }}>
+                  {activeData.ai_summary.strengths.map((item, idx) => (
+                    <li key={idx} style={{ margin: "6px 0", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.5", paddingLeft: "16px", position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, color: COLORS.success, fontWeight: "bold" }}>•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Risks */}
+            {activeData.ai_summary?.risks && activeData.ai_summary.risks.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: COLORS.warning, textTransform: "uppercase", letterSpacing: "0.5px" }}>Risks & Concerns</h4>
+                <ul style={{ margin: 0, paddingLeft: "20px", listStyle: "none" }}>
+                  {activeData.ai_summary.risks.map((item, idx) => (
+                    <li key={idx} style={{ margin: "6px 0", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.5", paddingLeft: "16px", position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, color: COLORS.warning, fontWeight: "bold" }}>•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Recommendations */}
+            {activeData.ai_summary?.recommendations && activeData.ai_summary.recommendations.length > 0 && (
+              <div>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: COLORS.blue, textTransform: "uppercase", letterSpacing: "0.5px" }}>Recommended Actions</h4>
+                <ul style={{ margin: 0, paddingLeft: "20px", listStyle: "none" }}>
+                  {activeData.ai_summary.recommendations.map((item, idx) => (
+                    <li key={idx} style={{ margin: "6px 0", fontSize: "14px", color: COLORS.textPrimary, lineHeight: "1.5", paddingLeft: "16px", position: "relative" }}>
+                      <span style={{ position: "absolute", left: 0, color: COLORS.blue, fontWeight: "bold" }}>•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Alerts */}
-        {activeData.alerts.length > 0 && (
+        {activeData.alerts && activeData.alerts.length > 0 && (
           <div style={{ marginBottom: "32px", display: "flex", flexDirection: "column", gap: "12px" }}>
             {activeData.alerts.map((alert, idx) => (
               <div key={idx} style={{ 
@@ -383,7 +755,9 @@ export default function DepartmentReportPage() {
                   <XAxis dataKey="name" tick={{fontSize: 12}} />
                   <YAxis tick={{fontSize: 12}} />
                   <Tooltip cursor={{fill: 'var(--bg-main)'}} contentStyle={{borderRadius: '8px'}} />
-                  <Bar dataKey="value" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {discData.map((entry, index) => <Cell key={index} fill={discColors[entry.name] || '#ec4899'} />)}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -391,18 +765,30 @@ export default function DepartmentReportPage() {
 
           {/* Job Satisfaction Survey (JSS) */}
           <div style={{ backgroundColor: COLORS.cardBg, padding: "24px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}` }}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", color: COLORS.textPrimary }}>Job Satisfaction Survey Items</h3>
-            <div style={{ height: "260px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={jssData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{fontSize: 11}} interval={0} angle={-45} textAnchor="end" height={80} />
-                  <YAxis tick={{fontSize: 12}} />
-                  <Tooltip cursor={{fill: 'var(--bg-main)'}} contentStyle={{borderRadius: '8px'}} />
-                  <Bar dataKey="value" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", color: COLORS.textPrimary }}>Job Satisfaction Overview</h3>
+            {jssData && jssData.length > 0 ? (
+              <div style={{ height: "260px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={jssData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={{fontSize: 11}} interval={0} angle={-45} textAnchor="end" height={80} />
+                    <YAxis tick={{fontSize: 12}} />
+                    <Tooltip cursor={{fill: 'var(--bg-main)'}} contentStyle={{borderRadius: '8px'}} />
+                    <Bar dataKey="value" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                {jssGlobal > 0 && <p style={{ margin: "12px 0 0 0", fontSize: "13px", color: COLORS.textSecondary, textAlign: "center" }}>Global Score: {jssGlobal} / 216</p>}
+              </div>
+            ) : jssGlobal > 0 ? (
+              <div style={{ height: "260px", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "16px" }}>
+                <div style={{ fontSize: "48px", fontWeight: "700", color: COLORS.primary }}>{jssGlobal}</div>
+                <p style={{ margin: 0, fontSize: "14px", color: COLORS.textSecondary }}>/ 216</p>
+              </div>
+            ) : (
+              <div style={{ height: "260px", display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.textSecondary }}>
+                <p style={{ margin: 0 }}>No satisfaction data available</p>
+              </div>
+            )}
           </div>
 
           {/* Karasek Radar */}
@@ -421,26 +807,69 @@ export default function DepartmentReportPage() {
             </div>
           </div>
 
-          {/* Maslach Trend Chart */}
+          {/* Well-being Trends Chart */}
           <div style={{ backgroundColor: COLORS.cardBg, padding: "24px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}` }}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", color: COLORS.textPrimary }}>Well-being Trends</h3>
-            <div style={{ height: "260px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={activeData.trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{fontSize: 12}} />
-                  <YAxis tick={{fontSize: 12}} />
-                  <Tooltip contentStyle={{borderRadius: '8px'}} />
-                  <Legend iconType="circle" wrapperStyle={{fontSize: '12px'}} />
-                  <Line type="monotone" dataKey="Exhaustion" stroke="#ef4444" strokeWidth={3} dot={{r: 4}} />
-                  <Line type="monotone" dataKey="Satisfaction" stroke="#3b82f6" strokeWidth={3} dot={{r: 4}} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", color: COLORS.textPrimary }}>Well-being Trends Over Time</h3>
+            
+              {metricTimeseries.length > 1 ? (
+              <div style={{ height: "260px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={metricTimeseries}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="period" tick={{fontSize: 12}} />
+                    <YAxis tick={{fontSize: 12}} />
+                    <Tooltip contentStyle={{borderRadius: '8px'}} />
+                    <Legend />
+                    <Line type="linear" dataKey="exhaustion" name="Emotional Exhaustion" stroke={COLORS.danger} strokeWidth={2} dot={{fill: COLORS.danger}} />
+                    <Line type="linear" dataKey="satisfaction" name="Job Satisfaction" stroke={COLORS.success} strokeWidth={2} dot={{fill: COLORS.success}} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div style={{ height: "260px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px" }}>
+                <p style={{ color: COLORS.textSecondary, textAlign: "center" }}>Not enough historical points to build a trend line yet. Complete repeated assessments over time for this view.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", width: "100%" }}>
+                  <div style={{ textAlign: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                    <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>Current Exhaustion</div>
+                    <div style={{ fontSize: "20px", fontWeight: "700", color: COLORS.danger }}>{(activeData.aggregated_metrics?.MASLACH?.EE || 0).toFixed(1)}</div>
+                  </div>
+                  <div style={{ textAlign: "center", padding: "12px", backgroundColor: COLORS.bgMain, borderRadius: "8px" }}>
+                    <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>Current Satisfaction</div>
+                    <div style={{ fontSize: "20px", fontWeight: "700", color: COLORS.success }}>{jssGlobal.toFixed(0)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Metric Trends Summary */}
+        <div style={{ backgroundColor: COLORS.cardBg, padding: "24px", borderRadius: "16px", border: `1px solid ${COLORS.borderColor}` }}>
+          <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", color: COLORS.textPrimary }}>Key Metric Changes</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {Object.entries(trendHighlights).length > 0 ? (
+              Object.entries(trendHighlights).map(([key, info]) => (
+                <div key={key} style={{
+                  padding: "12px", borderRadius: "8px", backgroundColor: COLORS.bgMain, 
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  borderLeft: `4px solid ${info.type === 'warning' ? COLORS.warning : info.type === 'danger' ? COLORS.danger : COLORS.success}`
+                }}>
+                  <span style={{ fontWeight: "600", color: COLORS.textPrimary }}>{key} Change</span>
+                  <span style={{ color: info.type === 'warning' ? COLORS.warning : info.type === 'danger' ? COLORS.danger : COLORS.success, fontWeight: "600" }}>
+                    {info.label}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p style={{ color: COLORS.textSecondary, textAlign: "center", padding: "20px" }}>
+                Run assessments multiple times to track metric changes over time.
+              </p>
+            )}
           </div>
         </div>
 
         {/* Employee Breakdown Table with Click to Open */}
+        {activeData.employee_breakdown && activeData.employee_breakdown.length > 0 && (
         <div style={{ backgroundColor: COLORS.cardBg, borderRadius: "16px", border: `1px solid ${COLORS.borderColor}`, overflow: "hidden" }}>
           <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.borderColor}` }}>
             <h3 style={{ margin: 0, fontSize: "18px", color: COLORS.textPrimary }}>Employee Diagnostic List</h3>
@@ -458,7 +887,7 @@ export default function DepartmentReportPage() {
                 </tr>
               </thead>
               <tbody>
-                {activeData.employee_breakdown.map((emp) => (
+                {(activeData.employee_breakdown || []).map((emp) => (
                   <tr 
                     key={emp.id} 
                     style={{ borderBottom: `1px solid ${COLORS.borderColor}`, transition: "background-color 0.2s" }}
@@ -489,7 +918,16 @@ export default function DepartmentReportPage() {
                       </span>
                     </td>
                     <td style={{ padding: "16px 24px", color: COLORS.textSecondary, fontWeight: "500", fontSize: "13px" }}>
-                      {emp.trend}
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {emp.trend?.includes("Improving") || emp.trend?.includes("📈") ? (
+                          <div style={{ width: "20px", height: "20px", borderRadius: "4px", backgroundColor: COLORS.primaryLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", color: COLORS.success }}>↑</div>
+                        ) : emp.trend?.includes("Declining") || emp.trend?.includes("📉") ? (
+                          <div style={{ width: "20px", height: "20px", borderRadius: "4px", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", color: COLORS.danger }}>↓</div>
+                        ) : (
+                          <div style={{ width: "20px", height: "20px", borderRadius: "4px", backgroundColor: COLORS.bgMain, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", color: COLORS.textSecondary }}>→</div>
+                        )}
+                        <span>{emp.trend}</span>
+                      </div>
                     </td>
                     <td style={{ padding: "16px 24px", textAlign: "center" }}>
                       <button 
@@ -511,11 +949,16 @@ export default function DepartmentReportPage() {
             </table>
           </div>
         </div>
+        )}
 
       </div>
 
       {/* Floating Modal for Employee */}
-      <EmployeeDetailsModal employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />
+      <EmployeeDetailsModal 
+        employee={selectedEmployee} 
+        onClose={() => setSelectedEmployee(null)} 
+        aggregatedMetrics={activeData?.aggregated_metrics}
+      />
     </div>
   );
 }

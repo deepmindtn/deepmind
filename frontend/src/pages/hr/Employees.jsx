@@ -459,7 +459,10 @@ export default function Employees() {
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+  const authHeader = useMemo(
+    () => (access ? { Authorization: `Bearer ${access}` } : {}),
+    [access]
+  );
 
   // --- Responsive States ---
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -506,13 +509,30 @@ export default function Employees() {
   });
 
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [pastReports] = useState([
-    { id: "1", date: "Mar 15, 2026", scope: "All Departments", year: 2026, quarters: ["Q1", "Q2"], department: "All" },
-    { id: "2", date: "Mar 10, 2026", scope: "Engineering, Q1", year: 2026, quarters: ["Q1"], department: "Engineering" },
-    { id: "3", date: "Mar 05, 2026", scope: "All Departments, Q4 2025", year: 2025, quarters: ["Q4"], department: "All" },
-    { id: "4", date: "Feb 28, 2026", scope: "Sales, Q1", year: 2026, quarters: ["Q1"], department: "Sales" },
-    { id: "5", date: "Feb 20, 2026", scope: "HR, Q4 2025", year: 2025, quarters: ["Q4"], department: "HR" },
-  ]);
+  const [pastReports, setPastReports] = useState([]);
+
+  useEffect(() => {
+    if (historyOpen) {
+      const fetchPastReports = async () => {
+        try {
+          const access = localStorage.getItem("access");
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/hr/department-reports/`, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: access ? `Bearer ${access}` : undefined,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setPastReports(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch past reports:", err);
+        }
+      };
+      fetchPastReports();
+    }
+  }, [historyOpen]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [invite, setInvite] = useState({
@@ -538,7 +558,7 @@ export default function Employees() {
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [API_BASE, authHeader]);
 
   // --- Toast Timer ---
   useEffect(() => {
@@ -579,6 +599,15 @@ export default function Employees() {
   };
 
   // --- Data Fetching ---
+  const formatEmploymentStatus = (employmentStatus, isActive) => {
+    if (!employmentStatus) return isActive ? "Active" : "Inactive";
+    const normalized = String(employmentStatus).toLowerCase().replace(/[-\s]/g, "_");
+    if (normalized === "on_leave") return "On Leave";
+    if (normalized === "active") return "Active";
+    if (normalized === "inactive") return "Inactive";
+    return employmentStatus;
+  };
+
   useEffect(() => {
     let ignore = false;
     async function run() {
@@ -596,7 +625,7 @@ export default function Employees() {
               `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
             role: u.role,
             department: u.department || "—",
-            status: u.is_active ? "Active" : "Inactive",
+            status: formatEmploymentStatus(u.employment_status, u.is_active),
             lastAssessment: u.last_assessment || null,
             email: u.email,
           }));
@@ -612,7 +641,7 @@ export default function Employees() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [API_BASE, authHeader]);
 
   useEffect(() => {
     async function fetchDepts() {
@@ -629,7 +658,7 @@ export default function Employees() {
       }
     }
     fetchDepts();
-  }, []);
+  }, [API_BASE, authHeader]);
 
   async function viewDetails(r) {
     setDetailRow(r);
@@ -2549,10 +2578,10 @@ export default function Employees() {
               >
                 <div>
                   <p style={{ margin: "0 0 4px 0", fontWeight: "600", fontSize: "14px", color: COLORS.textPrimary }}>
-                    {report.scope}
+                    {report.department === "All" || report.department.toLowerCase() === "all" ? "All Departments" : report.department}
                   </p>
                   <p style={{ margin: 0, fontSize: "12px", color: COLORS.textSecondary }}>
-                    {report.date}
+                    {new Date(report.created_at).toLocaleDateString()} at {new Date(report.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <button
@@ -2561,19 +2590,54 @@ export default function Employees() {
                     padding: "6px 12px",
                     fontSize: "12px",
                   }}
-                  onClick={() => {
-                    setHistoryOpen(false);
-                    navigate("/hr/group-report", {
-                      state: {
-                        filters: {
-                          department: report.department,
-                          status: "All",
-                          year: report.year,
-                          quarters: report.quarters,
-                        },
-                        fromHistory: true
+                  onClick={async () => {
+                    try {
+                      // Fetch full report details by ID
+                      const access = localStorage.getItem("access");
+                      const response = await fetch(
+                        `${import.meta.env.VITE_API_BASE_URL}/api/hr/department-reports/${report.id}/`,
+                        {
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: access ? `Bearer ${access}` : undefined,
+                          },
+                        }
+                      );
+                      
+                      if (!response.ok) {
+                        throw new Error(`Failed to fetch report: ${response.status}`);
                       }
-                    });
+                      
+                      const fullReportData = await response.json();
+                      setHistoryOpen(false);
+                      navigate("/hr/department-report", {
+                        state: {
+                          filters: {
+                            department: fullReportData.department,
+                            status: fullReportData.status_filter || "All",
+                            year: new Date(fullReportData.created_at).getFullYear(),
+                            quarters: [],
+                          },
+                          reportData: fullReportData,
+                          fromHistory: true
+                        }
+                      });
+                    } catch (err) {
+                      console.error("Failed to fetch report details:", err);
+                      // Fallback to minimal data if fetch fails
+                      setHistoryOpen(false);
+                      navigate("/hr/department-report", {
+                        state: {
+                          filters: {
+                            department: report.department,
+                            status: report.status_filter || "All",
+                            year: new Date(report.created_at).getFullYear(),
+                            quarters: [],
+                          },
+                          fromHistory: true
+                        }
+                      });
+                    }
                   }}
                 >
                   View
@@ -2606,7 +2670,7 @@ export default function Employees() {
               onClick={() => {
                 setReportOpen(false);
                 // Navigate to the new report page passing filters as state
-                navigate("/hr/group-report", { state: { filters: reportFilters } });
+                navigate("/hr/department-report", { state: { filters: reportFilters } });
               }}
             >
               <FileText size={18} /> Initialize Report
