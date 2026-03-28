@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # local
     "accounts",
     "assessments",
+    "talent_matching",
     "department_reporting",
 ]
 

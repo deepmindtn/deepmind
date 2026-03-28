@@ -340,6 +340,20 @@ export default function RecruitmentMatch() {
   const [results, setResults] = useState([]);
   const [matchLoading, setMatchLoading] = useState(false);
 
+  // Talent Matching Job States
+  const [jobs, setJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [jobFormOpen, setJobFormOpen] = useState(false);
+  const [jobSubmitting, setJobSubmitting] = useState(false);
+  const [jobForm, setJobForm] = useState({
+    title: "",
+    description: "",
+    status: "active",
+  });
+  const [pipelineRankings, setPipelineRankings] = useState([]);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+
   // --- Toast Timer ---
   useEffect(() => {
     if (toast) {
@@ -350,7 +364,23 @@ export default function RecruitmentMatch() {
 
   useEffect(() => {
     fetchCandidates();
+    fetchJobs();
   }, []);
+
+  useEffect(() => {
+    if (!selectedJobId) {
+      setPipelineRankings([]);
+      return;
+    }
+    fetchRankedPipeline(selectedJobId);
+
+    const selected = jobs.find(
+      (job) => String(job.id) === String(selectedJobId)
+    );
+    if (selected?.description && !jobDescription.trim()) {
+      setJobDescription(selected.description);
+    }
+  }, [selectedJobId, jobs]);
 
   async function fetchCandidates() {
     try {
@@ -375,11 +405,96 @@ export default function RecruitmentMatch() {
     }
   }
 
-  // --- Bulk Selection Logic ---
-  const filtered = candidates.filter(
-    (c) =>
-      c.name.toLowerCase().includes(q.toLowerCase()) ||
-      c.position.toLowerCase().includes(q.toLowerCase())
+  async function fetchJobs() {
+    setJobsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/jobs/`, {
+        headers: authHeader,
+      });
+      if (!res.ok) throw new Error("Failed to fetch jobs");
+      const data = await res.json();
+      setJobs(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to load job offerings", type: "error" });
+    } finally {
+      setJobsLoading(false);
+    }
+  }
+
+  async function fetchRankedPipeline(jobId) {
+    setPipelineLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/jobs/${jobId}/pipeline/`,
+        { headers: authHeader }
+      );
+      if (!res.ok) throw new Error("Failed to load ranked pipeline");
+      const data = await res.json();
+      setPipelineRankings(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setPipelineRankings([]);
+      setToast({ message: "Failed to load job rankings", type: "error" });
+    } finally {
+      setPipelineLoading(false);
+    }
+  }
+
+  const handleCreateJob = async () => {
+    if (!jobForm.title.trim() || !jobForm.description.trim()) {
+      setToast({
+        message: "Job title and description are required.",
+        type: "error",
+      });
+      return;
+    }
+
+    setJobSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/jobs/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify(jobForm),
+      });
+
+      if (!res.ok) throw new Error("Failed to create job");
+
+      const created = await res.json();
+      setJobFormOpen(false);
+      setJobForm({ title: "", description: "", status: "active" });
+      setToast({ message: "Job offering created.", type: "success" });
+      await fetchJobs();
+      setSelectedJobId(String(created.id));
+      setJobDescription(created.description || "");
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to create job offering", type: "error" });
+    } finally {
+      setJobSubmitting(false);
+    }
+  };
+
+  const rankingByCandidateId = pipelineRankings.reduce((acc, item) => {
+    acc[item.candidate_id] = item;
+    return acc;
+  }, {});
+
+  const filtered = candidates
+    .filter(
+      (c) =>
+        c.name.toLowerCase().includes(q.toLowerCase()) ||
+        c.position.toLowerCase().includes(q.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!selectedJobId) return 0;
+      const scoreA = rankingByCandidateId[a.id]?.overall_score ?? -1;
+      const scoreB = rankingByCandidateId[b.id]?.overall_score ?? -1;
+      return scoreB - scoreA;
+    });
+
+  const selectedJob = jobs.find(
+    (job) => String(job.id) === String(selectedJobId)
   );
 
   const handleSelectAll = (e) => {
@@ -590,9 +705,9 @@ export default function RecruitmentMatch() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
 
   async function analyzeMatches() {
-    if (!files.length || !jobDescription) {
+    if (!selectedJobId || !files.length || !jobDescription.trim()) {
       setToast({
-        message: "Upload CVs and enter a description.",
+        message: "Select a job, upload CVs, and enter a description.",
         type: "error",
       });
       return;
@@ -602,13 +717,15 @@ export default function RecruitmentMatch() {
     for (const file of files) {
       const form = new FormData();
       form.append("cv", file);
+      form.append("job_id", selectedJobId);
       form.append("job_description", jobDescription);
       try {
-        const res = await fetch(`${API_BASE}/api/recruitment/match/`, {
+        const res = await fetch(`${API_BASE}/api/talent-matching/match/`, {
           method: "POST",
           headers: authHeader,
           body: form,
         });
+        if (!res.ok) throw new Error("Failed to analyze");
         const data = await res.json();
         tempResults.push({ name: file.name, ...data });
       } catch (err) {
@@ -616,6 +733,7 @@ export default function RecruitmentMatch() {
       }
     }
     setResults(tempResults);
+    await fetchRankedPipeline(selectedJobId);
     setMatchLoading(false);
     setToast({ message: "Analysis complete!", type: "success" });
   }
@@ -666,18 +784,78 @@ export default function RecruitmentMatch() {
             </div>
           </div>
 
-          <div className="header-actions" style={{ display: "flex" }}>
+          <div className="header-actions" style={{ display: "flex", gap: "10px" }}>
             {selectedIds.length > 0 ? (
               <button style={styles.btnBulk} onClick={openBulkAssignModal}>
                 <Mail size={20} /> Send Assessment to {selectedIds.length}{" "}
                 Selected
               </button>
             ) : (
-              <button style={styles.btnPrimary} onClick={openAddModal}>
-                <Plus size={20} /> Add Candidate
-              </button>
+              <>
+                <button
+                  style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
+                  onClick={() => setJobFormOpen(true)}
+                >
+                  <Plus size={20} /> Add Job
+                </button>
+                <button style={styles.btnPrimary} onClick={openAddModal}>
+                  <Plus size={20} /> Add Candidate
+                </button>
+              </>
             )}
           </div>
+        </div>
+
+        <div
+          style={{
+            ...styles.card,
+            padding: "18px",
+            marginBottom: "24px",
+            display: "grid",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>Active Job Offering</label>
+              <select
+                style={styles.input}
+                value={selectedJobId}
+                onChange={(e) => setSelectedJobId(e.target.value)}
+                disabled={jobsLoading}
+              >
+                <option value="">
+                  {jobsLoading ? "Loading jobs..." : "Select a job offering"}
+                </option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.title} ({job.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "end" }}>
+              <button
+                style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
+                onClick={() => setJobFormOpen(true)}
+              >
+                <Plus size={16} /> New Job
+              </button>
+            </div>
+          </div>
+          {selectedJob && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: "13px",
+                color: COLORS.textSecondary,
+              }}
+            >
+              <strong style={{ color: COLORS.textPrimary }}>Selected:</strong>{" "}
+              {selectedJob.title} - {selectedJob.description.slice(0, 180)}
+              {selectedJob.description.length > 180 ? "..." : ""}
+            </p>
+          )}
         </div>
 
         {/* Search */}
@@ -717,11 +895,16 @@ export default function RecruitmentMatch() {
             }}
           >
             <Users size={20} color={COLORS.primary} />
-            <span style={{ fontWeight: "700" }}>Active Pipeline</span>
+            <span style={{ fontWeight: "700" }}>
+              {selectedJob ? `${selectedJob.title} Pipeline` : "Active Pipeline"}
+            </span>
             {selectedIds.length > 0 && (
               <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>
                 ({selectedIds.length} selected)
               </span>
+            )}
+            {selectedJobId && pipelineLoading && (
+              <Loader2 className="spin" size={14} color={COLORS.textSecondary} />
             )}
           </div>
           <div className="pipeline-table-wrap" style={{ overflowX: "auto" }}>
@@ -745,7 +928,7 @@ export default function RecruitmentMatch() {
                       }
                     />
                   </th>
-                  {["Candidate", "Role", "Status", "Actions"].map((h) => (
+                  {["Candidate", "Role", "Status", "Fit", "Insight", "Actions"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -762,7 +945,9 @@ export default function RecruitmentMatch() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
+                {filtered.map((c) => {
+                  const ranking = rankingByCandidateId[c.id];
+                  return (
                   <tr
                     key={c.id}
                     style={{
@@ -796,6 +981,19 @@ export default function RecruitmentMatch() {
                     </td>
                     <td style={{ padding: "16px 20px" }}>
                       <StatusBadge status={c.status} />
+                    </td>
+                    <td style={{ padding: "16px 20px", fontWeight: "700", color: COLORS.primary }}>
+                      {ranking ? `${Number(ranking.overall_score).toFixed(1)}%` : "-"}
+                    </td>
+                    <td
+                      style={{
+                        padding: "16px 20px",
+                        fontSize: "12px",
+                        color: COLORS.textSecondary,
+                        maxWidth: "240px",
+                      }}
+                    >
+                      {ranking?.explanation || "Run matching to generate insight."}
                     </td>
                     <td style={{ padding: "16px 20px" }}>
                       <div className="pipeline-actions" style={{ display: "flex", gap: "8px" }}>
@@ -857,7 +1055,8 @@ export default function RecruitmentMatch() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1053,7 +1252,7 @@ export default function RecruitmentMatch() {
                   marginBottom: "16px",
                 }}
               >
-                2. Job Description
+                2. Job Description {selectedJob ? `(${selectedJob.title})` : ""}
               </h3>
               <textarea
                 style={{
@@ -1174,6 +1373,58 @@ export default function RecruitmentMatch() {
           )}
         </div>
       </div>
+
+      <Modal
+        open={jobFormOpen}
+        title="Create Job Offering"
+        onClose={() => setJobFormOpen(false)}
+        contentClassName="recruitment-match-modal-content"
+        actions={
+          <button
+            style={styles.btnPrimary}
+            onClick={handleCreateJob}
+            disabled={jobSubmitting}
+          >
+            {jobSubmitting ? "Creating..." : "Create Job"}
+          </button>
+        }
+      >
+        <div style={{ display: "grid", gap: 14 }}>
+          <div>
+            <label style={styles.label}>Job Title</label>
+            <input
+              style={styles.input}
+              value={jobForm.title}
+              onChange={(e) =>
+                setJobForm((prev) => ({ ...prev, title: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label style={styles.label}>Description</label>
+            <textarea
+              style={{ ...styles.input, minHeight: "140px", resize: "vertical" }}
+              value={jobForm.description}
+              onChange={(e) =>
+                setJobForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label style={styles.label}>Status</label>
+            <select
+              style={styles.input}
+              value={jobForm.status}
+              onChange={(e) =>
+                setJobForm((prev) => ({ ...prev, status: e.target.value }))
+              }
+            >
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add/Edit Modal */}
       <Modal
