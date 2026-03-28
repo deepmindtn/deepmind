@@ -5,6 +5,7 @@ __pycache__/
 # Ignore local database
 db.sqlite3
 media/reports
+media/candidate_cvs
 
 # Ignore virtual environment
 venv/

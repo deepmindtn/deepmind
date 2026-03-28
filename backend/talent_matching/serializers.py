@@ -165,3 +165,16 @@ class RankedPipelineItemSerializer(serializers.Serializer):
     quality_score = serializers.FloatField()
     overall_score = serializers.FloatField()
     explanation = serializers.CharField()
+    history_count = serializers.IntegerField()
+    has_history = serializers.BooleanField()
+    latest_match_id = serializers.IntegerField(allow_null=True)
+    latest_fit_label = serializers.CharField(allow_blank=True)
+    latest_summary = serializers.CharField(allow_blank=True)
+    latest_matched_at = serializers.DateTimeField(allow_null=True)
+
+
+class CandidateApplicationAttachSerializer(serializers.Serializer):
+    candidate_id = serializers.UUIDField()
+    job_id = serializers.IntegerField()
+    source = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)

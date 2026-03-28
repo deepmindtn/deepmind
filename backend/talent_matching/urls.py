@@ -1,11 +1,15 @@
 from django.urls import path
 
 from .views import (
+    CandidateApplicationAttachView,
+    CandidateApplicationDetachView,
     CandidateCVDeleteView,
     CandidateCVListView,
+    CandidateMatchHistoryView,
     CandidateCVSetActiveView,
     CandidateCVUploadView,
     CandidateJobApplicationListCreateView,
+    CVJobMatchDetailView,
     JobPostingCloseView,
     JobPostingDetailView,
     JobPostingListCreateView,
@@ -22,6 +26,14 @@ urlpatterns = [
     path("talent-matching/cvs/<int:pk>/set-active/", CandidateCVSetActiveView.as_view(), name="tm-cv-set-active"),
     path("talent-matching/cvs/<int:pk>/", CandidateCVDeleteView.as_view(), name="tm-cv-delete"),
     path("talent-matching/applications/", CandidateJobApplicationListCreateView.as_view(), name="tm-app-list-create"),
+    path("talent-matching/applications/attach/", CandidateApplicationAttachView.as_view(), name="tm-app-attach"),
+    path("talent-matching/applications/<int:pk>/detach/", CandidateApplicationDetachView.as_view(), name="tm-app-detach"),
     path("talent-matching/match/", TalentMatchView.as_view(), name="tm-match"),
+    path("talent-matching/matches/<int:pk>/", CVJobMatchDetailView.as_view(), name="tm-match-detail"),
+    path(
+        "talent-matching/jobs/<int:job_id>/candidates/<uuid:candidate_id>/match-history/",
+        CandidateMatchHistoryView.as_view(),
+        name="tm-match-history",
+    ),
     path("talent-matching/jobs/<int:job_id>/pipeline/", RankedPipelineView.as_view(), name="tm-ranked-pipeline"),
 ]

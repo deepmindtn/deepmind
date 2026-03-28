@@ -1,290 +1,25 @@
-import React, { useEffect, useState } from "react";
-import ReactDOM from "react-dom";
-import {
-  Plus,
-  Upload,
-  Search,
-  Users,
-  Send,
-  FileText,
-  Brain,
-  Loader2,
-  BarChart3,
-  X,
-  CheckCircle,
-  AlertTriangle,
-  Trash2,
-  Edit2,
-  ChevronDown,
-  Check,
-  Mail,
-  Eye,
-  Clock,
-} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "./RecruitmentMatch.css";
-
-// -----------------------
-// Theme Constants
-// -----------------------
-const COLORS = {
-  primary: "var(--primary)",
-  primaryLight: "var(--primary-light)",
-  primaryDark: "var(--primary-dark)",
-  secondary: "var(--secondary)",
-  blue: "var(--blue)",
-  blueLight: "var(--blue-light)",
-  purple: "var(--purple)",
-  purpleLight: "var(--purple-light)",
-  orange: "var(--orange)",
-  orangeLight: "var(--orange-light)",
-  red: "var(--red)",
-  dark: "var(--dark)",
-  bgMain: "var(--bg-main)",
-  cardBg: "var(--card-bg)",
-  textPrimary: "var(--text-primary)",
-  textSecondary: "var(--text-secondary)",
-  textMuted: "var(--text-muted)",
-  borderColor: "var(--border-color)",
-  shadowSm: "var(--shadow-sm)",
-  shadowMd: "var(--shadow-md)",
-  shadowLg: "var(--shadow-lg)",
-  shadowHuge: "var(--shadow-huge)",
-  tableRow: "var(--table-row)",
-};
-
-// -----------------------
-// Assessment Options Data
-// -----------------------
-const ASSESSMENT_OPTIONS = [
-  {
-    group: "Personality & Behavior",
-    items: [
-      { code: "BIG_FIVE", label: "🧠 Big Five Personality Traits" },
-      { code: "DISC", label: "💼 DISC Personality Assessment" },
-    ],
-  },
-  {
-    group: "Resilience & Self-Efficacy",
-    items: [
-      { code: "BRS", label: "💪 Brief Resilience Scale" },
-      { code: "CDRISC10", label: "🛡️ Connor-Davidson Resilience" },
-      { code: "WSES", label: "✨ Work Self-Efficacy Scale" },
-    ],
-  },
-  {
-    group: "Work Style & Motivation",
-    items: [
-      { code: "KARASEK", label: "⚖️ Karasek Job Demand-Control" },
-      { code: "GCOS", label: "🎯 General Causality Orientations" },
-    ],
-  },
-  {
-    group: "Cognitive & Creativity",
-    items: [
-      { code: "RIBS", label: "💡 Runco Ideational Behavior" },
-      { code: "CAQ", label: "🎨 Creative Achievement" },
-      { code: "ISE", label: "🚀 Innovation Self-Efficacy" },
-    ],
-  },
-];
-
-const styles = {
-  container: {
-    padding: "5px 14px",
-    backgroundColor: COLORS.bgMain,
-    minHeight: "100vh",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    color: COLORS.textPrimary,
-  },
-  mainWrapperCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "24px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowHuge,
-    margin: "0 auto",
-    padding: "48px",
-    minHeight: "calc(100vh - 40px)",
-    display: "flex",
-    flexDirection: "column",
-  },
-  card: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: "16px",
-    border: `1px solid ${COLORS.borderColor}`,
-    boxShadow: COLORS.shadowSm,
-    overflow: "hidden",
-  },
-  sectionHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "32px",
-  },
-  btnPrimary: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 20px",
-    backgroundColor: COLORS.primary,
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  btnBulk: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 20px",
-    backgroundColor: COLORS.blue,
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  input: {
-    padding: "12px 16px",
-    borderRadius: "10px",
-    border: `1px solid ${COLORS.borderColor}`,
-    fontSize: "14px",
-    width: "100%",
-    outline: "none",
-    transition: "border-color 0.2s",
-    backgroundColor: "#fff",
-  },
-  label: {
-    display: "block",
-    marginBottom: "6px",
-    fontSize: "14px",
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-  },
-  dropZone: (isDragging) => ({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "12px",
-    padding: "40px 20px",
-    border: `2px dashed ${isDragging ? COLORS.primary : COLORS.borderColor}`,
-    borderRadius: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    backgroundColor: isDragging ? COLORS.primaryLight : "#fcfcfd",
-    textAlign: "center",
-    position: "relative",
-  }),
-  fileItem: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "10px 14px",
-    backgroundColor: "#fff",
-    border: `1px solid ${COLORS.borderColor}`,
-    borderRadius: "12px",
-    fontSize: "13px",
-    width: "100%",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-  },
-  badge: (status) => {
-    const colors = {
-      hired: { bg: "#ecfdf5", text: "#059669" },
-      rejected: { bg: "#fef2f2", text: "#ef4444" },
-      invited: { bg: "#eff6ff", text: "#3b82f6" },
-      pending: { bg: "#fffbeb", text: "#d97706" },
-      interview: { bg: "#fef3c7", text: "#d97706" },
-      completed: { bg: "#ecfdf5", text: "#059669" },
-      default: { bg: "#f3f4f6", text: "#6b7280" },
-    };
-    const style = colors[status?.toLowerCase()] || colors.default;
-    return {
-      padding: "4px 12px",
-      borderRadius: "99px",
-      fontSize: "12px",
-      fontWeight: "600",
-      backgroundColor: style.bg,
-      color: style.text,
-      textTransform: "capitalize",
-    };
-  },
-  checkbox: {
-    width: "18px",
-    height: "18px",
-    cursor: "pointer",
-    accentColor: COLORS.primary,
-  },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(15, 23, 42, 0.4)",
-    backdropFilter: "blur(6px)",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 9999,
-    padding: 20,
-  },
-};
-
-// -----------------------
-// Sub-components
-// -----------------------
-function StatusBadge({ status }) {
-  return <span style={styles.badge(status)}>{status}</span>;
-}
-
-const Modal = ({ open, title, onClose, children, actions, contentClassName }) => {
-  if (!open) return null;
-  return ReactDOM.createPortal(
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div
-        className={contentClassName}
-        style={{
-          ...styles.card,
-          width: "100%",
-          maxWidth: "600px",
-          padding: "24px",
-          boxShadow: COLORS.shadowLg,
-          overflow: "visible",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: "20px",
-          }}
-        >
-          <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-            {title}
-          </h3>
-          <button
-            onClick={onClose}
-            style={{ border: "none", background: "none", cursor: "pointer" }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        {children}
-        <div
-          className="modal-actions"
-          style={{
-            marginTop: "24px",
-            display: "flex",
-            gap: "12px",
-            justifyContent: "flex-end",
-          }}
-        >
-          {actions}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-};
+import { styles } from "../../components/recruitment-match/Constants";
+import {
+  AIMatcherSection,
+  JobOfferingsSection,
+  PipelineSection,
+  RecruitmentMatchHeader,
+  SearchBar,
+} from "../../components/recruitment-match/Sections";
+import {
+  AssignAssessmentModal,
+  CandidateFormModal,
+  CVManagerModal,
+  CVPreviewModal,
+  DeleteCandidateModal,
+  HistoryModal,
+  JobFormModal,
+  ResultModal,
+  ToastNotification,
+  ViewAssignmentsModal,
+} from "../../components/recruitment-match/Modals";
 
 // -----------------------
 // Main Component
@@ -292,7 +27,10 @@ const Modal = ({ open, title, onClose, children, actions, contentClassName }) =>
 export default function RecruitmentMatch() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+  const authHeader = useMemo(
+    () => (access ? { Authorization: `Bearer ${access}` } : {}),
+    [access]
+  );
 
   // --- States ---
   const [toast, setToast] = useState(null);
@@ -334,17 +72,25 @@ export default function RecruitmentMatch() {
   const [loadingAssignments, setLoadingAssignments] = useState(false);
 
   // AI Matcher States
-  const [files, setFiles] = useState([]);
-  const [isDragging, setIsDragging] = useState(false);
   const [jobDescription, setJobDescription] = useState("");
   const [results, setResults] = useState([]);
+  const [activeResultId, setActiveResultId] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCandidate, setHistoryCandidate] = useState(null);
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyDetailLoading, setHistoryDetailLoading] = useState(false);
+  const [resultModalOpen, setResultModalOpen] = useState(false);
+  const [resultModalFromHistory, setResultModalFromHistory] = useState(false);
 
   // Talent Matching Job States
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [jobFormOpen, setJobFormOpen] = useState(false);
+  const [jobFormMode, setJobFormMode] = useState("create");
+  const [editingJobId, setEditingJobId] = useState(null);
   const [jobSubmitting, setJobSubmitting] = useState(false);
   const [jobForm, setJobForm] = useState({
     title: "",
@@ -353,6 +99,18 @@ export default function RecruitmentMatch() {
   });
   const [pipelineRankings, setPipelineRankings] = useState([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [cvManagerOpen, setCvManagerOpen] = useState(false);
+  const [cvManagerCandidate, setCvManagerCandidate] = useState(null);
+  const [candidateCvs, setCandidateCvs] = useState([]);
+  const [candidateCvsLoading, setCandidateCvsLoading] = useState(false);
+  const [cvActionLoading, setCvActionLoading] = useState(false);
+  const [cvUploadFile, setCvUploadFile] = useState(null);
+  const [cvUploadLoading, setCvUploadLoading] = useState(false);
+  const [selectedMatchCandidate, setSelectedMatchCandidate] = useState(null);
+  const [selectedMatchCv, setSelectedMatchCv] = useState(null);
+  const [selectedCandidateCvs, setSelectedCandidateCvs] = useState([]);
+  const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
+  const [cvPreviewItem, setCvPreviewItem] = useState(null);
 
   // --- Toast Timer ---
   useEffect(() => {
@@ -362,27 +120,7 @@ export default function RecruitmentMatch() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    fetchCandidates();
-    fetchJobs();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedJobId) {
-      setPipelineRankings([]);
-      return;
-    }
-    fetchRankedPipeline(selectedJobId);
-
-    const selected = jobs.find(
-      (job) => String(job.id) === String(selectedJobId)
-    );
-    if (selected?.description && !jobDescription.trim()) {
-      setJobDescription(selected.description);
-    }
-  }, [selectedJobId, jobs]);
-
-  async function fetchCandidates() {
+  const fetchCandidates = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/recruitment/candidates/`, {
         headers: authHeader,
@@ -403,9 +141,9 @@ export default function RecruitmentMatch() {
       console.error(e);
       setToast({ message: "Failed to load candidates", type: "error" });
     }
-  }
+  }, [API_BASE, authHeader]);
 
-  async function fetchJobs() {
+  const fetchJobs = useCallback(async () => {
     setJobsLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/talent-matching/jobs/`, {
@@ -420,9 +158,9 @@ export default function RecruitmentMatch() {
     } finally {
       setJobsLoading(false);
     }
-  }
+  }, [API_BASE, authHeader]);
 
-  async function fetchRankedPipeline(jobId) {
+  const fetchRankedPipeline = useCallback(async (jobId) => {
     setPipelineLoading(true);
     try {
       const res = await fetch(
@@ -439,9 +177,168 @@ export default function RecruitmentMatch() {
     } finally {
       setPipelineLoading(false);
     }
-  }
+  }, [API_BASE, authHeader]);
 
-  const handleCreateJob = async () => {
+  useEffect(() => {
+    fetchCandidates();
+    fetchJobs();
+  }, [fetchCandidates, fetchJobs]);
+
+  useEffect(() => {
+    if (!selectedJobId) {
+      setPipelineRankings([]);
+      setJobDescription("");
+      setHistoryOpen(false);
+      setHistoryCandidate(null);
+      setHistoryItems([]);
+      setResults([]);
+      setActiveResultId(null);
+      setResultModalOpen(false);
+      setResultModalFromHistory(false);
+      return;
+    }
+    fetchRankedPipeline(selectedJobId);
+    setHistoryOpen(false);
+    setHistoryCandidate(null);
+    setHistoryItems([]);
+    setResults([]);
+    setActiveResultId(null);
+    setResultModalOpen(false);
+    setResultModalFromHistory(false);
+
+    const selected = jobs.find(
+      (job) => String(job.id) === String(selectedJobId)
+    );
+    setJobDescription(selected?.description || "");
+  }, [selectedJobId, jobs, fetchRankedPipeline]);
+
+  const normalizeMatchResult = ({
+    payload,
+    fallbackCandidate,
+    fallbackCv,
+    source,
+  }) => {
+    const scoring = payload?.scoring_components || payload?.component_scores || {};
+    const structured = payload?.structured_analysis || {};
+    const matchMeta = payload?.match || {};
+    const matchId = matchMeta?.id || payload?.id || null;
+
+    return {
+      id: matchId || `adhoc-${Date.now()}`,
+      matchId,
+      source: source || "AI Analysis",
+      createdAt: matchMeta?.created_at || payload?.created_at || new Date().toISOString(),
+      candidateId: matchMeta?.candidate_id || fallbackCandidate?.id || null,
+      candidateName:
+        fallbackCandidate?.name ||
+        matchMeta?.candidate_name ||
+        "Candidate",
+      cvId: fallbackCv?.id || matchMeta?.cv || null,
+      score: Number(payload?.score || 0),
+      fit: payload?.fit || payload?.fit_label || matchMeta?.fit_label || "",
+      summary: payload?.summary || structured?.summary || "",
+      comparisonMetrics: payload?.comparison_metrics || {},
+      structuredAnalysis: structured,
+      componentScores: {
+        embeddingScore:
+          scoring?.embedding_score ?? scoring?.semantic ?? null,
+        keywordScore:
+          scoring?.keyword_overlap_score ?? scoring?.keyword ?? null,
+        structuredScore:
+          scoring?.llm_structured_score ?? scoring?.structured ?? null,
+      },
+    };
+  };
+
+  const upsertResult = (nextResult) => {
+    setResults((prev) => {
+      const deduped = prev.filter((item) => {
+        if (nextResult.matchId && item.matchId) {
+          return item.matchId !== nextResult.matchId;
+        }
+        return item.id !== nextResult.id;
+      });
+      return [nextResult, ...deduped];
+    });
+    setActiveResultId(nextResult.id);
+  };
+
+  const handleViewMatchDetail = async (
+    matchId,
+    candidate = null,
+    openedFromHistory = false
+  ) => {
+    if (!matchId) return;
+    setHistoryDetailLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/matches/${matchId}/`, {
+        headers: authHeader,
+      });
+      if (!res.ok) throw new Error("Failed to load match detail");
+      const payload = await res.json();
+      const next = normalizeMatchResult({
+        payload,
+        fallbackCandidate: candidate,
+        source: "History",
+      });
+      upsertResult(next);
+      setResultModalFromHistory(openedFromHistory);
+      setResultModalOpen(true);
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to load match details.", type: "error" });
+    } finally {
+      setHistoryDetailLoading(false);
+    }
+  };
+
+  const handleOpenMatchHistory = async (candidate) => {
+    if (!selectedJobId) {
+      setToast({ message: "Select a job first.", type: "error" });
+      return;
+    }
+
+    setHistoryCandidate(candidate);
+    setHistoryItems([]);
+    setHistoryLoading(true);
+    setHistoryOpen(true);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/jobs/${selectedJobId}/candidates/${candidate.id}/match-history/`,
+        { headers: authHeader }
+      );
+      if (!res.ok) throw new Error("Failed to load match history");
+      const data = await res.json();
+      setHistoryItems(Array.isArray(data?.history) ? data.history : []);
+    } catch (e) {
+      console.error(e);
+      setHistoryItems([]);
+      setToast({ message: "Failed to load match history.", type: "error" });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openCreateJobModal = () => {
+    setJobFormMode("create");
+    setEditingJobId(null);
+    setJobForm({ title: "", description: "", status: "active" });
+    setJobFormOpen(true);
+  };
+
+  const openEditJobModal = (job) => {
+    setJobFormMode("edit");
+    setEditingJobId(job.id);
+    setJobForm({
+      title: job.title || "",
+      description: job.description || "",
+      status: job.status || "active",
+    });
+    setJobFormOpen(true);
+  };
+
+  const handleSaveJob = async () => {
     if (!jobForm.title.trim() || !jobForm.description.trim()) {
       setToast({
         message: "Job title and description are required.",
@@ -452,26 +349,298 @@ export default function RecruitmentMatch() {
 
     setJobSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/talent-matching/jobs/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify(jobForm),
-      });
+      const isEdit = jobFormMode === "edit" && editingJobId;
+      const res = await fetch(
+        isEdit
+          ? `${API_BASE}/api/talent-matching/jobs/${editingJobId}/`
+          : `${API_BASE}/api/talent-matching/jobs/`,
+        {
+          method: isEdit ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify(jobForm),
+        }
+      );
 
-      if (!res.ok) throw new Error("Failed to create job");
+      if (!res.ok) throw new Error("Failed to save job");
 
-      const created = await res.json();
+      const saved = await res.json();
       setJobFormOpen(false);
       setJobForm({ title: "", description: "", status: "active" });
-      setToast({ message: "Job offering created.", type: "success" });
+      setEditingJobId(null);
+      setToast({
+        message: isEdit ? "Job offering updated." : "Job offering created.",
+        type: "success",
+      });
       await fetchJobs();
-      setSelectedJobId(String(created.id));
-      setJobDescription(created.description || "");
+      setSelectedJobId(String(saved.id));
+      setJobDescription(saved.description || "");
     } catch (e) {
       console.error(e);
-      setToast({ message: "Failed to create job offering", type: "error" });
+      setToast({ message: "Failed to save job offering", type: "error" });
     } finally {
       setJobSubmitting(false);
+    }
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/jobs/${jobId}/`, {
+        method: "DELETE",
+        headers: authHeader,
+      });
+
+      if (!res.ok) throw new Error("Failed to delete job");
+
+      if (String(selectedJobId) === String(jobId)) {
+        setSelectedJobId("");
+        setPipelineRankings([]);
+      }
+      await fetchJobs();
+      setToast({ message: "Job offering deleted.", type: "success" });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to delete job offering", type: "error" });
+    }
+  };
+
+  const getCvFileUrl = (cv) => {
+    const rawPath = String(cv?.file || "").trim();
+    if (!rawPath) return "";
+
+    const normalizedPath = rawPath.replace(/\\/g, "/");
+    if (
+      normalizedPath.startsWith("http://") ||
+      normalizedPath.startsWith("https://")
+    ) {
+      return normalizedPath;
+    }
+
+    const withLeadingSlash = normalizedPath.startsWith("/")
+      ? normalizedPath
+      : `/${normalizedPath}`;
+
+    try {
+      return new URL(withLeadingSlash, API_BASE).toString();
+    } catch {
+      return `${API_BASE}${withLeadingSlash}`;
+    }
+  };
+
+  const openCvPreview = (cv) => {
+    setCvPreviewItem(cv);
+    setCvPreviewOpen(true);
+  };
+
+  const handleSelectCandidateForMatch = async (candidate) => {
+    setSelectedMatchCandidate(candidate);
+    setSelectedMatchCv(null);
+    setSelectedCandidateCvs([]);
+    await fetchCandidateCvs(candidate.id, true, false, true);
+  };
+
+  const handleToggleMatchCandidate = async (candidate) => {
+    if (selectedMatchCandidate?.id === candidate.id) {
+      setSelectedMatchCandidate(null);
+      setSelectedMatchCv(null);
+      setSelectedCandidateCvs([]);
+      return;
+    }
+    await handleSelectCandidateForMatch(candidate);
+  };
+
+  const handleUploadCandidateCv = async () => {
+    if (!cvManagerCandidate) return;
+    if (!cvUploadFile) {
+      setToast({ message: "Please select a CV file first.", type: "error" });
+      return;
+    }
+
+    setCvUploadLoading(true);
+    try {
+      const uploadForm = new FormData();
+      uploadForm.append("recruitee_id", cvManagerCandidate.id);
+      uploadForm.append("file", cvUploadFile);
+      uploadForm.append("is_active", "true");
+
+      const uploadRes = await fetch(`${API_BASE}/api/talent-matching/cvs/upload/`, {
+        method: "POST",
+        headers: authHeader,
+        body: uploadForm,
+      });
+
+      if (!uploadRes.ok) throw new Error("Failed to upload CV");
+
+      const uploadedCv = await uploadRes.json();
+      setCvUploadFile(null);
+      await fetchCandidateCvs(cvManagerCandidate.id, true);
+
+      if (
+        selectedMatchCandidate &&
+        selectedMatchCandidate.id === cvManagerCandidate.id
+      ) {
+        setSelectedMatchCv(uploadedCv);
+      }
+
+      setToast({ message: "Candidate CV uploaded.", type: "success" });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to upload CV.", type: "error" });
+    } finally {
+      setCvUploadLoading(false);
+    }
+  };
+
+  const openCvManager = async (candidate) => {
+    setCvManagerCandidate(candidate);
+    setCvUploadFile(null);
+    setCvManagerOpen(true);
+    await fetchCandidateCvs(
+      candidate.id,
+      selectedMatchCandidate?.id === candidate.id,
+      true,
+      selectedMatchCandidate?.id === candidate.id
+    );
+  };
+
+  const fetchCandidateCvs = async (
+    candidateId,
+    syncSelectedCv = false,
+    updateManagerList = false,
+    updateSelectedList = false
+  ) => {
+    setCandidateCvsLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/candidates/${candidateId}/cvs/`,
+        { headers: authHeader }
+      );
+      if (!res.ok) throw new Error("Failed to load CVs");
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+
+      if (updateManagerList || cvManagerCandidate?.id === candidateId) {
+        setCandidateCvs(list);
+      }
+
+      if (updateSelectedList || selectedMatchCandidate?.id === candidateId) {
+        setSelectedCandidateCvs(list);
+      }
+
+      if (syncSelectedCv) {
+        const activeCv = list.find((item) => item.is_active) || list[0] || null;
+        setSelectedMatchCv(activeCv);
+      }
+    } catch (e) {
+      console.error(e);
+      setCandidateCvs([]);
+      setToast({ message: "Failed to load candidate CVs.", type: "error" });
+    } finally {
+      setCandidateCvsLoading(false);
+    }
+  };
+
+  const handleSetActiveCv = async (cvId) => {
+    setCvActionLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/cvs/${cvId}/set-active/`,
+        {
+          method: "POST",
+          headers: authHeader,
+        }
+      );
+      if (!res.ok) throw new Error("Failed to activate CV");
+      await fetchCandidateCvs(
+        cvManagerCandidate.id,
+        selectedMatchCandidate?.id === cvManagerCandidate.id
+      );
+      setToast({ message: "Candidate active CV updated.", type: "success" });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to set active CV.", type: "error" });
+    } finally {
+      setCvActionLoading(false);
+    }
+  };
+
+  const handleDeleteCv = async (cvId) => {
+    setCvActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/cvs/${cvId}/`, {
+        method: "DELETE",
+        headers: authHeader,
+      });
+      if (!res.ok) throw new Error("Failed to delete CV");
+      await fetchCandidateCvs(
+        cvManagerCandidate.id,
+        selectedMatchCandidate?.id === cvManagerCandidate.id
+      );
+      if (selectedJobId) {
+        await fetchRankedPipeline(selectedJobId);
+      }
+      setToast({ message: "CV deleted.", type: "success" });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to delete CV.", type: "error" });
+    } finally {
+      setCvActionLoading(false);
+    }
+  };
+
+  const handleDetachCandidateFromJob = async (applicationId, candidateName) => {
+    if (!selectedJobId || !applicationId) return;
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/applications/${applicationId}/detach/`,
+        {
+          method: "POST",
+          headers: authHeader,
+        }
+      );
+      if (!res.ok) throw new Error("Failed to detach candidate");
+      await fetchRankedPipeline(selectedJobId);
+      setToast({
+        message: `${candidateName} unassigned from selected job.`,
+        type: "success",
+      });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to unassign candidate.", type: "error" });
+    }
+  };
+
+  const handleUseCvForMatch = (cv, candidate = null) => {
+    if (candidate) {
+      setSelectedMatchCandidate(candidate);
+      if (cvManagerCandidate?.id === candidate.id) {
+        setSelectedCandidateCvs(candidateCvs);
+      }
+    }
+    setSelectedMatchCv(cv);
+    setToast({ message: `CV #${cv.id} selected for match.`, type: "success" });
+  };
+
+  const handleAttachCandidateToJob = async (candidate) => {
+    if (!selectedJobId) {
+      setToast({ message: "Select a job first.", type: "error" });
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/applications/attach/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          candidate_id: candidate.id,
+          job_id: Number(selectedJobId),
+          source: "hr_manual",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to attach candidate");
+      await fetchRankedPipeline(selectedJobId);
+      setToast({ message: `${candidate.name} attached to selected job.`, type: "success" });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to attach candidate.", type: "error" });
     }
   };
 
@@ -497,21 +666,15 @@ export default function RecruitmentMatch() {
     (job) => String(job.id) === String(selectedJobId)
   );
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(filtered.map((c) => c.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectRow = (id) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((itemId) => itemId !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
-  };
+  const activeResult =
+    results.find((item) => String(item.id) === String(activeResultId)) ||
+    results[0] ||
+    null;
+  const activeStructured = activeResult?.structuredAnalysis || {};
+  const activeStrengths = activeStructured?.strengths || [];
+  const activeGaps = activeStructured?.gaps || [];
+  const activeRecommendations = activeStructured?.recommendations || [];
+  const activeDimensions = activeStructured?.dimensions || [];
 
   const openBulkAssignModal = () => {
     if (selectedIds.length === 0) return;
@@ -547,7 +710,7 @@ export default function RecruitmentMatch() {
         message: isEditing ? "Candidate updated!" : "Candidate added!",
         type: "success",
       });
-    } catch (e) {
+    } catch {
       setToast({ message: "Error saving candidate.", type: "error" });
     } finally {
       setSubmitting(false);
@@ -569,9 +732,14 @@ export default function RecruitmentMatch() {
 
       setCandidates(candidates.filter((c) => c.id !== deleteId));
       setSelectedIds(selectedIds.filter((id) => id !== deleteId));
+      if (selectedMatchCandidate?.id === deleteId) {
+        setSelectedMatchCandidate(null);
+        setSelectedMatchCv(null);
+        setSelectedCandidateCvs([]);
+      }
       setDeleteOpen(false);
       setToast({ message: "Candidate removed.", type: "success" });
-    } catch (e) {
+    } catch {
       setToast({ message: "Failed to delete candidate.", type: "error" });
     } finally {
       setDeleting(false);
@@ -653,7 +821,7 @@ export default function RecruitmentMatch() {
       if (!assignRow) {
         setSelectedIds([]);
       }
-    } catch (e) {
+    } catch {
       setToast({ message: "Error sending assessments.", type: "error" });
     } finally {
       setSendingAssessment(false);
@@ -685,57 +853,65 @@ export default function RecruitmentMatch() {
     }
   };
 
-  // --- AI Matcher Handlers ---
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
-    else if (e.type === "dragleave") setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    if (e.dataTransfer.files?.length)
-      setFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
-  };
-
-  const removeFile = (index) =>
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-
+  // --- AI Matcher ---
   async function analyzeMatches() {
-    if (!selectedJobId || !files.length || !jobDescription.trim()) {
+    if (!selectedJobId || !selectedMatchCandidate || !selectedMatchCv) {
       setToast({
-        message: "Select a job, upload CVs, and enter a description.",
+        message:
+          "Select one job offering, one candidate, and one CV before calculating fit.",
         type: "error",
       });
       return;
     }
+
     setMatchLoading(true);
-    const tempResults = [];
-    for (const file of files) {
-      const form = new FormData();
-      form.append("cv", file);
-      form.append("job_id", selectedJobId);
-      form.append("job_description", jobDescription);
-      try {
-        const res = await fetch(`${API_BASE}/api/talent-matching/match/`, {
+    try {
+      // Ensure candidate is linked to selected job before scoring.
+      const attachRes = await fetch(
+        `${API_BASE}/api/talent-matching/applications/attach/`,
+        {
           method: "POST",
-          headers: authHeader,
-          body: form,
-        });
-        if (!res.ok) throw new Error("Failed to analyze");
-        const data = await res.json();
-        tempResults.push({ name: file.name, ...data });
-      } catch (err) {
-        tempResults.push({ name: file.name, error: "Failed to analyze" });
-      }
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({
+            candidate_id: selectedMatchCandidate.id,
+            job_id: Number(selectedJobId),
+            source: "hr_manual",
+          }),
+        }
+      );
+      if (!attachRes.ok) throw new Error("Failed to attach candidate to selected job");
+
+      const res = await fetch(`${API_BASE}/api/talent-matching/match/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          job_id: Number(selectedJobId),
+          candidate_id: selectedMatchCandidate.id,
+          cv_id: selectedMatchCv.id,
+          job_description: jobDescription.trim() || selectedJob?.description || "",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to analyze");
+      const data = await res.json();
+      const next = normalizeMatchResult({
+        payload: data,
+        fallbackCandidate: selectedMatchCandidate,
+        fallbackCv: selectedMatchCv,
+        source: "Live Analysis",
+      });
+      upsertResult(next);
+      setResultModalFromHistory(false);
+      setResultModalOpen(true);
+
+      await fetchRankedPipeline(selectedJobId);
+      setToast({ message: "Match analysis complete.", type: "success" });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "Failed to calculate match fit.", type: "error" });
+    } finally {
+      setMatchLoading(false);
     }
-    setResults(tempResults);
-    await fetchRankedPipeline(selectedJobId);
-    setMatchLoading(false);
-    setToast({ message: "Analysis complete!", type: "success" });
   }
 
   return (
@@ -743,1507 +919,167 @@ export default function RecruitmentMatch() {
       <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <div className="main-wrapper-card" style={styles.mainWrapperCard}>
-        {/* Header */}
-        <div
-          className="page-header"
-          style={{
-            ...styles.sectionHeader,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div className="header-title-block" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div
-              style={{
-                padding: "10px",
-                backgroundColor: COLORS.primaryLight,
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Users size={28} color={COLORS.primary} />
-            </div>
+        <RecruitmentMatchHeader
+          selectedIds={selectedIds}
+          openBulkAssignModal={openBulkAssignModal}
+          openCreateJobModal={openCreateJobModal}
+          openAddModal={openAddModal}
+        />
 
-            <div>
-              <h1 style={{ fontSize: "32px", fontWeight: "800", margin: 0 }}>
-                Talent Matching
-              </h1>
-              <p
-                style={{
-                  color: COLORS.textSecondary,
-                  fontSize: "16px",
-                  margin: 0,
-                }}
-              >
-                Centralized candidate management and AI assessment hub.
-              </p>
-            </div>
-          </div>
+        <JobOfferingsSection
+          jobsLoading={jobsLoading}
+          jobs={jobs}
+          selectedJob={selectedJob}
+          selectedJobId={selectedJobId}
+          setSelectedJobId={setSelectedJobId}
+          openEditJobModal={openEditJobModal}
+          handleDeleteJob={handleDeleteJob}
+          openCreateJobModal={openCreateJobModal}
+        />
 
-          <div className="header-actions" style={{ display: "flex", gap: "10px" }}>
-            {selectedIds.length > 0 ? (
-              <button style={styles.btnBulk} onClick={openBulkAssignModal}>
-                <Mail size={20} /> Send Assessment to {selectedIds.length}{" "}
-                Selected
-              </button>
-            ) : (
-              <>
-                <button
-                  style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
-                  onClick={() => setJobFormOpen(true)}
-                >
-                  <Plus size={20} /> Add Job
-                </button>
-                <button style={styles.btnPrimary} onClick={openAddModal}>
-                  <Plus size={20} /> Add Candidate
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        <SearchBar q={q} setQ={setQ} />
 
-        <div
-          style={{
-            ...styles.card,
-            padding: "18px",
-            marginBottom: "24px",
-            display: "grid",
-            gap: "12px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>Active Job Offering</label>
-              <select
-                style={styles.input}
-                value={selectedJobId}
-                onChange={(e) => setSelectedJobId(e.target.value)}
-                disabled={jobsLoading}
-              >
-                <option value="">
-                  {jobsLoading ? "Loading jobs..." : "Select a job offering"}
-                </option>
-                {jobs.map((job) => (
-                  <option key={job.id} value={job.id}>
-                    {job.title} ({job.status})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "end" }}>
-              <button
-                style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
-                onClick={() => setJobFormOpen(true)}
-              >
-                <Plus size={16} /> New Job
-              </button>
-            </div>
-          </div>
-          {selectedJob && (
-            <p
-              style={{
-                margin: 0,
-                fontSize: "13px",
-                color: COLORS.textSecondary,
-              }}
-            >
-              <strong style={{ color: COLORS.textPrimary }}>Selected:</strong>{" "}
-              {selectedJob.title} - {selectedJob.description.slice(0, 180)}
-              {selectedJob.description.length > 180 ? "..." : ""}
-            </p>
-          )}
-        </div>
+        <PipelineSection
+          selectedJob={selectedJob}
+          selectedMatchCandidate={selectedMatchCandidate}
+          selectedJobId={selectedJobId}
+          pipelineLoading={pipelineLoading}
+          filtered={filtered}
+          rankingByCandidateId={rankingByCandidateId}
+          handleToggleMatchCandidate={handleToggleMatchCandidate}
+          historyDetailLoading={historyDetailLoading}
+          handleViewMatchDetail={handleViewMatchDetail}
+          handleOpenMatchHistory={handleOpenMatchHistory}
+          handleViewAssignments={handleViewAssignments}
+          setAssignRow={setAssignRow}
+          setSelectedCodes={setSelectedCodes}
+          setAssignOpen={setAssignOpen}
+          openCvManager={openCvManager}
+          handleAttachCandidateToJob={handleAttachCandidateToJob}
+          handleDetachCandidateFromJob={handleDetachCandidateFromJob}
+          openEditModal={openEditModal}
+          setDeleteId={setDeleteId}
+          setDeleteOpen={setDeleteOpen}
+        />
 
-        {/* Search */}
-        <div className="search-wrap" style={{ position: "relative", marginBottom: "32px" }}>
-          <Search
-            size={18}
-            style={{
-              position: "absolute",
-              left: "14px",
-              top: "14px",
-              color: COLORS.textMuted,
-            }}
-          />
-          <input
-            style={{
-              ...styles.input,
-              paddingLeft: "44px",
-              backgroundColor: COLORS.cardBg,
-              color: COLORS.textPrimary,
-            }}
-            placeholder="Search candidates by name, email, or role..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-
-        {/* Pipeline Table */}
-        <div className="pipeline-card" style={{ ...styles.card, marginBottom: "56px" }}>
-          <div
-            className="pipeline-card-header"
-            style={{
-              padding: "20px",
-              borderBottom: `1px solid ${COLORS.borderColor}`,
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <Users size={20} color={COLORS.primary} />
-            <span style={{ fontWeight: "700" }}>
-              {selectedJob ? `${selectedJob.title} Pipeline` : "Active Pipeline"}
-            </span>
-            {selectedIds.length > 0 && (
-              <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>
-                ({selectedIds.length} selected)
-              </span>
-            )}
-            {selectedJobId && pipelineLoading && (
-              <Loader2 className="spin" size={14} color={COLORS.textSecondary} />
-            )}
-          </div>
-          <div className="pipeline-table-wrap" style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                textAlign: "left",
-              }}
-            >
-              <thead style={{ backgroundColor: COLORS.tableRow }}>
-                <tr>
-                  <th style={{ padding: "16px 20px", width: "40px" }}>
-                    <input
-                      type="checkbox"
-                      style={styles.checkbox}
-                      onChange={handleSelectAll}
-                      checked={
-                        filtered.length > 0 &&
-                        selectedIds.length === filtered.length
-                      }
-                    />
-                  </th>
-                  {["Candidate", "Role", "Status", "Fit", "Insight", "Actions"].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: "16px 20px",
-                        color: COLORS.textSecondary,
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c) => {
-                  const ranking = rankingByCandidateId[c.id];
-                  return (
-                  <tr
-                    key={c.id}
-                    style={{
-                      borderBottom: `1px solid ${COLORS.borderColor}`,
-                      backgroundColor: selectedIds.includes(c.id)
-                        ? "#eff6ff"
-                        : "transparent",
-                    }}
-                  >
-                    <td style={{ padding: "16px 20px" }}>
-                      <input
-                        type="checkbox"
-                        style={styles.checkbox}
-                        checked={selectedIds.includes(c.id)}
-                        onChange={() => handleSelectRow(c.id)}
-                      />
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ fontWeight: "600" }}>{c.name}</div>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          color: COLORS.textSecondary,
-                        }}
-                      >
-                        {c.email}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px 20px", fontSize: "14px" }}>
-                      {c.position}
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <StatusBadge status={c.status} />
-                    </td>
-                    <td style={{ padding: "16px 20px", fontWeight: "700", color: COLORS.primary }}>
-                      {ranking ? `${Number(ranking.overall_score).toFixed(1)}%` : "-"}
-                    </td>
-                    <td
-                      style={{
-                        padding: "16px 20px",
-                        fontSize: "12px",
-                        color: COLORS.textSecondary,
-                        maxWidth: "240px",
-                      }}
-                    >
-                      {ranking?.explanation || "Run matching to generate insight."}
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>
-                      <div className="pipeline-actions" style={{ display: "flex", gap: "8px" }}>
-                        <button
-                          onClick={() => handleViewAssignments(c)}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            color: COLORS.purple,
-                          }}
-                          title="View Assignments"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setAssignRow(c);
-                            setSelectedCodes([]);
-                            setAssignOpen(true);
-                          }}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            color: COLORS.blue,
-                          }}
-                          title="Send Assessment"
-                        >
-                          <Send size={16} />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(c)}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            color: COLORS.textMuted,
-                          }}
-                          title="Edit Candidate"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setDeleteId(c.id);
-                            setDeleteOpen(true);
-                          }}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            color: COLORS.red,
-                          }}
-                          title="Delete Candidate"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* AI Matcher Section */}
-        <div>
-          <div
-            className="ai-matcher-section-header"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "24px",
-            }}
-          >
-            <div
-              style={{
-                padding: "10px",
-                backgroundColor: COLORS.primaryLight,
-                borderRadius: "12px",
-              }}
-            >
-              <Brain size={28} color={COLORS.primary} />
-            </div>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "0px",
-              }}
-            >
-              AI CV Matcher
-            </h2>
-          </div>
-
-          <div
-            className="ai-matcher-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "24px",
-            }}
-          >
-            <div
-              className="ai-matcher-upload-card"
-              style={{
-                ...styles.card,
-                padding: "24px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "20px",
-              }}
-            >
-              <h3 style={{ fontSize: "16px", fontWeight: "600" }}>
-                1. Upload CVs
-              </h3>
-              <div
-                style={{
-                  ...styles.dropZone(isDragging), // spread the dynamic dropZone styles
-                  backgroundColor: COLORS.cardBg, // override or add your cardBg
-                }}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <div
-                  style={{
-                    padding: "16px",
-                    backgroundColor: isDragging ? "#fff" : COLORS.blueLight,
-                    borderRadius: "50%",
-                    color: isDragging ? COLORS.primary : COLORS.blue,
-                  }}
-                >
-                  <Upload size={32} />
-                </div>
-                <div>
-                  <p style={{ margin: "0 0 4px 0", fontWeight: "600" }}>
-                    {isDragging ? "Drop to upload" : "Click or drag CVs here"}
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "12px",
-                      color: COLORS.textSecondary,
-                    }}
-                  >
-                    PDF or TXT files supported
-                  </p>
-                </div>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.txt"
-                  onChange={(e) =>
-                    setFiles((prev) => [...prev, ...Array.from(e.target.files)])
-                  }
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: 0,
-                    cursor: "pointer",
-                  }}
-                />
-              </div>
-              {files.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        color: COLORS.textMuted,
-                      }}
-                    >
-                      SELECTED FILES
-                    </span>
-                    <button
-                      onClick={() => setFiles([])}
-                      style={{
-                        border: "none",
-                        background: "none",
-                        color: COLORS.red,
-                        fontSize: "11px",
-                        cursor: "pointer",
-                        fontWeight: "700",
-                      }}
-                    >
-                      CLEAR ALL
-                    </button>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
-                      maxHeight: "180px",
-                      overflowY: "auto",
-                    }}
-                  >
-                    {files.map((f, i) => (
-                      <div key={i} style={styles.fileItem}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            overflow: "hidden",
-                          }}
-                        >
-                          <FileText size={16} color={COLORS.blue} />
-                          <span
-                            style={{
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {f.name}
-                          </span>
-                        </div>
-                        <X
-                          size={14}
-                          color={COLORS.textMuted}
-                          onClick={() => removeFile(i)}
-                          style={{ cursor: "pointer" }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="ai-matcher-job-card" style={{ ...styles.card, padding: "24px" }}>
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  marginBottom: "16px",
-                }}
-              >
-                2. Job Description {selectedJob ? `(${selectedJob.title})` : ""}
-              </h3>
-              <textarea
-                style={{
-                  ...styles.input,
-                  minHeight: "180px",
-                  resize: "none",
-                  backgroundColor: COLORS.cardBg,
-                  color: COLORS.textPrimary,
-                }}
-                placeholder="Paste the job requirements here..."
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-              />
-              <button
-                className="analyze-btn"
-                onClick={analyzeMatches}
-                disabled={matchLoading}
-                style={{
-                  ...styles.btnPrimary,
-                  width: "100%",
-                  marginTop: "20px",
-                  justifyContent: "center",
-                  backgroundColor: COLORS.dark,
-                  padding: "14px",
-                }}
-              >
-                {matchLoading ? (
-                  <Loader2 className="spin" size={18} />
-                ) : (
-                  <BarChart3 size={18} />
-                )}
-                {matchLoading ? "Analyzing..." : "Calculate Match Fit"}
-              </button>
-            </div>
-          </div>
-
-          {results.length > 0 && (
-            <div style={{ marginTop: "32px" }}>
-              <h3
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "700",
-                  marginBottom: "16px",
-                }}
-              >
-                Analysis Results
-              </h3>
-              <div
-                className="analysis-results-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                  gap: "16px",
-                }}
-              >
-                {results.map((r, i) => (
-                  <div
-                    key={i}
-                    className="analysis-result-card"
-                    style={{
-                      ...styles.card,
-                      padding: "20px",
-                      border: `1px solid ${COLORS.primary}33`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      <div style={{ fontWeight: "700" }}>{r.name}</div>
-                      <div
-                        style={{
-                          color: COLORS.primary,
-                          fontWeight: "800",
-                          fontSize: "20px",
-                        }}
-                      >
-                        {r.score}%
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "6px",
-                        backgroundColor: "#e2e8f0",
-                        borderRadius: "3px",
-                        marginBottom: "16px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${r.score}%`,
-                          height: "100%",
-                          backgroundColor: COLORS.primary,
-                          borderRadius: "3px",
-                        }}
-                      />
-                    </div>
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: COLORS.textSecondary,
-                        margin: 0,
-                      }}
-                    >
-                      <strong style={{ color: COLORS.textPrimary }}>
-                        Fit: {r.fit}
-                      </strong>{" "}
-                      — {r.summary}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <AIMatcherSection
+          selectedMatchCandidate={selectedMatchCandidate}
+          selectedCandidateCvs={selectedCandidateCvs}
+          selectedMatchCv={selectedMatchCv}
+          setSelectedMatchCv={setSelectedMatchCv}
+          openCvManager={openCvManager}
+          openCvPreview={openCvPreview}
+          selectedJob={selectedJob}
+          jobDescription={jobDescription}
+          analyzeMatches={analyzeMatches}
+          matchLoading={matchLoading}
+          selectedJobId={selectedJobId}
+          results={results}
+          setResultModalFromHistory={setResultModalFromHistory}
+          setResultModalOpen={setResultModalOpen}
+        />
       </div>
 
-      <Modal
-        open={jobFormOpen}
-        title="Create Job Offering"
-        onClose={() => setJobFormOpen(false)}
-        contentClassName="recruitment-match-modal-content"
-        actions={
-          <button
-            style={styles.btnPrimary}
-            onClick={handleCreateJob}
-            disabled={jobSubmitting}
-          >
-            {jobSubmitting ? "Creating..." : "Create Job"}
-          </button>
-        }
-      >
-        <div style={{ display: "grid", gap: 14 }}>
-          <div>
-            <label style={styles.label}>Job Title</label>
-            <input
-              style={styles.input}
-              value={jobForm.title}
-              onChange={(e) =>
-                setJobForm((prev) => ({ ...prev, title: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label style={styles.label}>Description</label>
-            <textarea
-              style={{ ...styles.input, minHeight: "140px", resize: "vertical" }}
-              value={jobForm.description}
-              onChange={(e) =>
-                setJobForm((prev) => ({ ...prev, description: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <label style={styles.label}>Status</label>
-            <select
-              style={styles.input}
-              value={jobForm.status}
-              onChange={(e) =>
-                setJobForm((prev) => ({ ...prev, status: e.target.value }))
-              }
-            >
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-            </select>
-          </div>
-        </div>
-      </Modal>
+      <HistoryModal
+        historyOpen={historyOpen}
+        historyCandidate={historyCandidate}
+        setHistoryOpen={setHistoryOpen}
+        historyLoading={historyLoading}
+        historyItems={historyItems}
+        activeResult={activeResult}
+        historyDetailLoading={historyDetailLoading}
+        handleViewMatchDetail={handleViewMatchDetail}
+      />
 
-      {/* Add/Edit Modal */}
-      <Modal
-        open={formOpen}
-        title={isEditing ? "Edit Candidate" : "Add New Candidate"}
-        onClose={() => setFormOpen(false)}
-        contentClassName="recruitment-match-modal-content"
-        actions={
-          <button
-            style={styles.btnPrimary}
-            onClick={handleSaveCandidate}
-            disabled={submitting}
-          >
-            {submitting ? "Saving..." : "Save Candidate"}
-          </button>
-        }
-      >
-        <div style={{ display: "grid", gap: 16 }}>
-          <div>
-            <label style={styles.label}>Email</label>
-            <input
-              style={styles.input}
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-            />
-          </div>
-          <div className="form-row-flex" style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>First Name</label>
-              <input
-                style={styles.input}
-                value={formData.first_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, first_name: e.target.value })
-                }
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>Last Name</label>
-              <input
-                style={styles.input}
-                value={formData.last_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, last_name: e.target.value })
-                }
-              />
-            </div>
-          </div>
-          <div>
-            <label style={styles.label}>Position</label>
-            <input
-              style={styles.input}
-              value={formData.position}
-              onChange={(e) =>
-                setFormData({ ...formData, position: e.target.value })
-              }
-            />
-          </div>
-          <div>
-            <label style={styles.label}>Status</label>
-            <select
-              style={styles.input}
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({ ...formData, status: e.target.value })
-              }
-            >
-              <option value="pending">Pending</option>
-              <option value="invited">Invited</option>
-              <option value="interview">Interview</option>
-              <option value="hired">Hired</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-        </div>
-      </Modal>
+      <ResultModal
+        resultModalOpen={resultModalOpen}
+        activeResult={activeResult}
+        setResultModalOpen={setResultModalOpen}
+        setResultModalFromHistory={setResultModalFromHistory}
+        resultModalFromHistory={resultModalFromHistory}
+        results={results}
+        setActiveResultId={setActiveResultId}
+        activeStrengths={activeStrengths}
+        activeGaps={activeGaps}
+        activeRecommendations={activeRecommendations}
+        activeDimensions={activeDimensions}
+        activeStructured={activeStructured}
+      />
 
-      {/* Delete Modal */}
-      <Modal
-        open={deleteOpen}
-        title="Delete Candidate?"
-        onClose={() => setDeleteOpen(false)}
-        contentClassName="recruitment-match-modal-content"
-        actions={
-          <>
-            <button
-              onClick={() => setDeleteOpen(false)}
-              style={{
-                padding: "8px 16px",
-                border: "1px solid #ccc",
-                borderRadius: "8px",
-                background: "white",
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDeleteCandidate}
-              style={{ ...styles.btnPrimary, backgroundColor: COLORS.red }}
-            >
-              {deleting ? "Deleting..." : "Delete Permanently"}
-            </button>
-          </>
-        }
-      >
-        <div style={{ textAlign: "center" }}>
-          <AlertTriangle
-            size={40}
-            color={COLORS.red}
-            style={{ marginBottom: 16 }}
-          />
-          <p>
-            Are you sure you want to remove this candidate? This action cannot
-            be undone.
-          </p>
-        </div>
-      </Modal>
+      <JobFormModal
+        jobFormOpen={jobFormOpen}
+        jobFormMode={jobFormMode}
+        setJobFormOpen={setJobFormOpen}
+        jobSubmitting={jobSubmitting}
+        handleSaveJob={handleSaveJob}
+        jobForm={jobForm}
+        setJobForm={setJobForm}
+      />
 
-      {/* Assign Modal */}
-      <Modal
-        open={assignOpen}
-        title={
-          assignRow
-            ? "Send Assessment"
-            : `Bulk Send (${selectedIds.length} Candidates)`
-        }
-        onClose={() => setAssignOpen(false)}
-        contentClassName="recruitment-match-modal-content"
-        actions={
-          <button
-            style={styles.btnPrimary}
-            onClick={handleSendAssessment}
-            disabled={sendingAssessment}
-          >
-            {sendingAssessment ? (
-              <Loader2 className="spin" size={16} />
-            ) : (
-              <Send size={16} />
-            )}
-            {sendingAssessment ? "Sending..." : "Send Now"}
-          </button>
-        }
-      >
-        {assignRow ? (
-          <div
-            style={{
-              marginBottom: 20,
-              padding: 12,
-              backgroundColor: "#f8fafc",
-              borderRadius: 8,
-            }}
-          >
-            <strong>{assignRow.name}</strong>{" "}
-            <span style={{ color: "#64748b" }}>({assignRow.email})</span>
-          </div>
-        ) : (
-          <div
-            style={{
-              marginBottom: 20,
-              padding: 12,
-              backgroundColor: "#eff6ff",
-              borderRadius: 8,
-              color: COLORS.blue,
-            }}
-          >
-            <strong>Bulk Action:</strong> Sending to {selectedIds.length}{" "}
-            selected candidates.
-          </div>
-        )}
+      <CVManagerModal
+        cvManagerOpen={cvManagerOpen}
+        setCvManagerOpen={setCvManagerOpen}
+        cvManagerCandidate={cvManagerCandidate}
+        cvUploadFile={cvUploadFile}
+        setCvUploadFile={setCvUploadFile}
+        cvUploadLoading={cvUploadLoading}
+        handleUploadCandidateCv={handleUploadCandidateCv}
+        candidateCvsLoading={candidateCvsLoading}
+        candidateCvs={candidateCvs}
+        openCvPreview={openCvPreview}
+        selectedMatchCv={selectedMatchCv}
+        handleUseCvForMatch={handleUseCvForMatch}
+        cvActionLoading={cvActionLoading}
+        handleSetActiveCv={handleSetActiveCv}
+        handleDeleteCv={handleDeleteCv}
+      />
 
-        <label style={styles.label}>Select Assessments</label>
+      <CVPreviewModal
+        cvPreviewOpen={cvPreviewOpen}
+        setCvPreviewOpen={setCvPreviewOpen}
+        cvPreviewItem={cvPreviewItem}
+        getCvFileUrl={getCvFileUrl}
+      />
 
-        <div className="assign-dropdown-wrap" style={{ position: "relative", marginBottom: "120px" }}>
-          <div
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            style={{
-              ...styles.input,
-              cursor: "pointer",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              background: "#fff",
-            }}
-          >
-            <span>
-              {selectedCodes.length > 0
-                ? `${selectedCodes.length} Selected`
-                : "Select templates..."}
-            </span>
-            <ChevronDown size={16} />
-          </div>
+      <CandidateFormModal
+        formOpen={formOpen}
+        isEditing={isEditing}
+        setFormOpen={setFormOpen}
+        submitting={submitting}
+        handleSaveCandidate={handleSaveCandidate}
+        formData={formData}
+        setFormData={setFormData}
+      />
 
-          {isDropdownOpen && (
-            <>
-              <div
-                style={{ position: "fixed", inset: 0, zIndex: 10 }}
-                onClick={() => setIsDropdownOpen(false)}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  left: 0,
-                  width: "100%",
-                  zIndex: 20,
-                  backgroundColor: "white",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "10px",
-                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                  maxHeight: "250px",
-                  overflowY: "auto",
-                }}
-              >
-                {ASSESSMENT_OPTIONS.map((group) => (
-                  <div key={group.group}>
-                    <div
-                      style={{
-                        padding: "8px 12px",
-                        background: "#f9fafb",
-                        fontWeight: "bold",
-                        fontSize: "12px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {group.group}
-                    </div>
-                    {group.items.map((item) => {
-                      const isSelected = selectedCodes.includes(item.code);
-                      return (
-                        <div
-                          key={item.code}
-                          onClick={() => toggleAssessment(item.code)}
-                          style={{
-                            padding: "10px 12px",
-                            cursor: "pointer",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            background: isSelected ? "#eff6ff" : "white",
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: isSelected
-                                ? COLORS.blue
-                                : COLORS.textPrimary,
-                            }}
-                          >
-                            {item.label}
-                          </span>
-                          {isSelected && (
-                            <Check size={16} color={COLORS.blue} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
+      <DeleteCandidateModal
+        deleteOpen={deleteOpen}
+        setDeleteOpen={setDeleteOpen}
+        handleDeleteCandidate={handleDeleteCandidate}
+        deleting={deleting}
+      />
 
-      {/* View Assignments Modal - Enhanced */}
-      {viewAssignmentsOpen &&
-        ReactDOM.createPortal(
-          <div
-            style={styles.modalOverlay}
-            onClick={() => setViewAssignmentsOpen(false)}
-          >
-          <div
-            className="view-assignments-modal-content"
-            style={{
-              ...styles.card,
-              width: "90%",
-              maxWidth: "1000px",
-              height: "85vh",
-              maxHeight: "700px",
-              padding: 0,
-              boxShadow: COLORS.shadowLg,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header - Fixed */}
-              <div
-                className="view-assignments-header"
-                style={{
-                  padding: "24px 32px",
-                  borderBottom: `1px solid ${COLORS.borderColor}`,
-                  backgroundColor: COLORS.tableRow,
-                  flexShrink: 0,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <div>
-                    <h3
-                      style={{
-                        margin: "0 0 8px 0",
-                        fontSize: "22px",
-                        fontWeight: "700",
-                        color: COLORS.textPrimary,
-                      }}
-                    >
-                      Assessment Overview
-                    </h3>
-                    {viewAssignmentsCandidate && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <div
-                          style={{
-                            padding: 8,
-                            backgroundColor: COLORS.primaryLight,
-                            borderRadius: 8,
-                          }}
-                        >
-                          <Users size={16} color={COLORS.primary} />
-                        </div>
-                        <div>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              fontSize: 15,
-                              color: COLORS.textPrimary,
-                            }}
-                          >
-                            {viewAssignmentsCandidate.name}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 13,
-                              color: COLORS.textSecondary,
-                            }}
-                          >
-                            {viewAssignmentsCandidate.email}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setViewAssignmentsOpen(false)}
-                    style={{
-                      border: "none",
-                      background: "none",
-                      cursor: "pointer",
-                      padding: 8,
-                      borderRadius: 8,
-                      transition: "background 0.2s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.backgroundColor = "#f1f5f9")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.backgroundColor = "transparent")
-                    }
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
+      <AssignAssessmentModal
+        assignOpen={assignOpen}
+        assignRow={assignRow}
+        selectedIds={selectedIds}
+        setAssignOpen={setAssignOpen}
+        sendingAssessment={sendingAssessment}
+        handleSendAssessment={handleSendAssessment}
+        selectedCodes={selectedCodes}
+        setIsDropdownOpen={setIsDropdownOpen}
+        isDropdownOpen={isDropdownOpen}
+        toggleAssessment={toggleAssessment}
+      />
 
-              {/* Content - Scrollable */}
-              <div className="view-assignments-body" style={{ flex: 1, overflow: "auto", padding: "32px" }}>
-                {loadingAssignments ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      gap: 16,
-                    }}
-                  >
-                    <Loader2
-                      className="spin"
-                      size={40}
-                      color={COLORS.primary}
-                    />
-                    <p style={{ color: COLORS.textSecondary, margin: 0 }}>
-                      Loading assessments...
-                    </p>
-                  </div>
-                ) : assignments.length === 0 ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: "100%",
-                      color: COLORS.textSecondary,
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: 24,
-                        backgroundColor: "#f8fafc",
-                        borderRadius: "50%",
-                        marginBottom: 20,
-                      }}
-                    >
-                      <FileText size={48} color={COLORS.textMuted} />
-                    </div>
-                    <h4
-                      style={{
-                        margin: "0 0 8px 0",
-                        fontSize: 18,
-                        color: COLORS.textPrimary,
-                      }}
-                    >
-                      No Assessments Yet
-                    </h4>
-                    <p style={{ margin: 0, fontSize: 14 }}>
-                      This candidate hasn't been assigned any assessments.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Summary Stats */}
-                    <div
-                      className="view-assignments-stats"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fit, minmax(200px, 1fr))",
-                        gap: 16,
-                        marginBottom: 32,
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: 20,
-                          backgroundColor: "#eff6ff",
-                          borderRadius: 12,
-                          border: `1px solid ${COLORS.blue}30`,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: COLORS.blue,
-                            fontWeight: 600,
-                            marginBottom: 8,
-                          }}
-                        >
-                          TOTAL ASSIGNED
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 28,
-                            fontWeight: 800,
-                            color: COLORS.blue,
-                          }}
-                        >
-                          {assignments.length}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          padding: 20,
-                          backgroundColor: "#ecfdf5",
-                          borderRadius: 12,
-                          border: "1px solid #05966930",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#059669",
-                            fontWeight: 600,
-                            marginBottom: 8,
-                          }}
-                        >
-                          COMPLETED
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 28,
-                            fontWeight: 800,
-                            color: "#059669",
-                          }}
-                        >
-                          {
-                            assignments.filter(
-                              (a) => a.status.toLowerCase() === "completed"
-                            ).length
-                          }
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          padding: 20,
-                          backgroundColor: "#fffbeb",
-                          borderRadius: 12,
-                          border: "1px solid #d9770630",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#d97706",
-                            fontWeight: 600,
-                            marginBottom: 8,
-                          }}
-                        >
-                          PENDING
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 28,
-                            fontWeight: 800,
-                            color: "#d97706",
-                          }}
-                        >
-                          {
-                            assignments.filter(
-                              (a) => a.status.toLowerCase() === "pending"
-                            ).length
-                          }
-                        </div>
-                      </div>
-                    </div>
+      <ViewAssignmentsModal
+        viewAssignmentsOpen={viewAssignmentsOpen}
+        setViewAssignmentsOpen={setViewAssignmentsOpen}
+        viewAssignmentsCandidate={viewAssignmentsCandidate}
+        loadingAssignments={loadingAssignments}
+        assignments={assignments}
+      />
 
-                    {/* Assessment Grid */}
-                    <div>
-                      <h4
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: COLORS.textMuted,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                          marginBottom: 16,
-                        }}
-                      >
-                        Assessment History
-                      </h4>
-                      <div
-                        className="view-assignments-history"
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fill, minmax(280px, 1fr))",
-                          gap: 16,
-                        }}
-                      >
-                        {assignments.map((assignment) => {
-                          const isCompleted =
-                            assignment.status.toLowerCase() === "completed";
-                          const isPending =
-                            assignment.status.toLowerCase() === "pending";
-
-                          return (
-                            <div
-                              key={assignment.id}
-                              style={{
-                                padding: 20,
-                                backgroundColor: COLORS.cardBg,
-                                border: `2px solid ${
-                                  isCompleted
-                                    ? "#05966920"
-                                    : isPending
-                                    ? "#d9770620"
-                                    : COLORS.borderColor
-                                }`,
-                                borderRadius: 16,
-                                transition: "all 0.2s",
-                                cursor: "default",
-                                position: "relative",
-                                overflow: "hidden",
-                              }}
-                            >
-                              {/* Status indicator stripe */}
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  height: 4,
-                                  backgroundColor: isCompleted
-                                    ? "#059669"
-                                    : isPending
-                                    ? "#d97706"
-                                    : "#94a3b8",
-                                }}
-                              />
-
-                              <div style={{ marginTop: 8 }}>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "flex-start",
-                                    marginBottom: 12,
-                                  }}
-                                >
-                                  <div style={{ flex: 1, paddingRight: 8 }}>
-                                    <h5
-                                      style={{
-                                        margin: "0 0 6px 0",
-                                        fontSize: 15,
-                                        fontWeight: 700,
-                                        color: COLORS.textPrimary,
-                                        lineHeight: 1.3,
-                                      }}
-                                    >
-                                      {assignment.template.name}
-                                    </h5>
-                                  </div>
-                                  <span
-                                    style={{
-                                      ...styles.badge(
-                                        assignment.status.toLowerCase()
-                                      ),
-                                      fontSize: 10,
-                                      padding: "4px 10px",
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {assignment.status}
-                                  </span>
-                                </div>
-
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 8,
-                                    fontSize: 12,
-                                    color: COLORS.textSecondary,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 8,
-                                    }}
-                                  >
-                                    <Clock
-                                      size={14}
-                                      style={{ flexShrink: 0 }}
-                                    />
-                                    <span>
-                                      Assigned{" "}
-                                      {new Date(
-                                        assignment.assigned_at
-                                      ).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                      })}
-                                    </span>
-                                  </div>
-
-                                  {assignment.completed_at && (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 8,
-                                      }}
-                                    >
-                                      <CheckCircle
-                                        size={14}
-                                        style={{ flexShrink: 0 }}
-                                        color="#059669"
-                                      />
-                                      <span style={{ color: "#059669" }}>
-                                        Completed{" "}
-                                        {new Date(
-                                          assignment.completed_at
-                                        ).toLocaleDateString("en-US", {
-                                          month: "short",
-                                          day: "numeric",
-                                        })}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Footer - Fixed */}
-              {!loadingAssignments && assignments.length > 0 && (
-                <div
-                  className="view-assignments-footer"
-                  style={{
-                    padding: "20px 32px",
-                    borderTop: `1px solid ${COLORS.borderColor}`,
-                    backgroundColor: COLORS.tableRow,
-                    flexShrink: 0,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                    Showing {assignments.length} assessment
-                    {assignments.length !== 1 ? "s" : ""}
-                  </div>
-                  <button
-                    style={{
-                      ...styles.btnPrimary,
-                      backgroundColor: COLORS.primary,
-                    }}
-                    onClick={() => setViewAssignmentsOpen(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* TOAST NOTIFICATION */}
-      {toast && (
-        <div
-          className="recruitment-match-toast"
-          style={{
-            position: "fixed",
-            bottom: "32px",
-            right: "32px",
-            zIndex: 9999,
-            backgroundColor: toast.type === "error" ? "#fef2f2" : "#ecfdf5",
-            border: `1px solid ${
-              toast.type === "error" ? "#ef4444" : "#10b981"
-            }`,
-            borderRadius: "12px",
-            padding: "16px 20px",
-            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            minWidth: "300px",
-            animation: "fadeIn 0.3s ease-out",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: toast.type === "error" ? "#fee2e2" : "#d1fae5",
-              padding: "8px",
-              borderRadius: "50%",
-              display: "flex",
-            }}
-          >
-            {toast.type === "error" ? (
-              <AlertTriangle size={20} color="#dc2626" />
-            ) : (
-              <CheckCircle size={20} color="#059669" />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <h4
-              style={{
-                margin: "0 0 4px 0",
-                fontSize: "14px",
-                fontWeight: "700",
-                color: toast.type === "error" ? "#991b1b" : "#065f46",
-              }}
-            >
-              {toast.type === "error" ? "Error" : "Success"}
-            </h4>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "13px",
-                color: toast.type === "error" ? "#b91c1c" : "#047857",
-              }}
-            >
-              {toast.message}
-            </p>
-          </div>
-          <button
-            onClick={() => setToast(null)}
-            style={{
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              padding: "4px",
-              opacity: 0.6,
-            }}
-          >
-            <X
-              size={16}
-              color={toast.type === "error" ? "#991b1b" : "#065f46"}
-            />
-          </button>
-        </div>
-      )}
+      <ToastNotification toast={toast} setToast={setToast} />
     </div>
   );
 }
