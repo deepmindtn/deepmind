@@ -36,7 +36,7 @@ class DepartmentReport(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        db_table = "assessments_departmentreport"
+        db_table = "department_reporting_departmentreport"
 
     def __str__(self):
         return f"Report: {self.department} ({self.created_at.date()})"
