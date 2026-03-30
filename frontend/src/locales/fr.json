@@ -5,26 +5,26 @@
   },
 
   "hero": {
-    "badge": "Bien-être mental propulsé par l’IA",
-    "titleLine1": "Réduisez le stress &",
-    "titleHighlight": "le turnover de 30 %",
-    "subtitle": "Détectez les risques d’épuisement, activez le soutien entre collègues et prouvez le ROI en temps réel.",
+    "badge": "Performance RH propulsée par l'IA",
+    "titleLine1": "Prédisez le turnover.",
+    "titleHighlight": "Retenez vos talents.",
+    "subtitle": "Transformez les données collaborateurs en performance mesurable, rétention renforcée et recrutements plus intelligents.",
     "bookDemo": "Réserver une démo",
     "seeHow": "Voir comment ça marche"
   },
 
   "stats": {
-    "title": "Le coût de",
-    "highlight": "l’inaction",
+    "title": "Là où la donnée RH",
+    "highlight": "devient performance business",
     "headlines": {
-      "struggling": "Vos équipes souffrent",
-      "leaking": "Votre budget fuit",
-      "blind": "Vos dirigeants manquent de visibilité"
+      "struggling": "Les risques de performance sont cachés",
+      "leaking": "L'attrition draine silencieusement vos marges",
+      "blind": "Le recrutement manque de signaux fiables"
     },
     "items": {
-      "unwell": "des employés se sentent mal au travail",
-      "payroll": "de la masse salariale perdue à cause du stress et du turnover",
-      "kpis": "des entreprises ne suivent aucun KPI de santé mentale"
+      "unwell": "de la variance de performance peut être prédite via les schémas comportementaux",
+      "payroll": "de la masse salariale annuelle est souvent perdue suite à l'attrition évitable",
+      "kpis": "des équipes recrutent encore sans indicateurs unifiés de performance et de rétention"
     }
   },
 
@@ -33,35 +33,35 @@
     "highlight": "obtenez",
 
     "burnout": {
-      "title": "Anticipez le burn-out",
-      "desc": "Prédisez les risques de stress grâce à des évaluations validées."
+      "title": "Détectez tôt les freins à la performance",
+      "desc": "Identifiez les frictions de productivité et de collaboration avant qu'elles n'impactent la livraison."
     },
     "empathy": {
-      "title": "Renforcez l’empathie des équipes",
-      "desc": "Normalisez les check-ins via des sondages courts et du soutien entre collègues."
+      "title": "Renforcez l'efficacité managériale",
+      "desc": "Donnez aux leaders des signaux clairs pour coacher, prioriser et améliorer l'exécution."
     },
     "science": {
-      "title": "Appuyez-vous sur la science",
-      "desc": "Big Five, Maslach, Karasek — des analyses scientifiquement validées."
+      "title": "Évaluez les talents avec des modèles validés",
+      "desc": "Utilisez des cadres comportementaux et psychométriques structurés pour améliorer la qualité du recrutement."
     },
     "roi": {
-      "title": "Prouvez le ROI à la direction",
-      "desc": "KPIs en temps réel : engagement, risques, complétion des formations."
+      "title": "Prouvez l'impact avec des mesures concrètes",
+      "desc": "Suivez en temps réel la performance, le risque de rétention et la qualité du pipeline de talents."
     },
     "managers": {
-      "title": "Transformez les managers en coachs",
-      "desc": "Micro-exercices et parcours adaptés à chaque profil."
+      "title": "Alignez le recrutement sur les objectifs",
+      "desc": "Évaluez les candidats selon les résultats attendus et le contexte de l'équipe, pas seulement le CV."
     },
     "culture": {
-      "title": "Fidélisez vos talents",
-      "desc": "Créez une culture saine, bienveillante et durable."
+      "title": "Fidélisez vos meilleurs profils plus longtemps",
+      "desc": "Identifiez les leviers de rétention et agissez tôt avec des actions ciblées pour réduire le churn."
     }
   },
 
   "cta": {
-    "badge": "Déjà adopté par 500+ organisations",
+    "badge": "Adopté par les équipes orientées croissance",
     "title": "Prêt à transformer votre entreprise ?",
-    "subtitle": "Rejoignez les organisations qui investissent dans le bien-être mental.",
+    "subtitle": "Unifiez les signaux de recrutement, de performance et de rétention pour prendre des décisions RH plus rapides et intelligentes.",
     "getStarted": "Commencer maintenant"
   },
 
@@ -111,9 +111,9 @@
   "howItWorks": {
     "hero": {
       "badge": "Architecture de Processus",
-      "title1": "Du Chaos à la",
-      "titleHighlight": "Clarté",
-      "subtitle": "Découvrez comment DeepMind transforme le bruit de communication brut en indicateurs de bien-être clairs et exploitables, sans compromettre la confidentialité."
+      "title1": "Des signaux workforce vers",
+      "titleHighlight": "des résultats business",
+      "subtitle": "Découvrez comment DeepMind transforme vos données de communication et de talents en intelligence actionnable pour la performance, la rétention et le recrutement, sans compromis sur la confidentialité."
     },
     "steps": {
       "integration": {
@@ -139,7 +139,7 @@
       "analysis": {
         "title": "Analyse Cognitive",
         "subtitle": "Le moteur IA en action",
-        "description": "Nos modèles NLP propriétaires analysent les métadonnées, le sentiment et la fréquence de communication pour détecter les premiers signes d'épuisement, d'isolement et de surcharge de travail.",
+        "description": "Nos modèles NLP propriétaires analysent les métadonnées, le sentiment et la fréquence de communication pour détecter les signaux de baisse de performance, de turnover et de lacunes de recrutement.",
         "details": {
           "sentiment": "Analyse de sentiment",
           "network": "Cartographie réseau",
@@ -149,9 +149,9 @@
       "intelligence": {
         "title": "Intelligence Exploitable",
         "subtitle": "Des informations qui comptent",
-        "description": "Les données brutes sont transformées en scores simples et exploitables pour les managers. Recevez des alertes et des recommandations avant que votre équipe n'atteigne le point de rupture.",
+        "description": "Les données brutes sont transformées en scores exploitables pour les managers et RH. Recevez des alertes et recommandations avant une chute de performance ou le départ de talents clés.",
         "details": {
-          "burnout": "Score de risque d'épuisement",
+          "burnout": "Score de risque de performance",
           "pulse": "Pouls d'équipe",
           "retention": "Alertes de rétention"
         }
@@ -178,8 +178,8 @@
     "cta": {
       "badge": "Commencez Votre Parcours",
       "title": "Prêt à voir l'invisible ?",
-      "subtitle": "Rejoignez les entreprises avant-gardistes qui utilisent les données pour créer des cultures plus saines.",
-      "button": "Démarrez Votre Essai Gratuit"
+      "subtitle": "Rejoignez les entreprises visionnaires qui utilisent l'IA pour améliorer la qualité du recrutement, l'exécution d'équipe et la rétention.",
+      "button": "Démarrez votre essai gratuit"
     }
   }
 }

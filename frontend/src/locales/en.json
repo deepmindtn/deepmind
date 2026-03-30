@@ -5,26 +5,26 @@
   },
 
   "hero": {
-    "badge": "AI-Powered Mental Wellness",
-    "titleLine1": "Cut Stress &",
-    "titleHighlight": "Turnover by 30%",
-    "subtitle": "Detect burnout risks early, activate peer support, and prove ROI with real-time KPIs.",
+    "badge": "AI-Powered Workforce Performance",
+    "titleLine1": "Predict Turnover.",
+    "titleHighlight": "Retain Talent.",
+    "subtitle": "Turn employee data into measurable performance, stronger retention, and smarter hiring decisions.",
     "bookDemo": "Book a Demo",
     "seeHow": "See How It Works"
   },
 
   "stats": {
-    "title": "The cost of",
-    "highlight": "doing nothing",
+    "title": "Where workforce data",
+    "highlight": "becomes business performance",
     "headlines": {
-      "struggling": "Your people are struggling",
-      "leaking": "Your budget is leaking",
-      "blind": "Your execs are blind"
+      "struggling": "Performance risks are hidden",
+      "leaking": "Attrition quietly drains margin",
+      "blind": "Hiring decisions lack signal"
     },
     "items": {
-      "unwell": "employees feel unwell at work",
-      "payroll": "of payroll lost to stress & turnover",
-      "kpis": "companies track no mental-health KPIs"
+      "unwell": "of performance variance can be predicted from workforce behavior patterns",
+      "payroll": "of annual payroll is often lost to preventable attrition and backfill costs",
+      "kpis": "of teams still hire without unified performance and retention KPIs"
     }
   },
 
@@ -33,35 +33,35 @@
     "highlight": "get",
 
     "burnout": {
-      "title": "Spot burnout before it spreads",
-      "desc": "Predict stress trends early with validated assessments and proactive nudges."
+      "title": "Surface performance blockers early",
+      "desc": "Detect productivity and collaboration friction before it impacts delivery."
     },
     "empathy": {
-      "title": "Boost team empathy",
-      "desc": "Normalize check-ins with pulse surveys and colleague-to-colleague support."
+      "title": "Strengthen manager effectiveness",
+      "desc": "Give leaders clear team signals to coach, prioritize, and improve execution."
     },
     "science": {
-      "title": "Defend your program with science",
-      "desc": "Big Five, Maslach Burnout, Karasek—science-backed insights you can trust."
+      "title": "Benchmark talent with validated models",
+      "desc": "Use structured behavioral and psychometric frameworks to improve hiring quality and team fit."
     },
     "roi": {
-      "title": "Prove ROI to leadership",
-      "desc": "Real-time KPIs and alerts—engagement, risk, training completion."
+      "title": "Prove impact with hard metrics",
+      "desc": "Track performance, retention risk, and talent pipeline quality in real time."
     },
     "managers": {
-      "title": "Develop managers into coaches",
-      "desc": "Micro-exercises and learning paths tailored to each profile."
+      "title": "Align hiring with business goals",
+      "desc": "Score candidates against role outcomes and team context, not just resumes."
     },
     "culture": {
-      "title": "Build a culture that retains talent",
-      "desc": "Create a safe, supportive workplace where people feel valued."
+      "title": "Retain top performers longer",
+      "desc": "Identify retention drivers and intervene early with targeted actions that reduce churn."
     }
   },
 
   "cta": {
-    "badge": "Join 500+ organizations",
+    "badge": "Trusted by growth-focused teams",
     "title": "Ready to transform your workplace?",
-    "subtitle": "Join organizations prioritizing mental wellness with measurable impact.",
+    "subtitle": "Unify hiring, performance, and retention signals to make faster, smarter people decisions.",
     "getStarted": "Get Started Today"
   },
 
@@ -111,9 +111,9 @@
   "howItWorks": {
     "hero": {
       "badge": "Process Architecture",
-      "title1": "From Chaos to",
-      "titleHighlight": "Clarity",
-      "subtitle": "See how DeepMind transforms raw communication noise into clear, actionable well-being metrics—without compromising privacy."
+      "title1": "From Workforce Signals to",
+      "titleHighlight": "Business Results",
+      "subtitle": "See how DeepMind transforms communication and talent data into actionable performance, retention, and hiring intelligence without compromising privacy."
     },
     "steps": {
       "integration": {
@@ -139,7 +139,7 @@
       "analysis": {
         "title": "Cognitive Analysis",
         "subtitle": "The AI engine at work",
-        "description": "Our proprietary NLP models analyze metadata, sentiment, and communication frequency to detect early markers of burnout, isolation, and overwork.",
+        "description": "Our proprietary NLP models analyze metadata, sentiment, and communication frequency to detect patterns linked to performance drag, turnover risk, and hiring gaps.",
         "details": {
           "sentiment": "Sentiment Analysis",
           "network": "Network Mapping",
@@ -149,9 +149,9 @@
       "intelligence": {
         "title": "Actionable Intelligence",
         "subtitle": "Insights that matter",
-        "description": "Raw data is transformed into simple, actionable scores for managers. Receive alerts and recommendations before your team reaches the breaking point.",
+        "description": "Raw data is transformed into actionable scores for managers and HR leaders. Receive alerts and recommendations before performance drops or key talent exits.",
         "details": {
-          "burnout": "Burnout Risk Score",
+          "burnout": "Performance Risk Score",
           "pulse": "Team Pulse",
           "retention": "Retention Alerts"
         }
@@ -178,7 +178,7 @@
     "cta": {
       "badge": "Start Your Journey",
       "title": "Ready to see the unseen?",
-      "subtitle": "Join forward-thinking companies using data to build healthier cultures.",
+      "subtitle": "Join forward-thinking companies using AI to improve hiring quality, team execution, and retention outcomes.",
       "button": "Start Your Free Trial"
     }
   }
