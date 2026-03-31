@@ -1880,6 +1880,11 @@ export default function Employees() {
                           return (
                             <div
                               key={a.id}
+                              onClick={() => {
+                                if (!isCompleted) return;
+                                setDetailOpen(false);
+                                navigate(`/report/${a.id}`);
+                              }}
                               style={{
                                 padding: 20,
                                 backgroundColor: COLORS.cardBg,
@@ -1892,7 +1897,7 @@ export default function Employees() {
                                 }`,
                                 borderRadius: 16,
                                 transition: "all 0.2s",
-                                cursor: "default",
+                                cursor: isCompleted ? "pointer" : "default",
                                 position: "relative",
                                 overflow: "hidden",
                               }}

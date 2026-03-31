@@ -15,10 +15,11 @@ import {
 import "./ReportPage.css";
 
 export default function ReportPage() {
-  const { id } = useParams();
+  const { id, candidateId } = useParams();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+  const isCandidateReport = Boolean(candidateId);
+  const reportId = candidateId || id;
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,8 +27,11 @@ export default function ReportPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/assessments/${id}/`, {
-          headers: { ...authHeader },
+        const detailUrl = isCandidateReport
+          ? `${API_BASE}/api/assessments/candidate/${reportId}/`
+          : `${API_BASE}/api/assessments/${reportId}/`;
+        const r = await fetch(detailUrl, {
+          headers: access ? { Authorization: `Bearer ${access}` } : {},
         });
         const data = await r.json();
         setReport(data);
@@ -35,15 +39,15 @@ export default function ReportPage() {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [API_BASE, access, isCandidateReport, reportId]);
 
   if (loading) return <div className="loading">Loading report...</div>;
   if (!report) return <div className="loading">No report found.</div>;
 
   // ----- Prepare chart data based on assessment type -----
   const prepareChartData = () => {
-    const { template_code, metrics } = report;
+    const template_code = report.template_code || report.template?.code;
+    const metrics = report.metrics;
     
     if (!metrics) return { chartData: [], extraInfo: null };
 
@@ -238,7 +242,7 @@ export default function ReportPage() {
 
   return (
     <div className="report-page">
-      <h1>{report.template_name} Report</h1>
+      <h1>{(report.template_name || report.template?.name || "Assessment")} Report</h1>
       <p>Status: {report.status}</p>
       {report.completed_at && <p>Completed: {new Date(report.completed_at).toLocaleString()}</p>}
 

@@ -194,6 +194,16 @@ function App() {
           }
         />
         <Route
+          path="/report/candidate/:candidateId"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <ReportPage />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/hr/department-report"
           element={
             <ProtectedRoute>
