@@ -1085,6 +1085,7 @@ export function ViewAssignmentsModal({
   viewAssignmentsCandidate,
   loadingAssignments,
   assignments,
+  onOpenReport,
 }) {
   if (!viewAssignmentsOpen) {
     return null;
@@ -1391,6 +1392,10 @@ export function ViewAssignmentsModal({
                     return (
                       <div
                         key={assignment.id}
+                        onClick={() => {
+                          if (!isCompleted || !onOpenReport) return;
+                          onOpenReport(assignment);
+                        }}
                         style={{
                           padding: 20,
                           backgroundColor: COLORS.cardBg,
@@ -1403,7 +1408,7 @@ export function ViewAssignmentsModal({
                           }`,
                           borderRadius: 16,
                           transition: "all 0.2s",
-                          cursor: "default",
+                          cursor: isCompleted ? "pointer" : "default",
                           position: "relative",
                           overflow: "hidden",
                         }}

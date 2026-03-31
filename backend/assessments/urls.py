@@ -27,6 +27,7 @@ from .views import (
     CandidateAssignmentDetailView,
     CandidateAssignmentByTokenView,
     CandidateAssignmentsListView,
+    CandidateAssignmentAdminDetailView,
 )
 
 # Simple debug view for testing tokens
@@ -87,4 +88,5 @@ urlpatterns = [
 
     path("candidate-assignments/<uuid:token>/", CandidateAssignmentByTokenView.as_view(), name="candidate-assignment-by-token"),
     path("candidates/<uuid:candidate_id>/assignments/", CandidateAssignmentsListView.as_view(), name="candidate-assignments-list"),
+    path("assessments/candidate/<int:pk>/", CandidateAssignmentAdminDetailView.as_view(), name="candidate-assessment-admin-detail"),
 ]

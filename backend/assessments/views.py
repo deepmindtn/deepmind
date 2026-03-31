@@ -2775,3 +2775,17 @@ class CandidateAssignmentsListView(ListAPIView):
         return CandidateAssignment.objects.filter(
             recruitee_id=candidate_id
         ).select_related('template', 'recruitee').order_by('-assigned_at')
+
+
+class CandidateAssignmentAdminDetailView(RetrieveAPIView):
+    """HR-only detail endpoint to view completed candidate assessment reports."""
+    serializer_class = CandidateAssignmentSerializer
+    permission_classes = [IsAuthenticated, IsHR]
+    queryset = CandidateAssignment.objects.select_related("template", "recruitee")
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_id = getattr(self.request.user, "company_id", None)
+        if company_id:
+            qs = qs.filter(recruitee__company_id=company_id)
+        return qs

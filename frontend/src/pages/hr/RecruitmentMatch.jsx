@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./RecruitmentMatch.css";
 import { styles } from "../../components/recruitment-match/Constants";
 import {
@@ -25,6 +26,7 @@ import {
 // Main Component
 // -----------------------
 export default function RecruitmentMatch() {
+  const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
   const authHeader = useMemo(
@@ -1198,6 +1200,10 @@ export default function RecruitmentMatch() {
         viewAssignmentsCandidate={viewAssignmentsCandidate}
         loadingAssignments={loadingAssignments}
         assignments={assignments}
+        onOpenReport={(assignment) => {
+          setViewAssignmentsOpen(false);
+          navigate(`/report/candidate/${assignment.id}`);
+        }}
       />
 
       <ToastNotification toast={toast} setToast={setToast} />
