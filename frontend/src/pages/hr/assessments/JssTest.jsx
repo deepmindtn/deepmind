@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Download, RotateCcw, ArrowRight, ArrowLeft, Briefcase } from "lucide-react";
 import StructuredReport from "./StructuredReport";
@@ -471,7 +471,7 @@ export default function JssTest() {
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-  const getFetchConfig = () => {
+  const getFetchConfig = useCallback(() => {
     if (isCandidate) {
       return {
         url: `${API_BASE}/api/assessments/candidate/${candidateToken}/`,
@@ -483,7 +483,7 @@ export default function JssTest() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${hrToken}` }
       };
     }
-  };
+  }, [API_BASE, assignmentId, candidateToken, hrToken, isCandidate]);
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
@@ -512,7 +512,7 @@ export default function JssTest() {
         }
       })
       .catch(() => {});
-  }, [assignmentId]);
+  }, [assignmentId, getFetchConfig, totalPages]);
 
   const pageQuestions = QUESTIONS.slice(
     (step - 1) * questionsPerPage,

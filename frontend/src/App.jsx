@@ -45,6 +45,7 @@ import GCOSTest from "./pages/hr/assessments/GcosTest";
 import RIBSTest from "./pages/hr/assessments/RibsTest";
 import CAQTest from "./pages/hr/assessments/CaqTest";
 import ISETest from "./pages/hr/assessments/IseTest";
+import DynamicTest from "./pages/hr/assessments/DynamicTest";
 import RecruitmentMatch from "./pages/hr/RecruitmentMatch";
 import AssessmentDescription from "./pages/hr/AssessmentDescription";
 import Departments from "./pages/hr/Departments";
@@ -88,6 +89,7 @@ function App() {
           <Route path="/candidate/ribs" element={<RIBSTest />} />
           <Route path="/candidate/caq" element={<CAQTest />} />
           <Route path="/candidate/ise" element={<ISETest />} />
+          <Route path="/candidate/dynamic-test" element={<DynamicTest />} />
         </Route>
 
         {/* ------- Protected Routes with Layout ------- */}
@@ -421,6 +423,16 @@ function App() {
             <ProtectedRoute>
               <LayoutComponent>
                 <ISETest />
+              </LayoutComponent>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dynamic-test"
+          element={
+            <ProtectedRoute>
+              <LayoutComponent>
+                <DynamicTest />
               </LayoutComponent>
             </ProtectedRoute>
           }

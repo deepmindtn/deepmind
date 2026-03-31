@@ -41,7 +41,7 @@ urlpatterns = [
 
     # Recruitment
     path("recruitment/candidates/", RecruiteeListCreateView.as_view(), name="recruitee-list-create"),
-    path("recruitment/candidates/<int:pk>/", RecruiteeDetailView.as_view()),
+    path("recruitment/candidates/<uuid:pk>/", RecruiteeDetailView.as_view()),
 
     # Surveys
     path("surveys/create/", CreateSurveyView.as_view(), name="survey-create"),

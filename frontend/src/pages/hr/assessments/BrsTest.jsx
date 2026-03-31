@@ -45,11 +45,29 @@ function computeMetrics(answers) {
 export default function BrsTest() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const assignmentId = params.get("assignment");
+  const isCandidate = sessionStorage.getItem("isCandidate") === "true";
+  const candidateToken = sessionStorage.getItem("candidateToken");
+  const assignmentId = isCandidate ? sessionStorage.getItem("candidateAssignmentId") : params.get("assignment");
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
-  const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+  const hrToken = localStorage.getItem("access");
+
+  const getFetchConfig = () => {
+    if (isCandidate) {
+      return {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Candidate-Token": candidateToken,
+        },
+      };
+    }
+    return {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${hrToken}`,
+      },
+    };
+  };
 
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
@@ -61,7 +79,8 @@ export default function BrsTest() {
   // Check if assignment is already completed and restore results
   useEffect(() => {
     if (!assignmentId) return;
-    fetch(`${API_BASE}/api/assessments/${assignmentId}/`, { headers: authHeader })
+    const config = getFetchConfig();
+    fetch(`${API_BASE}/api/assessments/${assignmentId}/`, { headers: config.headers })
       .then((r) => {
         if (!r.ok) {
           alert("Invalid or inaccessible assignment. Please start from My Assessments.");
@@ -92,12 +111,13 @@ export default function BrsTest() {
     }
     setLoading(true);
     try {
+      const config = getFetchConfig();
       const localMetrics = computeMetrics(answers);
       console.log(localMetrics)
       // 1) Générer rapport IA
       const reportRes = await fetch(`${API_BASE}/api/brs/report/${assignmentId}/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
+        headers: config.headers,
         body: JSON.stringify({ answers, metrics: localMetrics }),
       });
       const reportData = await reportRes.json();
@@ -107,7 +127,7 @@ export default function BrsTest() {
       // 2) Soumettre réponses + metrics + rapport
       const submitRes = await fetch(`${API_BASE}/api/assessments/${assignmentId}/submit/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
+        headers: config.headers,
         body: JSON.stringify({ answers, metrics: localMetrics, ai_report: typeof reportObj === "object" && reportObj !== null ? JSON.stringify(reportObj) : (reportObj || ""), overwrite: true }),
       });
       const submitData = await submitRes.json();

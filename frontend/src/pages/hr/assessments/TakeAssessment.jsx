@@ -295,7 +295,12 @@ const TakeAssessment = () => {
       CAQ: "/candidate/caq",
     };
 
-    const targetRoute = routeMap[testType];
+    let targetRoute = routeMap[testType];
+    
+    // Fallback for AI generated test
+    if (!targetRoute && testType && testType.startsWith("AI_")) {
+      targetRoute = "/candidate/dynamic-test";
+    }
 
     if (targetRoute) {
       navigate(targetRoute);
@@ -511,12 +516,6 @@ const TakeAssessment = () => {
                 This link is unique to your application. Results are
                 confidential and only shared with authorized recruitment
                 personnel.
-              </p>
-            </div>
-
-            <div style={{ textAlign: "center", opacity: 0.5 }}>
-              <p style={{ fontSize: "11px" }}>
-                Powered by Psychometric Assessment Suite
               </p>
             </div>
           </div>

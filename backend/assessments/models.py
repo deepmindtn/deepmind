@@ -8,6 +8,7 @@ User = settings.AUTH_USER_MODEL
 class AssessmentTemplate(models.Model):
     code = models.CharField(max_length=32, unique=True)  # BIG_FIVE, KARASEK, MASLACH
     name = models.CharField(max_length=128)
+    questions = models.JSONField(null=True, blank=True)  # For AI-generated or dynamic assessments
 
     def __str__(self):
         return self.name

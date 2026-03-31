@@ -9,6 +9,7 @@ parent_env = BASE_DIR.parent / ".env"
 if parent_env.exists():
     load_dotenv(parent_env)
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+EMAIL_LOGO_URL = os.getenv("EMAIL_LOGO_URL") or f"{FRONTEND_URL.rstrip('/')}/favicon_deepmind.png"
 
 SECRET_KEY = "change-me"
 DEBUG = os.getenv("DEBUG") == "True"
@@ -27,6 +28,7 @@ INSTALLED_APPS = [
     # local
     "accounts",
     "assessments",
+    "talent_matching",
     "department_reporting",
 ]
 
@@ -120,10 +122,21 @@ EMAIL_BACKEND = "core.email_ssl.UnverifiedEmailBackend"
 EMAIL_HOST = os.environ.get("MAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
 EMAIL_HOST_USER = os.environ.get("MAIL_USERNAME")
-EMAIL_HOST_PASSWORD = os.environ.get("MAIL_PASSWORD")
+
+# Normalize credentials loaded from docker/.env files.
+# This avoids auth failures when values are wrapped in quotes or Gmail app passwords include spaces.
+_raw_mail_password = os.environ.get("MAIL_PASSWORD", "")
+EMAIL_HOST_PASSWORD = _raw_mail_password.strip().strip('"').strip("'").replace(" ", "")
+
 DEFAULT_FROM_EMAIL = os.environ.get("MAIL_FROM_ADDRESS")
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
+
+_mail_encryption = (os.environ.get("MAIL_ENCRYPTION") or "tls").strip().lower()
+EMAIL_USE_TLS = _mail_encryption in ("", "tls", "starttls")
+EMAIL_USE_SSL = _mail_encryption in ("ssl", "smtps")
+
+# Do not enable both at the same time.
+if EMAIL_USE_SSL:
+    EMAIL_USE_TLS = False
 
 
 MEDIA_URL = "/media/"

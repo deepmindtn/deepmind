@@ -85,6 +85,7 @@ class RecruiteeDetailView(generics.RetrieveUpdateDestroyAPIView):
 from django.template import Template, Context
 from django.core.mail import EmailMultiAlternatives
 from accounts.models import EmailTemplate
+from core.email_template_utils import attach_inline_logo, render_email_subject_and_body
 
 class InviteCreateView(generics.CreateAPIView):
     serializer_class = InviteCreateSerializer
@@ -117,8 +118,7 @@ class InviteCreateView(generics.CreateAPIView):
             }
 
             # 3️⃣ Render subject & body
-            subject = Template(template.subject).render(Context(context))
-            html_body = Template(template.body).render(Context(context))
+            subject, html_body = render_email_subject_and_body(template, context)
 
             # 4️⃣ Send HTML email
             email = EmailMultiAlternatives(
@@ -128,6 +128,7 @@ class InviteCreateView(generics.CreateAPIView):
                 to=[invite.email],
             )
             email.attach_alternative(html_body, "text/html")
+            attach_inline_logo(email)
             email.send()
 
             email_sent = True
@@ -316,12 +317,7 @@ class ImportEmployeesView(APIView):
                     "inviteLink": invite_link,
                 }
 
-                subject = Template(email_template.subject).render(
-                    Context(context)
-                )
-                html_body = Template(email_template.body).render(
-                    Context(context)
-                )
+                subject, html_body = render_email_subject_and_body(email_template, context)
 
                 # -------------------------
                 # Send email
@@ -334,6 +330,7 @@ class ImportEmployeesView(APIView):
                         to=[email],
                     )
                     email_msg.attach_alternative(html_body, "text/html")
+                    attach_inline_logo(email_msg)
                     email_msg.send()
 
                     print(f"✅ Invite email sent to {email}")
