@@ -518,12 +518,6 @@ const TakeAssessment = () => {
                 personnel.
               </p>
             </div>
-
-            <div style={{ textAlign: "center", opacity: 0.5 }}>
-              <p style={{ fontSize: "11px" }}>
-                Powered by Psychometric Assessment Suite
-              </p>
-            </div>
           </div>
         </div>
       </div>

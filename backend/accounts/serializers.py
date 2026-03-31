@@ -170,6 +170,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Template
 from rest_framework import serializers
+from core.email_template_utils import attach_inline_logo, render_email_subject_and_body
 
 class SurveyCreateSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, required=False)
@@ -251,8 +252,7 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
                 }
 
                 # 3. Render Subject and Body
-                subject = Template(template_obj.subject).render(Context(context_data))
-                html_body = Template(template_obj.body).render(Context(context_data))
+                subject, html_body = render_email_subject_and_body(template_obj, context_data)
 
                 # 4. Create and Send Email
                 email = EmailMultiAlternatives(
@@ -262,6 +262,7 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
                     to=[employee.email],
                 )
                 email.attach_alternative(html_body, "text/html")
+                attach_inline_logo(email)
                 email.send()
                 
             except Exception as e:

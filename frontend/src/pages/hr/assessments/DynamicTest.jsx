@@ -167,7 +167,7 @@ const DynamicTest = () => {
         }
       };
     }
-  }, [candidateToken, hrToken, isCandidate, assignmentId]);
+  }, [API_BASE, candidateToken, hrToken, isCandidate, assignmentId]);
 
   const fetchAssignment = useCallback(async () => {
     try {

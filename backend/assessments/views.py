@@ -45,6 +45,7 @@ from django.template import Template, Context
 from django.core.mail import EmailMultiAlternatives
 from accounts.models import EmailTemplate
 from django.db import transaction
+from core.email_template_utils import attach_inline_logo, render_email_subject_and_body
 
 
 class TokenExpired(APIException):
@@ -125,12 +126,7 @@ class AssignAssessmentView(generics.CreateAPIView):
                         "assessmentLink": assessment_link,
                     }
 
-                    subject = Template(email_template.subject).render(
-                        Context(context)
-                    )
-                    html_body = Template(email_template.body).render(
-                        Context(context)
-                    )
+                    subject, html_body = render_email_subject_and_body(email_template, context)
 
                     email_msg = EmailMultiAlternatives(
                         subject=subject,
@@ -139,6 +135,7 @@ class AssignAssessmentView(generics.CreateAPIView):
                         to=[employee.email],
                     )
                     email_msg.attach_alternative(html_body, "text/html")
+                    attach_inline_logo(email_msg)
                     email_msg.send()
 
                     print(
@@ -707,10 +704,14 @@ class GenerateBigFiveReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(id=assignment_id)
-        except Assignment.DoesNotExist:
-            return Response({"error": "Assignment not found"}, status=404)
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
+            return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         try:
             #  read metrics from request body first.
@@ -745,8 +746,6 @@ class GenerateBigFiveReportView(APIView):
                 )
             else:
                 scores_text = "  Score data unavailable."
-
-            employee_name = str(assignment.employee)
 
             index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "bigfiveindex")
             
@@ -865,14 +864,17 @@ class GenerateKarasekReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(id=assignment_id, employee=request.user)
-        except Assignment.DoesNotExist:
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         # read metrics from request body first (sent before submit completes).
         metrics = request.data.get("metrics") or assignment.metrics or {}
-        employee_name = str(assignment.employee)
         scores_text = format_karasek_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "karasekindex")
@@ -967,14 +969,29 @@ class GenerateMaslachReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        user_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(id=assignment_id, employee=request.user)
-        except Assignment.DoesNotExist:
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(
+                    id=assignment_id,
+                    recruitee=request.user,
+                )
+                user_name = str(assignment.recruitee)
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.select_related("employee", "template").get(
+                    id=assignment_id,
+                    employee=request.user,
+                )
+                user_name = str(assignment.employee)
+            else:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         # read metrics from request body first (sent before submit completes).
         metrics = request.data.get("metrics") or assignment.metrics or {}
-        employee_name = str(assignment.employee)
+        employee_name = user_name
         scores_text = format_maslach_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "maslachindex")
@@ -1077,6 +1094,25 @@ from .models import Assignment, CandidateAssignment
 
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_assignment_for_request(request, assignment_id):
+    """Resolve assignment and display name for either candidate or employee user."""
+    if isinstance(request.user, Recruitee):
+        assignment = CandidateAssignment.objects.get(
+            id=assignment_id,
+            recruitee=request.user,
+        )
+        return assignment, str(assignment.recruitee)
+
+    if request.user.is_authenticated:
+        assignment = Assignment.objects.select_related("employee", "template").get(
+            id=assignment_id,
+            employee=request.user,
+        )
+        return assignment, str(assignment.employee)
+
+    return None, None
 
 class GenerateDiscReportView(APIView):
     # ✅ Support all authentication types: Candidates (Token), Employees (JWT), Session
@@ -1240,11 +1276,13 @@ class GenerateJssReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         # Prendre metrics depuis request ou depuis l’assignment
@@ -1252,7 +1290,6 @@ class GenerateJssReportView(APIView):
         if not metrics:
             return Response({"error": "No JSS metrics found. Report not generated."}, status=400)
 
-        employee_name = str(assignment.employee)
         scores_text = format_jss_scores(metrics)
 
         # Charger l’index FAISS
@@ -1350,11 +1387,24 @@ class GenerateBRSReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        user_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(
+                    id=assignment_id,
+                    recruitee=request.user,
+                )
+                user_name = str(assignment.recruitee)
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.select_related("employee", "template").get(
+                    id=assignment_id,
+                    employee=request.user,
+                )
+                user_name = str(assignment.employee)
+            else:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         # take metrics from body first, fallback to assignment
@@ -1363,7 +1413,7 @@ class GenerateBRSReportView(APIView):
         if not metrics or not metrics.get("average"):
             return Response({"error": "No BRS metrics found in request or assignment."}, status=400)
 
-        employee_name = str(assignment.employee)
+        employee_name = user_name
         scores_text = format_brs_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "brsindex")
@@ -1457,11 +1507,24 @@ class GenerateCDRISC10ReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        user_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            if isinstance(request.user, Recruitee):
+                assignment = CandidateAssignment.objects.get(
+                    id=assignment_id,
+                    recruitee=request.user,
+                )
+                user_name = str(assignment.recruitee)
+            elif request.user.is_authenticated:
+                assignment = Assignment.objects.select_related("employee", "template").get(
+                    id=assignment_id,
+                    employee=request.user,
+                )
+                user_name = str(assignment.employee)
+            else:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         # Take metrics from request or DB
@@ -1470,7 +1533,7 @@ class GenerateCDRISC10ReportView(APIView):
         if not metrics or "total" not in metrics:
             return Response({"error": "No CD-RISC 10 metrics found."}, status=400)
 
-        employee_name = str(assignment.employee)
+        employee_name = user_name
         scores_text = format_cdrisc_scores(metrics)
 
         # Load the FAISS vectorstore
@@ -1569,18 +1632,19 @@ class GenerateWSESReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
         if not metrics or "average" not in metrics:
             return Response({"error": "No WSES metrics found."}, status=400)
 
-        employee_name = str(assignment.employee)
         scores_text = format_wses_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "wsesindex")
@@ -1799,11 +1863,13 @@ class GenerateRIBSReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
@@ -1812,7 +1878,6 @@ class GenerateRIBSReportView(APIView):
 
         answers = request.data.get("answers") or getattr(assignment, "answers", {})
         questions = request.data.get("questions", {})
-        employee_name = str(assignment.employee)
         scores_text = format_ribs_scores(metrics, answers, questions)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "ribsindex")
@@ -1946,18 +2011,19 @@ class GenerateCAQReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         metrics = request.data.get("metrics") or assignment.metrics
         if not metrics or "total" not in metrics:
             return Response({"error": "No CAQ metrics found."}, status=400)
 
-        employee_name = str(assignment.employee)
         scores_text = format_caq_scores(metrics)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "caqindex")
@@ -2050,11 +2116,13 @@ class GenerateISEReportView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, assignment_id):
+        assignment = None
+        employee_name = "Unknown"
         try:
-            assignment = Assignment.objects.select_related("employee", "template").get(
-                id=assignment_id, employee=request.user
-            )
-        except Assignment.DoesNotExist:
+            assignment, employee_name = _resolve_assignment_for_request(request, assignment_id)
+            if assignment is None:
+                return Response({"error": "Authentication required."}, status=401)
+        except (Assignment.DoesNotExist, CandidateAssignment.DoesNotExist):
             return Response({"error": "Invalid or unauthorized assignment."}, status=404)
 
         raw_data = request.data or assignment.metrics
@@ -2066,7 +2134,6 @@ class GenerateISEReportView(APIView):
         if not metrics or "average" not in metrics:
             return Response({"error": "No ISE metrics found in request or assignment."}, status=400)
 
-        employee_name = str(assignment.employee)
         scores_text = format_ise_scores(raw_data)
 
         index_path = os.path.join(settings.BASE_DIR, "assessments", "media", "iseindex")
@@ -2301,12 +2368,7 @@ class AssignCandidateAssessmentView(APIView):
                             "assignmentLink": assignment_link,
                         }
 
-                        subject = Template(email_template.subject).render(
-                            Context(context)
-                        )
-                        html_body = Template(email_template.body).render(
-                            Context(context)
-                        )
+                        subject, html_body = render_email_subject_and_body(email_template, context)
 
                         # 3. Send HTML email
                         email_msg = EmailMultiAlternatives(
@@ -2316,6 +2378,7 @@ class AssignCandidateAssessmentView(APIView):
                             to=[email],
                         )
                         email_msg.attach_alternative(html_body, "text/html")
+                        attach_inline_logo(email_msg)
                         email_msg.send()
 
                         assigned_count += 1
@@ -2444,8 +2507,7 @@ Return ONLY valid JSON in this format:
                                 "assignmentLink": assignment_link,
                             }
 
-                            subject = Template(email_template.subject).render(Context(context))
-                            html_body = Template(email_template.body).render(Context(context))
+                            subject, html_body = render_email_subject_and_body(email_template, context)
 
                             email_msg = EmailMultiAlternatives(
                                 subject=subject,
@@ -2454,6 +2516,7 @@ Return ONLY valid JSON in this format:
                                 to=[recipient_email],
                             )
                             email_msg.attach_alternative(html_body, "text/html")
+                            attach_inline_logo(email_msg)
                             try:
                                 email_msg.send()
                             except Exception as e:
@@ -2504,8 +2567,7 @@ Return ONLY valid JSON in this format:
                             "assignmentLink": assignment_link,
                         }
 
-                        subject = Template(email_template.subject).render(Context(context))
-                        html_body = Template(email_template.body).render(Context(context))
+                        subject, html_body = render_email_subject_and_body(email_template, context)
 
                         email_msg = EmailMultiAlternatives(
                             subject=subject,
@@ -2514,6 +2576,7 @@ Return ONLY valid JSON in this format:
                             to=[recipient_email],
                         )
                         email_msg.attach_alternative(html_body, "text/html")
+                        attach_inline_logo(email_msg)
                         try:
                             email_msg.send()
                         except Exception as e:
