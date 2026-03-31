@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   PlayCircle,
@@ -10,6 +11,7 @@ import {
   ClipboardList,
   Inbox,
   Calendar,
+  Brain,
 } from "lucide-react";
 
 // -----------------------
@@ -255,6 +257,17 @@ const styles = {
       status === "pending" ? COLORS.warning : COLORS.success
     }30`,
   }),
+  sourceBadge: (source) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "12px",
+    color: source === "assessment" ? "#1d4ed8" : "#065f46",
+    backgroundColor: source === "assessment" ? "#dbeafe" : "#d1fae5",
+    padding: "6px 12px",
+    borderRadius: "8px",
+    fontWeight: "700",
+  }),
   typeBadge: (type) => ({
     display: "inline-flex",
     alignItems: "center",
@@ -325,6 +338,7 @@ const Toast = ({ message, type, onClose }) => {
 };
 
 const EmployeeSurveys = () => {
+  const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
   const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
@@ -351,18 +365,77 @@ const EmployeeSurveys = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/employee/surveys/`, {
-          headers: authHeader,
+        const [surveysRes, assessmentsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/employee/surveys/`, { headers: authHeader }),
+          fetch(`${API_BASE}/api/assessments/my/`, { headers: authHeader }),
+        ]);
+
+        const surveysData = surveysRes.ok ? await surveysRes.json() : [];
+        const assessmentsData = assessmentsRes.ok ? await assessmentsRes.json() : [];
+
+        const manualSurveyItems = (Array.isArray(surveysData) ? surveysData : []).map((item) => ({
+          id: `survey-${item.id}`,
+          source: "survey",
+          assignmentId: item.id,
+          status: String(item.status || "pending").toLowerCase(),
+          assigned_at: item.assigned_at,
+          title: item.survey_title,
+          response_type: item.survey_response_type,
+        }));
+
+        const assessmentItems = (Array.isArray(assessmentsData) ? assessmentsData : []).map((item) => ({
+          id: `assessment-${item.id}`,
+          source: "assessment",
+          assignmentId: item.id,
+          status: String(item.status || "PENDING").toLowerCase(),
+          assigned_at: item.assigned_at,
+          title: item.template_name || item.template_code || "Assessment",
+          template_code: item.template_code,
+        }));
+
+        const combined = [...manualSurveyItems, ...assessmentItems].sort((a, b) => {
+          const aTs = a.assigned_at ? new Date(a.assigned_at).getTime() : 0;
+          const bTs = b.assigned_at ? new Date(b.assigned_at).getTime() : 0;
+          return bTs - aTs;
         });
-        const data = await res.json();
-        setSurveys(Array.isArray(data) ? data : []);
+
+        setSurveys(combined);
       } catch (e) {
         console.error(e);
+        setToast({ message: "Could not load assigned items.", type: "error" });
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  const getAssessmentRoute = (templateCode) => {
+    const code = String(templateCode || "").toUpperCase();
+    const pathMap = {
+      BIG_FIVE: "/big-five",
+      KARASEK: "/karasek",
+      MASLACH: "/maslach",
+      DISC: "/disc",
+      JSS: "/jss",
+      BRS: "/brs",
+      CDRISC10: "/cdrisc",
+      WSES: "/wses",
+      GCOS: "/gcos",
+      RIBS: "/ribs",
+      CAQ: "/caq",
+      ISE: "/ise",
+    };
+
+    if (pathMap[code]) {
+      return pathMap[code];
+    }
+
+    if (String(templateCode || "").startsWith("AI_")) {
+      return "/dynamic-test";
+    }
+
+    return null;
+  };
 
   const handleStartSurvey = async (assignmentId) => {
     try {
@@ -381,6 +454,24 @@ const EmployeeSurveys = () => {
       console.error(e);
       setToast({ message: "Could not load survey.", type: "error" });
     }
+  };
+
+  const handleStartAssessment = (item) => {
+    const route = getAssessmentRoute(item.template_code);
+    if (!route) {
+      setToast({ message: `Unknown assessment type: ${item.template_code || "N/A"}`, type: "error" });
+      return;
+    }
+
+    navigate(`${route}?assignment=${item.assignmentId}`);
+  };
+
+  const handleStartItem = (item) => {
+    if (item.source === "survey") {
+      handleStartSurvey(item.assignmentId);
+      return;
+    }
+    handleStartAssessment(item);
   };
 
   const handleSubmit = async () => {
@@ -409,7 +500,7 @@ const EmployeeSurveys = () => {
         setActiveSurvey(null);
         setSurveys((prev) =>
           prev.map((s) =>
-            s.id === activeSurvey.assignmentId
+            s.source === "survey" && s.assignmentId === activeSurvey.assignmentId
               ? { ...s, status: "completed" }
               : s
           )
@@ -454,7 +545,7 @@ const EmployeeSurveys = () => {
                   lineHeight: "1.2",
                 }}
               >
-                Assigned Surveys
+                Assigned Surveys & Assessments
               </h1>
               <p
                 style={{
@@ -463,7 +554,7 @@ const EmployeeSurveys = () => {
                   margin: "0",
                 }}
               >
-                Pending assessments assigned by HR.
+                Start manual surveys and psychometric assessments from one place.
               </p>
             </div>
           </div>
@@ -555,14 +646,13 @@ const EmployeeSurveys = () => {
                         }}
                       >
                         <Calendar size={14} />
-                        {new Date(item.assigned_at).toLocaleDateString(
-                          undefined,
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          }
-                        )}
+                        {item.assigned_at
+                          ? new Date(item.assigned_at).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "-"}
                       </div>
                     </div>
 
@@ -575,20 +665,29 @@ const EmployeeSurveys = () => {
                         lineHeight: "1.4",
                       }}
                     >
-                      {item.survey_title}
+                      {item.title}
                     </h3>
 
                     <div style={{ marginBottom: "20px" }}>
-                      <span style={styles.typeBadge(item.survey_response_type)}>
-                        {item.survey_response_type === "anonymous" ? (
-                          <Shield size={14} />
+                      <span style={styles.sourceBadge(item.source)}>
+                        {item.source === "assessment" ? (
+                          <Brain size={14} />
                         ) : (
-                          <User size={14} />
+                          <ClipboardList size={14} />
                         )}
-                        {item.survey_response_type === "anonymous"
-                          ? "Anonymous"
-                          : "Named"}
+                        {item.source === "assessment" ? "Assessment" : "Survey"}
                       </span>
+                      {item.source === "survey" && (
+                        <span style={{ ...styles.typeBadge(item.response_type), marginLeft: "8px" }}>
+                          {item.response_type === "anonymous" ? <Shield size={14} /> : <User size={14} />}
+                          {item.response_type === "anonymous" ? "Anonymous" : "Named"}
+                        </span>
+                      )}
+                      {item.source === "assessment" && item.template_code && (
+                        <span style={{ ...styles.typeBadge("named"), marginLeft: "8px" }}>
+                          {item.template_code}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -599,10 +698,10 @@ const EmployeeSurveys = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleStartSurvey(item.id)}
+                        onClick={() => handleStartItem(item)}
                         className="btn-primary"
                       >
-                        <PlayCircle size={18} /> Start Survey
+                        <PlayCircle size={18} /> Start
                       </button>
                     )}
                   </div>

@@ -24,8 +24,6 @@ import { COLORS, styles } from "./Constants";
 export function RecruitmentMatchHeader({
   selectedIds,
   openBulkAssignModal,
-  openCreateJobModal,
-  openAddModal,
 }) {
   return (
     <div
@@ -69,23 +67,11 @@ export function RecruitmentMatchHeader({
       </div>
 
       <div className="header-actions" style={{ display: "flex", gap: "10px" }}>
-        {selectedIds.length > 0 ? (
+        {selectedIds.length > 0 && (
           <button style={styles.btnBulk} onClick={openBulkAssignModal}>
             <Mail size={20} /> Send Assessment to {selectedIds.length}{" "}
             Selected
           </button>
-        ) : (
-          <>
-            <button
-              style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
-              onClick={openCreateJobModal}
-            >
-              <Plus size={20} /> Add Job
-            </button>
-            <button style={styles.btnPrimary} onClick={openAddModal}>
-              <Plus size={20} /> Add Candidate
-            </button>
-          </>
         )}
       </div>
     </div>
@@ -101,6 +87,7 @@ export function JobOfferingsSection({
   openEditJobModal,
   handleDeleteJob,
   openCreateJobModal,
+  handleJobCsvUpload,
 }) {
   return (
     <div className="pipeline-card" style={{ ...styles.card, marginBottom: "24px" }}>
@@ -123,12 +110,36 @@ export function JobOfferingsSection({
             </span>
           )}
         </div>
-        <button
-          style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
-          onClick={openCreateJobModal}
-        >
-          <Plus size={16} /> New Job
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <div>
+            <input
+              type="file"
+              accept=".csv"
+              id="job-csv-upload"
+              style={{ display: "none" }}
+              onChange={handleJobCsvUpload}
+            />
+            <label
+              htmlFor="job-csv-upload"
+              style={{
+                ...styles.btnPrimary,
+                backgroundColor: "white",
+                color: COLORS.primary,
+                border: `1px solid ${COLORS.primary}`,
+                cursor: "pointer",
+                margin: 0,
+              }}
+            >
+              <Upload size={16} /> Import CSV
+            </label>
+          </div>
+          <button
+            style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
+            onClick={openCreateJobModal}
+          >
+            <Plus size={16} /> New Job
+          </button>
+        </div>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
@@ -264,6 +275,8 @@ export function PipelineSection({
   filtered,
   rankingByCandidateId,
   handleToggleMatchCandidate,
+  selectedIds = [],
+  setSelectedIds,
   historyDetailLoading,
   handleViewMatchDetail,
   handleOpenMatchHistory,
@@ -277,6 +290,8 @@ export function PipelineSection({
   openEditModal,
   setDeleteId,
   setDeleteOpen,
+  handleCandidateCsvUpload,
+  openAddModal,
 }) {
   return (
     <div className="pipeline-card" style={{ ...styles.card, marginBottom: "56px" }}>
@@ -286,22 +301,52 @@ export function PipelineSection({
           padding: "20px",
           borderBottom: `1px solid ${COLORS.borderColor}`,
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
           gap: "10px",
         }}
       >
-        <Users size={20} color={COLORS.primary} />
-        <span style={{ fontWeight: "700" }}>
-          {selectedJob ? `${selectedJob.title} Pipeline` : "Active Pipeline"}
-        </span>
-        {selectedMatchCandidate && (
-          <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>
-            (Selected for matching: {selectedMatchCandidate.name})
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Users size={20} color={COLORS.primary} />
+          <span style={{ fontWeight: "700" }}>
+            {selectedJob ? `${selectedJob.title} Pipeline` : "Active Pipeline"}
           </span>
-        )}
-        {selectedJobId && pipelineLoading && (
-          <Loader2 className="spin" size={14} color={COLORS.textSecondary} />
-        )}
+          {selectedMatchCandidate && (
+            <span style={{ fontSize: "12px", color: COLORS.textSecondary }}>
+              (Selected for matching: {selectedMatchCandidate.name})
+            </span>
+          )}
+          {selectedJobId && pipelineLoading && (
+            <Loader2 className="spin" size={14} color={COLORS.textSecondary} />
+          )}
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <div>
+            <input
+              type="file"
+              accept=".csv"
+              id="candidate-csv-upload"
+              style={{ display: "none" }}
+              onChange={handleCandidateCsvUpload}
+            />
+            <label
+              htmlFor="candidate-csv-upload"
+              style={{
+                ...styles.btnPrimary,
+                backgroundColor: "white",
+                color: COLORS.primary,
+                border: `1px solid ${COLORS.primary}`,
+                cursor: "pointer",
+                margin: 0,
+              }}
+            >
+              <Upload size={16} /> Import CSV
+            </label>
+          </div>
+          <button style={styles.btnPrimary} onClick={openAddModal}>
+            <Plus size={16} /> Add Candidate
+          </button>
+        </div>
       </div>
       <div className="pipeline-table-wrap" style={{ overflowX: "auto" }}>
         <table
@@ -314,9 +359,19 @@ export function PipelineSection({
           <thead style={{ backgroundColor: COLORS.tableRow }}>
             <tr>
               <th style={{ padding: "16px 20px", width: "40px" }}>
-                Match
+                <input
+                  type="checkbox"
+                  style={styles.checkbox}
+                  checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                  onChange={(e) => {
+                    if (setSelectedIds) {
+                      setSelectedIds(e.target.checked ? filtered.map((c) => c.id) : []);
+                    }
+                  }}
+                  title="Select all"
+                />
               </th>
-              {["Candidate", "Role", "Status", "Fit", "AI History", "Actions"].map((h) => (
+              {["Candidate", "Role", "Status", "Score", "AI History", "Actions"].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -350,9 +405,17 @@ export function PipelineSection({
                   <input
                     type="checkbox"
                     style={styles.checkbox}
-                    checked={selectedMatchCandidate?.id === c.id}
-                    onChange={() => handleToggleMatchCandidate(c)}
-                    title="Select candidate for AI matching"
+                    checked={selectedIds?.includes(c.id) || false}
+                    onChange={(e) => {
+                      if (setSelectedIds) {
+                        setSelectedIds(
+                          e.target.checked
+                            ? [...selectedIds, c.id]
+                            : selectedIds.filter((id) => id !== c.id)
+                        );
+                      }
+                    }}
+                    title="Select candidate for bulk actions"
                   />
                 </td>
                 <td style={{ padding: "16px 20px" }}>
@@ -372,10 +435,10 @@ export function PipelineSection({
                 <td style={{ padding: "16px 20px" }}>
                   <StatusBadge status={c.status} />
                 </td>
-                <td style={{ padding: "16px 20px", fontWeight: "700", color: COLORS.primary }}>
-                  {ranking?.has_history
-                    ? `${Number(ranking.cv_score || 0).toFixed(1)}%`
-                    : "-"}
+                <td style={{ padding: "16px 20px" }}>
+                  <div style={{ fontWeight: "700", color: COLORS.primary }} title={ranking ? `Overall Rank: ${Number(ranking.overall_score || 0).toFixed(1)}%\nCV Fit: ${Number(ranking.cv_score || 0).toFixed(1)}%\nAssessments: ${Number(ranking.completion_score || 0).toFixed(1)}%` : "Score summary"}>
+                    {ranking ? `${Number(ranking.overall_score || 0).toFixed(1)}%` : "-"}
+                  </div>
                 </td>
                 <td style={{ padding: "16px 20px", minWidth: 220 }}>
                   {!selectedJobId ? (
@@ -472,6 +535,18 @@ export function PipelineSection({
                 </td>
                 <td style={{ padding: "16px 20px" }}>
                   <div className="pipeline-actions" style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      onClick={() => handleToggleMatchCandidate(c)}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        cursor: "pointer",
+                        color: selectedMatchCandidate?.id === c.id ? COLORS.primary : COLORS.textMuted,
+                      }}
+                      title="Analyze with AI Matcher"
+                    >
+                      <Brain size={16} />
+                    </button>
                     <button
                       onClick={() => handleViewAssignments(c)}
                       style={{
@@ -654,8 +729,8 @@ export function AIMatcherSection({
           </h3>
 
           {!selectedMatchCandidate ? (
-            <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary }}>
-              Pick a candidate from the pipeline using the Match checkbox.
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary, display: "flex", alignItems: "center", gap: 4 }}>
+              Pick a candidate from the pipeline using the <Brain size={14} color={COLORS.primary} /> button.
             </p>
           ) : (
             <>

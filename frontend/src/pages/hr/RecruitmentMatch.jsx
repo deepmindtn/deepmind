@@ -163,17 +163,15 @@ export default function RecruitmentMatch() {
   const fetchRankedPipeline = useCallback(async (jobId) => {
     setPipelineLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}/api/talent-matching/jobs/${jobId}/pipeline/`,
-        { headers: authHeader }
-      );
+      const url = jobId ? `${API_BASE}/api/talent-matching/jobs/${jobId}/pipeline/` : `${API_BASE}/api/talent-matching/pipeline/`;
+      const res = await fetch(url, { headers: authHeader });
       if (!res.ok) throw new Error("Failed to load ranked pipeline");
       const data = await res.json();
       setPipelineRankings(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
       setPipelineRankings([]);
-      setToast({ message: "Failed to load job rankings", type: "error" });
+      setToast({ message: "Failed to load rankings", type: "error" });
     } finally {
       setPipelineLoading(false);
     }
@@ -182,11 +180,11 @@ export default function RecruitmentMatch() {
   useEffect(() => {
     fetchCandidates();
     fetchJobs();
-  }, [fetchCandidates, fetchJobs]);
+    fetchRankedPipeline(null); // Fetch global pipeline on load
+  }, [fetchCandidates, fetchJobs, fetchRankedPipeline]);
 
   useEffect(() => {
     if (!selectedJobId) {
-      setPipelineRankings([]);
       setJobDescription("");
       setHistoryOpen(false);
       setHistoryCandidate(null);
@@ -195,6 +193,7 @@ export default function RecruitmentMatch() {
       setActiveResultId(null);
       setResultModalOpen(false);
       setResultModalFromHistory(false);
+      fetchRankedPipeline(null);
       return;
     }
     fetchRankedPipeline(selectedJobId);
@@ -656,7 +655,6 @@ export default function RecruitmentMatch() {
         c.position.toLowerCase().includes(q.toLowerCase())
     )
     .sort((a, b) => {
-      if (!selectedJobId) return 0;
       const scoreA = rankingByCandidateId[a.id]?.overall_score ?? -1;
       const scoreB = rankingByCandidateId[b.id]?.overall_score ?? -1;
       return scoreB - scoreA;
@@ -681,6 +679,126 @@ export default function RecruitmentMatch() {
     setAssignRow(null);
     setSelectedCodes([]);
     setAssignOpen(true);
+  };
+
+  const parseCSV = (str) => {
+    const arr = [];
+    let quote = false;
+    for (let row = 0, col = 0, c = 0; c < str.length; c++) {
+        let cc = str[c], nc = str[c+1];
+        arr[row] = arr[row] || [];
+        arr[row][col] = arr[row][col] || '';
+
+        if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+        if (cc == '"') { quote = !quote; continue; }
+        if (cc == ',' && !quote) { ++col; continue; }
+        if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+        if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+        if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+        arr[row][col] += cc;
+    }
+    return arr;
+  };
+
+  const handleCandidateCsvUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setToast({ message: "Importing candidates...", type: "info" });
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const rows = parseCSV(text);
+      if (rows.length < 2) {
+        setToast({ message: "CSV file is empty or invalid.", type: "error" });
+        return;
+      }
+      
+      const headers = rows[0].map(h => h.trim().toLowerCase());
+      const emailIdx = headers.findIndex(h => h.includes("email"));
+      const firstIdx = headers.findIndex(h => h.includes("first"));
+      const lastIdx = headers.findIndex(h => h.includes("last") || h.includes("name"));
+      const posIdx = headers.findIndex(h => h.includes("pos") || h.includes("role") || h.includes("title"));
+
+      if (emailIdx === -1) {
+        setToast({ message: "CSV must contain an 'email' column.", type: "error" });
+        return;
+      }
+
+      let count = 0;
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || !row[emailIdx]) continue;
+        
+        try {
+          await fetch(`${API_BASE}/api/recruitment/candidates/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeader },
+            body: JSON.stringify({
+              email: row[emailIdx].trim(),
+              first_name: firstIdx >= 0 && row[firstIdx] ? row[firstIdx].trim() : "",
+              last_name: lastIdx >= 0 && row[lastIdx] ? row[lastIdx].trim() : "",
+              position: posIdx >= 0 && row[posIdx] ? row[posIdx].trim() : "Not Specified",
+              status: "pending"
+            }),
+          });
+          count++;
+        } catch(err) {
+          console.error(err);
+        }
+      }
+      setToast({ message: `Successfully imported ${count} candidates.`, type: "success" });
+      fetchCandidates();
+    };
+    reader.readAsText(file);
+    e.target.value = null;
+  };
+
+  const handleJobCsvUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setToast({ message: "Importing jobs...", type: "info" });
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const rows = parseCSV(text);
+      if (rows.length < 2) {
+        setToast({ message: "CSV file is empty or invalid.", type: "error" });
+        return;
+      }
+
+      const headers = rows[0].map(h => h.trim().toLowerCase());
+      const titleIdx = headers.findIndex(h => h.includes("title"));
+      const descIdx = headers.findIndex(h => h.includes("desc"));
+
+      if (titleIdx === -1) {
+        setToast({ message: "CSV must contain a 'title' column.", type: "error" });
+        return;
+      }
+
+      let count = 0;
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || !row[titleIdx]) continue;
+        try {
+          await fetch(`${API_BASE}/api/talent-matching/jobs/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeader },
+            body: JSON.stringify({
+              title: row[titleIdx].trim(),
+              description: descIdx >= 0 && row[descIdx] ? row[descIdx].trim() : "",
+              status: "active"
+            }),
+          });
+          count++;
+        } catch(err) { console.error(err); }
+      }
+      setToast({ message: `Successfully imported ${count} jobs.`, type: "success" });
+      fetchJobs();
+    };
+    reader.readAsText(file);
+    e.target.value = null;
   };
 
   // --- CRUD Handlers ---
@@ -922,8 +1040,6 @@ export default function RecruitmentMatch() {
         <RecruitmentMatchHeader
           selectedIds={selectedIds}
           openBulkAssignModal={openBulkAssignModal}
-          openCreateJobModal={openCreateJobModal}
-          openAddModal={openAddModal}
         />
 
         <JobOfferingsSection
@@ -935,6 +1051,7 @@ export default function RecruitmentMatch() {
           openEditJobModal={openEditJobModal}
           handleDeleteJob={handleDeleteJob}
           openCreateJobModal={openCreateJobModal}
+          handleJobCsvUpload={handleJobCsvUpload}
         />
 
         <SearchBar q={q} setQ={setQ} />
@@ -947,6 +1064,8 @@ export default function RecruitmentMatch() {
           filtered={filtered}
           rankingByCandidateId={rankingByCandidateId}
           handleToggleMatchCandidate={handleToggleMatchCandidate}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
           historyDetailLoading={historyDetailLoading}
           handleViewMatchDetail={handleViewMatchDetail}
           handleOpenMatchHistory={handleOpenMatchHistory}
@@ -960,6 +1079,8 @@ export default function RecruitmentMatch() {
           openEditModal={openEditModal}
           setDeleteId={setDeleteId}
           setDeleteOpen={setDeleteOpen}
+          handleCandidateCsvUpload={handleCandidateCsvUpload}
+          openAddModal={openAddModal}
         />
 
         <AIMatcherSection

@@ -280,13 +280,49 @@ const GenerateWithAIForm = () => {
   const [schedule, setSchedule] = useState(null);
 
   const handleSubmit = () => {
-    setIsGenerating(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log({ prompt, responseType, audience, schedule });
-      setIsGenerating(false);
-      alert("AI Survey Architecture Initialized!");
-    }, 1500);
+    const run = async () => {
+      setIsGenerating(true);
+      try {
+        const templateName = (prompt || "AI Survey").slice(0, 100) || "AI Survey";
+        let candidate_emails = [];
+        try {
+          if (Array.isArray(audience?.selected) && audience.selected.length) {
+            // support both objects with email or plain strings
+            candidate_emails = audience.selected.map((s) => (s?.email ? s.email : s));
+          }
+        } catch (e) {
+          candidate_emails = [];
+        }
+
+        const resp = await fetch("/api/assessments/generate-and-launch/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            template_name: templateName,
+            template_code: undefined,
+            prompt: prompt,
+            response_type: responseType,
+            candidate_emails,
+            send_emails: true,
+          }),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          console.error("AI generate error", data);
+          alert(data.detail || data.error || "Failed to generate and launch assessment.");
+        } else {
+          console.log("AI generate success", data);
+          alert("AI Survey generated and launched.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Network error while calling AI generate endpoint.");
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+    run();
   };
 
   return (

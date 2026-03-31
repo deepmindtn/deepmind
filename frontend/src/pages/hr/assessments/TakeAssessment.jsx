@@ -295,7 +295,12 @@ const TakeAssessment = () => {
       CAQ: "/candidate/caq",
     };
 
-    const targetRoute = routeMap[testType];
+    let targetRoute = routeMap[testType];
+    
+    // Fallback for AI generated test
+    if (!targetRoute && testType && testType.startsWith("AI_")) {
+      targetRoute = "/candidate/dynamic-test";
+    }
 
     if (targetRoute) {
       navigate(targetRoute);

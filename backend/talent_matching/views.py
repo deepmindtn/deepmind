@@ -640,3 +640,50 @@ class RankedPipelineView(APIView):
         items.sort(key=lambda x: x["overall_score"], reverse=True)
         serializer = RankedPipelineItemSerializer(items, many=True)
         return Response(serializer.data)
+
+class GlobalRankedPipelineView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get(self, request):
+        candidates = Recruitee.objects.filter(company=request.user.company)
+
+        items = []
+        for candidate in candidates:
+            matches = list(CVJobMatch.objects.filter(application__recruitee=candidate).order_by("-created_at"))
+            latest_match = matches[0] if matches else None
+            history_count = len(matches)
+            cv_score = latest_match.score if latest_match else 0.0
+
+            stats = CandidateAssignment.objects.filter(recruitee=candidate).aggregate(
+                total=Count("id"),
+                completed=Count("id", filter=Q(status="COMPLETED")),
+            )
+            total = stats["total"] or 0
+            completed = stats["completed"] or 0
+            completion_score = round((completed / total) * 100, 2) if total > 0 else 0.0
+
+            quality_score = round(min(completion_score, 100.0), 2)
+            overall = round((0.6 * cv_score) + (0.2 * completion_score) + (0.2 * quality_score), 2)
+
+            candidate_name = f"{candidate.first_name or ''} {candidate.last_name or ''}".strip()
+            if not candidate_name:
+                candidate_name = candidate.email
+
+            items.append(
+                {
+                    "application_id": latest_match.application.id if latest_match else None,
+                    "candidate_id": str(candidate.id),
+                    "candidate_name": candidate_name,
+                    "candidate_email": candidate.email,
+                    "stage": latest_match.application.stage if latest_match else "new",
+                    "cv_score": cv_score,
+                    "completion_score": completion_score,
+                    "quality_score": quality_score,
+                    "overall_score": overall,
+                    "history_count": history_count,
+                    "has_history": history_count > 0,
+                }
+            )
+
+        items.sort(key=lambda x: x["overall_score"], reverse=True)
+        return Response(items)

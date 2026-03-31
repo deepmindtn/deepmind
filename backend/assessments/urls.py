@@ -23,6 +23,7 @@ from .views import (
     GenerateISEReportView,
     AICandidateMatchView,
     AssignCandidateAssessmentView, 
+    GenerateAndLaunchAssessmentView,
     CandidateAssignmentDetailView,
     CandidateAssignmentByTokenView,
     CandidateAssignmentsListView,
@@ -53,6 +54,7 @@ urlpatterns = [
     # 2. CANDIDATE SPECIFIC ROUTES
     # ---------------------------------------------------------
     path("assessments/assign-candidate/", AssignCandidateAssessmentView.as_view(), name="assign-candidate"),
+    path("assessments/generate-and-launch/", GenerateAndLaunchAssessmentView.as_view(), name="assessments-generate-and-launch"),
     path("assessments/candidate/test/<uuid:token>/", test_candidate_view, name="test-candidate"),
     
     # URL to load assessment via UUID Token

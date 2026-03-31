@@ -14,6 +14,7 @@ from .views import (
     JobPostingDetailView,
     JobPostingListCreateView,
     RankedPipelineView,
+    GlobalRankedPipelineView,
     TalentMatchView,
 )
 
@@ -36,4 +37,5 @@ urlpatterns = [
         name="tm-match-history",
     ),
     path("talent-matching/jobs/<int:job_id>/pipeline/", RankedPipelineView.as_view(), name="tm-ranked-pipeline"),
+    path("talent-matching/pipeline/", GlobalRankedPipelineView.as_view(), name="tm-global-pipeline"),
 ]

@@ -250,8 +250,17 @@ export default function MyAssessments() {
       ISE: "/ise",
     };
 
-    if (pathMap[code]) navigate(`${pathMap[code]}?assignment=${a.id}`);
-    else alert(`Unknown assessment type: ${code}`);
+    if (pathMap[code]) {
+      navigate(`${pathMap[code]}?assignment=${a.id}`);
+      return;
+    }
+
+    if (String(code).startsWith("AI_")) {
+      navigate(`/dynamic-test?assignment=${a.id}`);
+      return;
+    }
+
+    alert(`Unknown assessment type: ${code}`);
   }
 
   return (

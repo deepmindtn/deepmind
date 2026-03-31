@@ -79,6 +79,7 @@ class AssignmentListItemSerializer(serializers.ModelSerializer):
 class AssignmentDetailSerializer(serializers.ModelSerializer):
     template_code = serializers.CharField(source="template.code", read_only=True)
     template_name = serializers.CharField(source="template.name", read_only=True)
+    template_questions = serializers.JSONField(source="template.questions", read_only=True)
 
     class Meta:
         model  = Assignment
@@ -86,7 +87,7 @@ class AssignmentDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "template_code", "template_name",
             "status", "assigned_at", "completed_at",
-            "answers", "metrics", "ai_report", "report_pdf",
+            "answers", "metrics", "ai_report", "report_pdf", "template_questions",
         ]
 
 
@@ -606,7 +607,7 @@ from accounts.models import Recruitee
 class AssessmentTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssessmentTemplate
-        fields = ['id', 'code', 'name']
+        fields = ['id', 'code', 'name', 'questions']
 
 class RecruiteeBasicSerializer(serializers.ModelSerializer):
     class Meta:
