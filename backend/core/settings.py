@@ -11,9 +11,16 @@ if parent_env.exists():
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 EMAIL_LOGO_URL = os.getenv("EMAIL_LOGO_URL") or f"{FRONTEND_URL.rstrip('/')}/favicon_deepmind.png"
 
-SECRET_KEY = "change-me"
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 DEBUG = os.getenv("DEBUG") == "True"
-ALLOWED_HOSTS = ["dev.deepmind.tn", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "ALLOWED_HOSTS",
+        "dev.deepmind.tn,localhost,127.0.0.1",
+    ).split(",")
+    if host.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -67,6 +74,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": os.environ.get("POSTGRES_HOST"),
         "PORT": os.environ.get("POSTGRES_PORT", 5432),
+        "OPTIONS": {"sslmode": "require"},
     }
 }
 
