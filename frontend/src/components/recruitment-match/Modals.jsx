@@ -24,6 +24,14 @@ export function HistoryModal({
   historyItems,
   archiveLoading,
   archiveItems,
+  archiveQuery,
+  setArchiveQuery,
+  archiveStatusFilter,
+  setArchiveStatusFilter,
+  archivePage,
+  archiveTotalPages,
+  archiveTotalCount,
+  onArchivePageChange,
   activeResult,
   historyDetailLoading,
   handleViewMatchDetail,
@@ -47,7 +55,35 @@ export function HistoryModal({
       }
     >
       {isArchiveView ? (
-        archiveLoading ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <input
+              style={{ ...styles.input, margin: 0, minWidth: 220 }}
+              placeholder="Filter archived candidates"
+              value={archiveQuery}
+              onChange={(e) => setArchiveQuery(e.target.value)}
+            />
+            <select
+              style={{ ...styles.input, margin: 0, minWidth: 150 }}
+              value={archiveStatusFilter}
+              onChange={(e) => setArchiveStatusFilter(e.target.value)}
+            >
+              <option value="hired,rejected">Hired + Rejected</option>
+              <option value="hired">Hired only</option>
+              <option value="rejected">Rejected only</option>
+            </select>
+            <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+              {archiveTotalCount} archived candidate{archiveTotalCount === 1 ? "" : "s"}
+            </span>
+          </div>
+        {archiveLoading ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.textSecondary }}>
             <Loader2 className="spin" size={16} /> Loading archived candidates...
           </div>
@@ -123,7 +159,27 @@ export function HistoryModal({
               </div>
             ))}
           </div>
-        )
+        )}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+          <button
+            style={{ ...styles.btnPrimary, padding: "6px 10px", backgroundColor: "white", color: COLORS.textPrimary, border: `1px solid ${COLORS.borderColor}` }}
+            onClick={() => onArchivePageChange(Math.max(1, archivePage - 1))}
+            disabled={archivePage <= 1 || archiveLoading}
+          >
+            Prev
+          </button>
+          <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+            Page {archivePage} / {Math.max(archiveTotalPages, 1)}
+          </span>
+          <button
+            style={{ ...styles.btnPrimary, padding: "6px 10px", backgroundColor: "white", color: COLORS.textPrimary, border: `1px solid ${COLORS.borderColor}` }}
+            onClick={() => onArchivePageChange(Math.min(archiveTotalPages, archivePage + 1))}
+            disabled={archivePage >= archiveTotalPages || archiveLoading}
+          >
+            Next
+          </button>
+        </div>
+        </div>
       ) : historyLoading ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.textSecondary }}>
           <Loader2 className="spin" size={16} /> Loading history...
@@ -548,6 +604,327 @@ export function ResultModal({
           </div>
         </div>
       ) : null}
+    </Modal>
+  );
+}
+
+export function ScoreExplainModal({
+  scoreExplainOpen,
+  setScoreExplainOpen,
+  scoreExplainCandidate,
+  scoreExplainLoading,
+  scoreExplainDetailLoading,
+  scoreExplainHistory,
+  activeScoreExplain,
+  onOpenScoreExplainHistoryItem,
+}) {
+  const payload = activeScoreExplain?.report_payload || {};
+  const assessmentInsights = Array.isArray(payload?.assessment_insights)
+    ? payload.assessment_insights
+    : Array.isArray(payload?.top_assessment_insights)
+    ? payload.top_assessment_insights
+    : [];
+  const assessmentBreakdown = Array.isArray(activeScoreExplain?.assessment_breakdown)
+    ? activeScoreExplain.assessment_breakdown
+    : [];
+
+  const scoreRows = [
+    { label: "CV Match", value: Number(activeScoreExplain?.cv_score || 0), color: COLORS.primary },
+    { label: "Assessment Composite", value: Number(activeScoreExplain?.assessment_score || 0), color: COLORS.blue },
+    { label: "Assessment Completion", value: Number(activeScoreExplain?.completion_score || 0), color: COLORS.orange },
+    { label: "Overall Ranking", value: Number(activeScoreExplain?.overall_score || 0), color: COLORS.dark },
+  ];
+
+  return (
+    <Modal
+      open={scoreExplainOpen}
+      title={
+        scoreExplainCandidate
+          ? `Ranking Explanation - ${scoreExplainCandidate.candidate_name || scoreExplainCandidate.name}`
+          : "Ranking Explanation"
+      }
+      onClose={() => setScoreExplainOpen(false)}
+      contentClassName="recruitment-match-modal-content"
+      actions={
+        <button style={styles.btnPrimary} onClick={() => setScoreExplainOpen(false)}>
+          Close
+        </button>
+      }
+    >
+      {scoreExplainLoading ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.textSecondary }}>
+          <Loader2 className="spin" size={16} /> Generating candidate ranking explanation...
+        </div>
+      ) : !activeScoreExplain ? (
+        <p style={{ margin: 0, color: COLORS.textSecondary, fontSize: 13 }}>
+          No ranking explanation found for this candidate yet.
+        </p>
+      ) : (
+        <div style={{ display: "grid", gap: 14, maxHeight: "72vh", overflowY: "auto", paddingRight: 2 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
+              Generated {new Date(activeScoreExplain.created_at).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 12, color: COLORS.textSecondary }}>
+              Completed assessments: {Number(activeScoreExplain.completed_assessments || 0)} / {Number(activeScoreExplain.total_assessments || 0)}
+            </div>
+          </div>
+
+          {scoreExplainHistory.length > 1 ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {scoreExplainHistory.map((item) => {
+                const isActive = String(item.id) === String(activeScoreExplain.id);
+                return (
+                  <button
+                    key={item.id}
+                    style={{
+                      border: `1px solid ${isActive ? `${COLORS.primary}77` : COLORS.borderColor}`,
+                      background: isActive ? COLORS.primaryLight : "white",
+                      color: isActive ? COLORS.primary : COLORS.textPrimary,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: scoreExplainDetailLoading ? "not-allowed" : "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    onClick={() => onOpenScoreExplainHistoryItem(item.id)}
+                    disabled={scoreExplainDetailLoading}
+                  >
+                    <Clock size={12} />
+                    {new Date(item.created_at).toLocaleDateString()} · {Number(item.overall_score || 0).toFixed(1)}%
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div style={{ ...styles.card, padding: 14, display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 700, color: COLORS.textPrimary }}>Score Composition</div>
+            {scoreRows.map((row) => (
+              <div key={row.label}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                  <strong style={{ color: COLORS.textPrimary }}>{row.label}</strong>
+                  <strong style={{ color: COLORS.textPrimary }}>{Number(row.value).toFixed(1)}%</strong>
+                </div>
+                <div style={{ width: "100%", height: 6, backgroundColor: "#e2e8f0", borderRadius: 999 }}>
+                  <div
+                    style={{
+                      width: `${Math.min(Math.max(Number(row.value), 0), 100)}%`,
+                      height: "100%",
+                      backgroundColor: row.color,
+                      borderRadius: 999,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ ...styles.card, padding: 14, backgroundColor: "#f8fafc", border: `1px solid ${COLORS.borderColor}` }}>
+            <strong style={{ color: COLORS.textPrimary }}>Summary:</strong>{" "}
+            <span style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 1.45 }}>
+              {payload.summary || "No summary available."}
+            </span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Candidate Profile</div>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.45 }}>
+                {payload.candidate_profile || "No profile narrative available."}
+              </p>
+            </div>
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Candidacy Positioning</div>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.45 }}>
+                {payload.candidacy_positioning || "No candidacy positioning available."}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Strengths</div>
+              {Array.isArray(payload.strengths) && payload.strengths.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6, fontSize: 13, color: COLORS.textSecondary }}>
+                  {payload.strengths.slice(0, 8).map((item, idx) => (
+                    <li key={`${item}-${idx}`}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ margin: 0, color: COLORS.textSecondary, fontSize: 13 }}>No strengths listed.</p>
+              )}
+            </div>
+
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Weaknesses / Risks</div>
+              {Array.isArray(payload.weaknesses) && payload.weaknesses.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6, fontSize: 13, color: COLORS.textSecondary }}>
+                  {payload.weaknesses.slice(0, 8).map((item, idx) => (
+                    <li key={`${item}-${idx}`}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ margin: 0, color: COLORS.textSecondary, fontSize: 13 }}>No weaknesses listed.</p>
+              )}
+            </div>
+
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Recommendations</div>
+              {Array.isArray(payload.recommendations) && payload.recommendations.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6, fontSize: 13, color: COLORS.textSecondary }}>
+                  {payload.recommendations.slice(0, 8).map((item, idx) => (
+                    <li key={`${item}-${idx}`}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ margin: 0, color: COLORS.textSecondary, fontSize: 13 }}>No recommendations listed.</p>
+              )}
+            </div>
+          </div>
+
+          {Array.isArray(payload.key_findings) && payload.key_findings.length > 0 ? (
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Key Findings</div>
+              <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6, fontSize: 13, color: COLORS.textSecondary }}>
+                {payload.key_findings.slice(0, 8).map((item, idx) => (
+                  <li key={`${item}-${idx}`}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {payload.cv_fit_analysis ? (
+            <div style={{ ...styles.card, padding: 14, backgroundColor: "#f0fdf4", border: `1px solid #86efac` }}>
+              <strong style={{ color: COLORS.textPrimary }}>CV Fit Analysis:</strong>{" "}
+              <span style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 1.45 }}>
+                {payload.cv_fit_analysis}
+              </span>
+            </div>
+          ) : null}
+
+          {assessmentInsights.length > 0 ? (
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Assessment Insights</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {assessmentInsights.slice(0, 5).map((item, idx) => (
+                  <div
+                    key={`${item.template_code || idx}-${idx}`}
+                    style={{
+                      border: `1px solid ${COLORS.borderColor}`,
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      backgroundColor: "#f8fafc",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: 12, color: COLORS.textPrimary }}>
+                        {item.template_name || item.template_code || "Assessment"}
+                      </strong>
+                      <strong style={{ fontSize: 12, color: COLORS.primary }}>
+                        {Number(item.score || 0).toFixed(1)}%
+                      </strong>
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: COLORS.textSecondary }}>
+                      {item.key_finding}
+                    </div>
+                    <div style={{ marginTop: 2, fontSize: 12, color: COLORS.textSecondary }}>
+                      {item.hr_implication}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {Array.isArray(payload.missing_assessments) && payload.missing_assessments.length > 0 ? (
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Missing / Pending Assessments</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {payload.missing_assessments.slice(0, 16).map((item, idx) => (
+                  <span
+                    key={`${item}-${idx}`}
+                    style={{
+                      fontSize: 11,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      backgroundColor: "#fffbeb",
+                      color: "#b45309",
+                      border: "1px solid #fcd34d",
+                    }}
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {assessmentBreakdown.length > 0 ? (
+            <div style={{ ...styles.card, padding: 14 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Assessment Score Breakdown</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {assessmentBreakdown.slice(0, 8).map((item) => (
+                  <div key={item.assignment_id} style={{ border: `1px solid ${COLORS.borderColor}`, borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: 12, color: COLORS.textPrimary }}>
+                        {item.template_name || item.template_code || `Assessment #${item.assignment_id}`}
+                      </strong>
+                      <strong style={{ fontSize: 12, color: COLORS.primary }}>
+                        {Number(item.base_score || 0).toFixed(1)}%
+                      </strong>
+                    </div>
+                    {Array.isArray(item.category_scores) && item.category_scores.length > 0 ? (
+                      <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {item.category_scores.slice(0, 6).map((category, idx) => (
+                          <span
+                            key={`${item.assignment_id}-${category.category}-${idx}`}
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 7px",
+                              borderRadius: 999,
+                              backgroundColor: "#eff6ff",
+                              color: COLORS.primary,
+                            }}
+                          >
+                            {category.category}: {Number(category.score || 0).toFixed(1)}%
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {payload.profile_archetype ? (
+            <div
+              style={{
+                ...styles.card,
+                padding: 14,
+                backgroundColor: COLORS.primaryLight,
+                border: `2px solid ${COLORS.primary}`,
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 6 }}>Candidate Profile</div>
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: COLORS.primary,
+                }}
+              >
+                {payload.profile_archetype}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
     </Modal>
   );
 }

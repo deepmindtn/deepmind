@@ -5,7 +5,13 @@ from rest_framework import serializers
 
 from accounts.models import Recruitee
 
-from .models import CandidateCV, CandidateJobApplication, CVJobMatch, JobPosting
+from .models import (
+    CandidateCV,
+    CandidateJobApplication,
+    CandidateScoreExplanation,
+    CVJobMatch,
+    JobPosting,
+)
 
 
 class JobPostingSerializer(serializers.ModelSerializer):
@@ -171,6 +177,10 @@ class RankedPipelineItemSerializer(serializers.Serializer):
     latest_fit_label = serializers.CharField(allow_blank=True)
     latest_summary = serializers.CharField(allow_blank=True)
     latest_matched_at = serializers.DateTimeField(allow_null=True)
+    completed_assessments = serializers.IntegerField()
+    total_assessments = serializers.IntegerField()
+    latest_explanation_id = serializers.IntegerField(allow_null=True)
+    explanation_count = serializers.IntegerField()
 
 
 class CandidateApplicationAttachSerializer(serializers.Serializer):
@@ -198,3 +208,43 @@ class CandidateBulkStatusUpdateSerializer(serializers.Serializer):
             seen.add(key)
             deduped.append(candidate_id)
         return deduped
+
+
+class CandidateScoreExplanationListSerializer(serializers.ModelSerializer):
+    latest_match_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CandidateScoreExplanation
+        fields = [
+            "id",
+            "latest_match_id",
+            "cv_score",
+            "assessment_score",
+            "completion_score",
+            "overall_score",
+            "completed_assessments",
+            "total_assessments",
+            "created_at",
+        ]
+
+
+class CandidateScoreExplanationDetailSerializer(serializers.ModelSerializer):
+    latest_match_id = serializers.IntegerField(read_only=True)
+    candidate_id = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        model = CandidateScoreExplanation
+        fields = [
+            "id",
+            "candidate_id",
+            "latest_match_id",
+            "cv_score",
+            "assessment_score",
+            "completion_score",
+            "overall_score",
+            "completed_assessments",
+            "total_assessments",
+            "assessment_breakdown",
+            "report_payload",
+            "created_at",
+        ]

@@ -9,6 +9,9 @@ from .views import (
     CandidateGlobalMatchHistoryView,
     CandidateCVListView,
     CandidateMatchHistoryView,
+    CandidateScoreExplanationDetailView,
+    CandidateScoreExplanationGenerateView,
+    CandidateScoreExplanationHistoryView,
     CandidateCVSetActiveView,
     CandidateCVUploadView,
     CandidateJobApplicationListCreateView,
@@ -35,6 +38,21 @@ urlpatterns = [
     path("talent-matching/applications/bulk-status/", CandidateBulkStatusUpdateView.as_view(), name="tm-app-bulk-status"),
     path("talent-matching/match/", TalentMatchView.as_view(), name="tm-match"),
     path("talent-matching/matches/<int:pk>/", CVJobMatchDetailView.as_view(), name="tm-match-detail"),
+    path(
+        "talent-matching/candidates/<uuid:candidate_id>/score-explanation/",
+        CandidateScoreExplanationGenerateView.as_view(),
+        name="tm-candidate-score-explanation-generate",
+    ),
+    path(
+        "talent-matching/candidates/<uuid:candidate_id>/score-explanations/",
+        CandidateScoreExplanationHistoryView.as_view(),
+        name="tm-candidate-score-explanation-history",
+    ),
+    path(
+        "talent-matching/score-explanations/<int:pk>/",
+        CandidateScoreExplanationDetailView.as_view(),
+        name="tm-candidate-score-explanation-detail",
+    ),
     path(
         "talent-matching/candidates/<uuid:candidate_id>/match-history/",
         CandidateGlobalMatchHistoryView.as_view(),

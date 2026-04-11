@@ -134,10 +134,14 @@ export const styles = {
   },
   badge: (status) => {
     const badgeColors = {
+      active: { bg: "#eff6ff", text: "#1d4ed8" },
+      draft: { bg: "#f3f4f6", text: "#6b7280" },
+      closed: { bg: "#fff1f2", text: "#b91c1c" },
       hired: { bg: "#ecfdf5", text: "#059669" },
       rejected: { bg: "#fef2f2", text: "#ef4444" },
       invited: { bg: "#eff6ff", text: "#3b82f6" },
       pending: { bg: "#fffbeb", text: "#d97706" },
+      in_progress: { bg: "#eef2ff", text: "#4f46e5" },
       interview: { bg: "#fef3c7", text: "#d97706" },
       completed: { bg: "#ecfdf5", text: "#059669" },
       default: { bg: "#f3f4f6", text: "#6b7280" },

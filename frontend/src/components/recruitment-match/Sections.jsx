@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import {
   Plus,
   Search,
@@ -15,9 +16,50 @@ import {
   Upload,
   BarChart3,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { StatusBadge } from "./Shared";
 import { COLORS, styles } from "./Constants";
+
+function PaginationControls({ page, totalPages, onPageChange }) {
+  const isSinglePage = totalPages <= 1;
+  const disablePrev = isSinglePage || page <= 1;
+  const disableNext = isSinglePage || page >= totalPages;
+
+  const navButtonStyle = (disabled) => ({
+    ...styles.btnPrimary,
+    padding: "6px 10px",
+    backgroundColor: disabled ? "#f1f5f9" : "white",
+    color: disabled ? COLORS.textMuted : COLORS.textPrimary,
+    border: `1px solid ${COLORS.borderColor}`,
+    cursor: disabled ? "not-allowed" : "pointer",
+  });
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <button
+        style={navButtonStyle(disablePrev)}
+        onClick={() => onPageChange(Math.max(1, page - 1))}
+        disabled={disablePrev}
+        aria-label="Previous page"
+      >
+        <ChevronLeft size={16} />
+      </button>
+      <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+        Page {page} / {Math.max(totalPages, 1)}
+      </span>
+      <button
+        style={navButtonStyle(disableNext)}
+        onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+        disabled={disableNext}
+        aria-label="Next page"
+      >
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+}
 
 export function RecruitmentMatchHeader() {
   return (
@@ -67,6 +109,14 @@ export function RecruitmentMatchHeader() {
 export function JobOfferingsSection({
   jobsLoading,
   jobs,
+  jobsTotalCount = 0,
+  jobsQuery,
+  setJobsQuery,
+  jobsStatusFilter,
+  setJobsStatusFilter,
+  jobsPage,
+  jobsTotalPages,
+  onJobsPageChange,
   selectedJob,
   selectedJobId,
   setSelectedJobId,
@@ -127,6 +177,41 @@ export function JobOfferingsSection({
           </button>
         </div>
       </div>
+      <div
+        style={{
+          padding: "14px 20px",
+          borderBottom: `1px solid ${COLORS.borderColor}`,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "nowrap",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "nowrap", flex: 1 }}>
+          <input
+            style={{ ...styles.input, width: 360, margin: 0 }}
+            placeholder="Filter jobs by title/description"
+            value={jobsQuery}
+            onChange={(e) => setJobsQuery(e.target.value)}
+          />
+          <select
+            style={{ ...styles.input, width: 190, margin: 0 }}
+            value={jobsStatusFilter}
+            onChange={(e) => setJobsStatusFilter(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+            {jobsTotalCount} job{jobsTotalCount === 1 ? "" : "s"}
+          </span>
+        </div>
+      </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
           <thead style={{ backgroundColor: COLORS.tableRow }}>
@@ -183,7 +268,9 @@ export function JobOfferingsSection({
                     />
                   </td>
                   <td style={{ padding: "14px 20px", fontWeight: 600 }}>{job.title}</td>
-                  <td style={{ padding: "14px 20px", fontSize: 13 }}>{job.status}</td>
+                  <td style={{ padding: "14px 20px", fontSize: 13 }}>
+                    <StatusBadge status={job.status} />
+                  </td>
                   <td style={{ padding: "14px 20px", fontSize: 13, color: COLORS.textSecondary }}>
                     {(job.description || "").slice(0, 160)}
                     {(job.description || "").length > 160 ? "..." : ""}
@@ -222,13 +309,28 @@ export function JobOfferingsSection({
           </tbody>
         </table>
       </div>
+      <div
+        style={{
+          padding: "12px 20px",
+          borderTop: `1px solid ${COLORS.borderColor}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+        }}
+      >
+        <PaginationControls
+          page={jobsPage}
+          totalPages={jobsTotalPages}
+          onPageChange={onJobsPageChange}
+        />
+      </div>
     </div>
   );
 }
 
-export function SearchBar({ q, setQ, openHistory }) {
+export function SearchBar({ q, setQ, pipelineStatusFilter, setPipelineStatusFilter, openHistory }) {
   return (
-    <div className="search-wrap" style={{ position: "relative", marginBottom: "32px", display: "flex", gap: "12px", alignItems: "center" }}>
+    <div className="search-wrap" style={{ position: "relative", marginBottom: "32px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "nowrap" }}>
       <div style={{ position: "relative", flex: 1 }}>
         <Search
           size={18}
@@ -254,11 +356,24 @@ export function SearchBar({ q, setQ, openHistory }) {
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
+      <select
+        style={{ ...styles.input, width: 190, margin: 0, flexShrink: 0 }}
+        value={pipelineStatusFilter}
+        onChange={(e) => setPipelineStatusFilter(e.target.value)}
+      >
+        <option value="all">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="invited">Invited</option>
+        <option value="in_progress">In Progress</option>
+        <option value="completed">Completed</option>
+        <option value="hired">Hired</option>
+        <option value="rejected">Rejected</option>
+      </select>
       <button
-        style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark, height: "46px" }}
+        style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark, height: "46px", flexShrink: 0 }}
         onClick={openHistory}
       >
-        <History size={18} /> History
+        <History size={18} /> Archived Candidates
       </button>
     </div>
   );
@@ -267,6 +382,10 @@ export function SearchBar({ q, setQ, openHistory }) {
 export function PipelineSection({
   selectedMatchCandidate,
   pipelineLoading,
+  pipelineTotalCount = 0,
+  pipelinePage,
+  pipelineTotalPages,
+  onPipelinePageChange,
   filtered,
   handleToggleMatchCandidate,
   selectedIds = [],
@@ -282,14 +401,69 @@ export function PipelineSection({
   openEditModal,
   setDeleteId,
   setDeleteOpen,
+  handleExplainScore,
+  explainingCandidateId,
   handleCandidateCsvUpload,
   openAddModal,
   handleChangeStatus,
+  q,
+  setQ,
+  pipelineStatusFilter,
+  setPipelineStatusFilter,
+  openHistory,
 }) {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = React.useState(false);
+  const [statusDropdownPosition, setStatusDropdownPosition] = React.useState({
+    top: 0,
+    left: 0,
+    width: 180,
+    openUp: false,
+  });
+  const statusButtonRef = React.useRef(null);
+
+  const pageCandidateIds = React.useMemo(
+    () => filtered.map((candidate) => candidate.candidate_id),
+    [filtered]
+  );
+
+  const allPageSelected =
+    pageCandidateIds.length > 0 &&
+    pageCandidateIds.every((candidateId) => selectedIds.includes(candidateId));
+
+  const updateStatusMenuPosition = React.useCallback(() => {
+    const button = statusButtonRef.current;
+    if (!button) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    const estimatedMenuHeight = 260;
+    const openUp = window.innerHeight - rect.bottom < estimatedMenuHeight;
+    setStatusDropdownPosition({
+      top: openUp ? rect.top - 8 : rect.bottom + 8,
+      left: Math.max(8, rect.right - 180),
+      width: Math.max(rect.width, 180),
+      openUp,
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (!isStatusDropdownOpen) {
+      return;
+    }
+
+    updateStatusMenuPosition();
+    const handleViewportChange = () => updateStatusMenuPosition();
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [isStatusDropdownOpen, updateStatusMenuPosition]);
 
   return (
-    <div className="pipeline-card" style={{ ...styles.card, marginBottom: "56px" }}>
+    <div className="pipeline-card" style={{ ...styles.card, marginBottom: "56px", overflow: "visible" }}>
       <div
         className="pipeline-card-header"
         style={{
@@ -315,60 +489,32 @@ export function PipelineSection({
             <Loader2 className="spin" size={14} color={COLORS.textSecondary} />
           )}
         </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+            {pipelineTotalCount} candidate{pipelineTotalCount === 1 ? "" : "s"}
+          </span>
           {selectedIds.length > 0 ? (
             <>
-              <div style={{ position: "relative" }}>
+              <div>
                 <button
+                  ref={statusButtonRef}
                   style={{
                     ...styles.btnPrimary,
                     backgroundColor: "white",
                     color: COLORS.primary,
                     border: `1px solid ${COLORS.primary}`,
                   }}
-                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                  onClick={() => {
+                    if (isStatusDropdownOpen) {
+                      setIsStatusDropdownOpen(false);
+                      return;
+                    }
+                    updateStatusMenuPosition();
+                    setIsStatusDropdownOpen(true);
+                  }}
                 >
                   <ChevronDown size={16} /> Change Status
                 </button>
-                {isStatusDropdownOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      right: 0,
-                      marginTop: "8px",
-                      backgroundColor: "white",
-                      border: `1px solid ${COLORS.borderColor}`,
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      zIndex: 10,
-                      minWidth: "160px",
-                      display: "flex",
-                      flexDirection: "column",
-                      padding: "8px",
-                      gap: "4px",
-                    }}
-                  >
-                    {["pending", "invited", "in_progress", "completed", "hired", "rejected"].map((status) => (
-                      <div
-                        key={status}
-                        onClick={() => {
-                          handleChangeStatus(status);
-                          setIsStatusDropdownOpen(false);
-                        }}
-                        style={{
-                          padding: "6px",
-                          cursor: "pointer",
-                          borderRadius: "4px",
-                          display: "flex",
-                          alignItems: "center"
-                        }}
-                      >
-                        <StatusBadge status={status} />
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
               <button
                 style={styles.btnBulk}
@@ -412,6 +558,95 @@ export function PipelineSection({
           )}
         </div>
       </div>
+      <div
+        style={{
+          padding: "14px 20px",
+          borderBottom: `1px solid ${COLORS.borderColor}`,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "nowrap",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "nowrap", flex: 1 }}>
+          <input
+            style={{ ...styles.input, width: 360, margin: 0 }}
+            placeholder="Search candidates by name, email, or role..."
+            value={q}
+            onChange={(e) => setQ && setQ(e.target.value)}
+          />
+          <select
+            style={{ ...styles.input, width: 190, margin: 0 }}
+            value={pipelineStatusFilter}
+            onChange={(e) => setPipelineStatusFilter && setPipelineStatusFilter(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="invited">Invited</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="hired">Hired</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
+          <button
+            style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
+            onClick={() => openHistory && openHistory()}
+          >
+            <History size={16} /> Archived Candidates
+          </button>
+        </div>
+      </div>
+      {isStatusDropdownOpen
+        ? ReactDOM.createPortal(
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+                onClick={() => setIsStatusDropdownOpen(false)}
+              />
+              <div
+                style={{
+                  position: "fixed",
+                  top: statusDropdownPosition.top,
+                  left: statusDropdownPosition.left,
+                  width: statusDropdownPosition.width,
+                  backgroundColor: "white",
+                  border: `1px solid ${COLORS.borderColor}`,
+                  borderRadius: "8px",
+                  boxShadow: "0 10px 24px rgba(15, 23, 42, 0.18)",
+                  zIndex: 9999,
+                  display: "flex",
+                  flexDirection: "column",
+                  padding: "8px",
+                  gap: "4px",
+                  transform: statusDropdownPosition.openUp ? "translateY(-100%)" : "none",
+                }}
+              >
+                {["pending", "invited", "in_progress", "completed", "hired", "rejected"].map((status) => (
+                  <div
+                    key={status}
+                    onClick={() => {
+                      handleChangeStatus(status);
+                      setIsStatusDropdownOpen(false);
+                    }}
+                    style={{
+                      padding: "6px",
+                      cursor: "pointer",
+                      borderRadius: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <StatusBadge status={status} />
+                  </div>
+                ))}
+              </div>
+            </>,
+            document.body
+          )
+        : null}
       <div className="pipeline-table-wrap" style={{ overflowX: "auto" }}>
         <table
           style={{
@@ -426,16 +661,26 @@ export function PipelineSection({
                 <input
                   type="checkbox"
                   style={styles.checkbox}
-                  checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                  checked={allPageSelected}
                   onChange={(e) => {
                     if (setSelectedIds) {
-                      setSelectedIds(e.target.checked ? filtered.map((c) => c.candidate_id) : []);
+                      if (e.target.checked) {
+                        const nextIds = new Set(selectedIds);
+                        pageCandidateIds.forEach((candidateId) => nextIds.add(candidateId));
+                        setSelectedIds(Array.from(nextIds));
+                      } else {
+                        setSelectedIds(
+                          selectedIds.filter(
+                            (candidateId) => !pageCandidateIds.includes(candidateId)
+                          )
+                        );
+                      }
                     }
                   }}
                   title="Select all"
                 />
               </th>
-              {["Candidate", "Role", "Status", "Score", "AI History", "Actions"].map((h) => (
+              {["Candidate", "Role", "Status", "Score", "CV Match", "Actions"].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -452,8 +697,16 @@ export function PipelineSection({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => {
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ padding: "18px 20px", color: COLORS.textSecondary }}>
+                  No candidates found for the current filters.
+                </td>
+              </tr>
+            ) : (
+            filtered.map((c) => {
               const rowId = c.candidate_id;
+              const explainDisabled = !c.latest_match_id || explainingCandidateId === c.candidate_id;
               return (
               <tr
                 key={rowId}
@@ -471,11 +724,13 @@ export function PipelineSection({
                     checked={selectedIds?.includes(rowId) || false}
                     onChange={(e) => {
                       if (setSelectedIds) {
-                        setSelectedIds(
-                          e.target.checked
-                            ? [...selectedIds, rowId]
-                            : selectedIds.filter((id) => id !== rowId)
-                        );
+                        if (e.target.checked) {
+                          if (!selectedIds.includes(rowId)) {
+                            setSelectedIds([...selectedIds, rowId]);
+                          }
+                        } else {
+                          setSelectedIds(selectedIds.filter((id) => id !== rowId));
+                        }
                       }
                     }}
                     title="Select candidate for bulk actions"
@@ -498,15 +753,50 @@ export function PipelineSection({
                 <td style={{ padding: "16px 20px" }}>
                   <StatusBadge status={c.stage || c.status} />
                 </td>
-                <td style={{ padding: "16px 20px" }}>
-                  <div style={{ fontWeight: "700", color: COLORS.primary }} title={`Overall Rank: ${Number(c.overall_score || 0).toFixed(1)}%\nCV Fit: ${Number(c.cv_score || 0).toFixed(1)}%\nAssessments: ${Number(c.completion_score || 0).toFixed(1)}%`}>
-                    {c.overall_score !== undefined ? `${Number(c.overall_score || 0).toFixed(1)}%` : "-"}
+                <td style={{ padding: "16px 20px", minWidth: 120 }}>
+                  <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 8 }}>
+                    <div
+                      style={{ fontWeight: "700", color: COLORS.primary, marginRight: 8 }}
+                      title={`Overall Rank: ${Number(c.overall_score || 0).toFixed(1)}%\nCV Fit: ${Number(c.cv_score || 0).toFixed(1)}%\nAssessment Composite: ${Number(c.assessment_score || 0).toFixed(1)}%\nCompletion: ${Number(c.completion_score || 0).toFixed(1)}%`}
+                    >
+                      {c.overall_score !== undefined ? `${Number(c.overall_score || 0).toFixed(1)}%` : "-"}
+                    </div>
+                    <button
+                      style={{
+                        border: `1px solid ${explainDisabled ? "#d1d5db" : "#86efac"}`,
+                        backgroundColor: explainDisabled ? "#f8fafc" : "#f0fdf4",
+                        color: explainDisabled ? COLORS.textMuted : "#15803d",
+                        borderRadius: 8,
+                        padding: "5px 9px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: explainDisabled ? "not-allowed" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        flexShrink: 0,
+                      }}
+                      onClick={() => handleExplainScore && handleExplainScore(c)}
+                      disabled={explainDisabled}
+                      title={
+                        c.latest_match_id
+                          ? "Generate or open cached ranking explanation"
+                          : "Run CV match before generating explanation"
+                      }
+                    >
+                      {explainingCandidateId === c.candidate_id ? (
+                        <Loader2 className="spin" size={12} />
+                      ) : (
+                        <FileText size={12} />
+                      )}
+                      {explainingCandidateId === c.candidate_id ? "Preparing..." : "Explain"}
+                    </button>
                   </div>
                 </td>
                 <td style={{ padding: "16px 20px", minWidth: 220 }}>
                   {!c.has_history ? (
                     <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
-                      No previous AI matches.
+                      No CV match history yet.
                     </span>
                   ) : (
                     <div style={{ display: "grid", gap: 8 }}>
@@ -541,7 +831,7 @@ export function PipelineSection({
                             color: COLORS.textSecondary,
                           }}
                         >
-                          {c.history_count} attempt{c.history_count === 1 ? "" : "s"}
+                          {c.history_count} match{c.history_count === 1 ? "" : "es"}
                         </span>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -677,9 +967,24 @@ export function PipelineSection({
                 </td>
               </tr>
               );
-            })}
+            }))}
           </tbody>
         </table>
+      </div>
+      <div
+        style={{
+          padding: "12px 20px",
+          borderTop: `1px solid ${COLORS.borderColor}`,
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+        }}
+      >
+        <PaginationControls
+          page={pipelinePage}
+          totalPages={pipelineTotalPages}
+          onPageChange={onPipelinePageChange}
+        />
       </div>
     </div>
   );
@@ -756,7 +1061,7 @@ export function AIMatcherSection({
 
           {!selectedMatchCandidate ? (
             <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary, display: "flex", alignItems: "center", gap: 4 }}>
-              Pick a candidate from the pipeline using the <Brain size={14} color={COLORS.primary} /> button.
+              Pick a candidate from the list using the <Brain size={14} color={COLORS.primary} /> button under the 'Actions' column.
             </p>
           ) : (
             <>
