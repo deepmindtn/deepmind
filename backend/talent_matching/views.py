@@ -4,7 +4,6 @@ from hashlib import sha256
 
 import numpy as np
 from django.conf import settings
-from django.db.models import Count, Q
 from langchain_openai import ChatOpenAI
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -20,6 +19,7 @@ from assessments.models import CandidateAssignment
 from .models import CandidateCV, CandidateJobApplication, CVJobMatch, JobPosting
 from .serializers import (
     CandidateApplicationAttachSerializer,
+    CandidateBulkStatusUpdateSerializer,
     CandidateCVSerializer,
     CandidateCVUploadSerializer,
     CandidateJobApplicationSerializer,
@@ -259,13 +259,15 @@ class CandidateJobApplicationListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         recruitee = serializer.validated_data.get("recruitee")
         job = serializer.validated_data.get("job")
+        stage = serializer.validated_data.get("stage")
 
         if recruitee and recruitee.company_id != self.request.user.company_id:
             raise ValidationError({"recruitee": "Candidate not found in your company."})
         if job and job.company_id != self.request.user.company_id:
             raise ValidationError({"job": "Job not found in your company."})
 
-        serializer.save(created_by=self.request.user)
+        final_stage = stage if stage else (recruitee.status if recruitee else "pending")
+        serializer.save(created_by=self.request.user, stage=final_stage)
 
 
 class CandidateApplicationAttachView(APIView):
@@ -294,6 +296,7 @@ class CandidateApplicationAttachView(APIView):
             job=job,
             defaults={
                 "created_by": request.user,
+                "stage": candidate.status,
                 "source": data.get("source", ""),
                 "notes": data.get("notes", ""),
             },
@@ -324,6 +327,34 @@ class CandidateApplicationDetachView(APIView):
         application.job = None
         application.save(update_fields=["job", "updated_at"])
         return Response(CandidateJobApplicationSerializer(application).data)
+
+
+class CandidateBulkStatusUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def post(self, request):
+        serializer = CandidateBulkStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        candidate_ids = serializer.validated_data["candidate_ids"]
+        next_status = serializer.validated_data["status"]
+
+        qs = Recruitee.objects.filter(company=request.user.company, id__in=candidate_ids)
+        found_ids = {str(item.id) for item in qs.only("id")}
+        missing_ids = [str(candidate_id) for candidate_id in candidate_ids if str(candidate_id) not in found_ids]
+        if missing_ids:
+            raise ValidationError({"candidate_ids": f"Some candidates were not found: {', '.join(missing_ids)}"})
+
+        updated_count = qs.update(status=next_status)
+
+        CandidateJobApplication.objects.filter(recruitee__in=qs).update(stage=next_status)
+
+        return Response(
+            {
+                "updated_count": updated_count,
+                "status": next_status,
+            }
+        )
 
 
 class TalentMatchView(APIView):
@@ -547,6 +578,229 @@ class CandidateMatchHistoryView(APIView):
         )
 
 
+class CandidateGlobalMatchHistoryView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get(self, request, candidate_id):
+        candidate = Recruitee.objects.filter(
+            id=candidate_id,
+            company=request.user.company,
+        ).first()
+        if not candidate:
+            return Response({"detail": "Candidate not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        matches = (
+            CVJobMatch.objects.select_related("cv", "application", "job")
+            .filter(
+                application__recruitee_id=candidate_id,
+                application__recruitee__company=request.user.company,
+            )
+            .order_by("-created_at")
+        )
+
+        history = []
+        for match in matches:
+            breakdown = match.ranking_breakdown or {}
+            history.append(
+                {
+                    "id": match.id,
+                    "job_id": match.job_id,
+                    "job_title": match.job.title if match.job_id else "",
+                    "score": match.score,
+                    "fit_label": match.fit_label,
+                    "summary": match.summary,
+                    "created_at": match.created_at,
+                    "cv_id": match.cv_id,
+                    "cv_uploaded_at": match.cv.uploaded_at if match.cv_id else None,
+                    "scoring_components": {
+                        "embedding_score": breakdown.get("embedding_score"),
+                        "keyword_overlap_score": breakdown.get("keyword_overlap_score"),
+                        "llm_structured_score": breakdown.get("llm_structured_score"),
+                    },
+                }
+            )
+
+        latest = history[0] if history else None
+        return Response(
+            {
+                "candidate_id": candidate_id,
+                "count": len(history),
+                "latest_match_id": latest.get("id") if latest else None,
+                "history": history,
+            }
+        )
+
+
+class CandidateArchiveSnapshotView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    def get(self, request):
+        status_filter = request.query_params.get("status", "").strip()
+        requested_statuses = [
+            item.strip().lower()
+            for item in status_filter.split(",")
+            if item.strip()
+        ]
+        if not requested_statuses:
+            requested_statuses = ["hired", "rejected"]
+
+        allowed_statuses = {choice[0] for choice in Recruitee.STATUS_CHOICES}
+        statuses = [value for value in requested_statuses if value in allowed_statuses]
+        if not statuses:
+            statuses = ["hired", "rejected"]
+
+        candidates = Recruitee.objects.filter(
+            company=request.user.company,
+            status__in=statuses,
+        ).order_by("-updated_at", "-created_at")
+
+        snapshots = []
+        for candidate in candidates:
+            applications = list(
+                CandidateJobApplication.objects.select_related("job")
+                .filter(recruitee=candidate)
+                .order_by("-updated_at", "-created_at")
+            )
+            assignments = list(
+                CandidateAssignment.objects.select_related("template")
+                .filter(recruitee=candidate)
+                .order_by("-assigned_at")
+            )
+            matches = list(
+                CVJobMatch.objects.select_related("job", "cv", "application")
+                .filter(application__recruitee=candidate)
+                .order_by("-created_at")
+            )
+
+            timeline = [
+                {
+                    "type": "candidate_created",
+                    "occurred_at": candidate.created_at,
+                    "title": "Candidate profile created",
+                    "details": {
+                        "status": candidate.status,
+                        "position": candidate.position,
+                    },
+                }
+            ]
+
+            application_rows = []
+            for app in applications:
+                stage = app.stage or "pending"
+                application_rows.append(
+                    {
+                        "id": app.id,
+                        "job_id": app.job_id,
+                        "job_title": app.job.title if app.job_id else "",
+                        "stage": stage,
+                        "source": app.source,
+                        "notes": app.notes,
+                        "created_at": app.created_at,
+                        "updated_at": app.updated_at,
+                    }
+                )
+                timeline.append(
+                    {
+                        "type": "application_stage",
+                        "occurred_at": app.updated_at or app.created_at,
+                        "title": f"Application stage: {stage}",
+                        "details": {
+                            "application_id": app.id,
+                            "job_title": app.job.title if app.job_id else "",
+                            "source": app.source,
+                        },
+                    }
+                )
+
+            assessment_rows = []
+            for assignment in assignments:
+                assessment_rows.append(
+                    {
+                        "id": assignment.id,
+                        "template_code": assignment.template.code if assignment.template_id else "",
+                        "template_name": assignment.template.name if assignment.template_id else "",
+                        "status": assignment.status,
+                        "assigned_at": assignment.assigned_at,
+                        "completed_at": assignment.completed_at,
+                        "metrics": assignment.metrics,
+                        "ai_report": assignment.ai_report,
+                    }
+                )
+                timeline.append(
+                    {
+                        "type": "assessment",
+                        "occurred_at": assignment.completed_at or assignment.assigned_at,
+                        "title": (
+                            f"Assessment {assignment.template.code if assignment.template_id else assignment.id}: "
+                            f"{assignment.status}"
+                        ),
+                        "details": {
+                            "assignment_id": assignment.id,
+                            "template_name": assignment.template.name if assignment.template_id else "",
+                        },
+                    }
+                )
+
+            match_rows = []
+            for match in matches:
+                match_rows.append(
+                    {
+                        "id": match.id,
+                        "job_id": match.job_id,
+                        "job_title": match.job.title if match.job_id else "",
+                        "application_id": match.application_id,
+                        "cv_id": match.cv_id,
+                        "score": match.score,
+                        "fit_label": match.fit_label,
+                        "summary": match.summary,
+                        "created_at": match.created_at,
+                    }
+                )
+                timeline.append(
+                    {
+                        "type": "cv_match",
+                        "occurred_at": match.created_at,
+                        "title": f"CV match generated ({match.score:.1f}%)",
+                        "details": {
+                            "match_id": match.id,
+                            "job_title": match.job.title if match.job_id else "",
+                            "fit_label": match.fit_label,
+                        },
+                    }
+                )
+
+            timeline.sort(
+                key=lambda item: item.get("occurred_at") or candidate.created_at,
+                reverse=True,
+            )
+
+            latest_match = match_rows[0] if match_rows else None
+            snapshots.append(
+                {
+                    "candidate_id": str(candidate.id),
+                    "candidate_name": f"{candidate.first_name or ''} {candidate.last_name or ''}".strip() or candidate.email,
+                    "candidate_email": candidate.email,
+                    "position": candidate.position,
+                    "status": candidate.status,
+                    "created_at": candidate.created_at,
+                    "updated_at": candidate.updated_at,
+                    "latest_overall_score": latest_match.get("score") if latest_match else None,
+                    "applications": application_rows,
+                    "assessments": assessment_rows,
+                    "matches": match_rows,
+                    "timeline": timeline,
+                }
+            )
+
+        return Response(
+            {
+                "count": len(snapshots),
+                "statuses": statuses,
+                "items": snapshots,
+            }
+        )
+
+
 class CVJobMatchDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
@@ -577,113 +831,98 @@ class RankedPipelineView(APIView):
         except JobPosting.DoesNotExist:
             return Response({"detail": "Job not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        applications = (
-            CandidateJobApplication.objects.select_related("recruitee", "job")
-            .prefetch_related("matches")
-            .filter(job=job)
-        )
+        recruitees = Recruitee.objects.filter(
+            company=request.user.company,
+            job_applications__job=job,
+        ).distinct()
 
-        items = []
-        for app in applications:
-            history = list(app.matches.all())
-            latest_match = history[0] if history else None
-            history_count = len(history)
-            cv_score = latest_match.score if latest_match else 0.0
-
-            stats = CandidateAssignment.objects.filter(recruitee=app.recruitee).aggregate(
-                total=Count("id"),
-                completed=Count("id", filter=Q(status="COMPLETED")),
-            )
-            total = stats["total"] or 0
-            completed = stats["completed"] or 0
-            completion_score = round((completed / total) * 100, 2) if total > 0 else 0.0
-
-            # Simple quality proxy: completion ratio weighted by minimum completion threshold
-            quality_score = round(min(completion_score, 100.0), 2)
-            overall = round((0.6 * cv_score) + (0.2 * completion_score) + (0.2 * quality_score), 2)
-
-            candidate_name = f"{app.recruitee.first_name or ''} {app.recruitee.last_name or ''}".strip()
-            if not candidate_name:
-                candidate_name = app.recruitee.email
-
-            if latest_match and latest_match.ranking_breakdown:
-                analysis_summary = latest_match.ranking_breakdown.get("structured_analysis", {}).get("summary", "")
-            else:
-                analysis_summary = "No CV analysis has been run yet for this job/candidate pair."
-
-            explanation = (
-                f"CV fit {cv_score:.1f}, assessments completed {completed}/{total}, "
-                f"quality score {quality_score:.1f}. {analysis_summary}"
-            )
-
-            items.append(
-                {
-                    "application_id": app.id,
-                    "candidate_id": app.recruitee.id,
-                    "candidate_name": candidate_name,
-                    "candidate_email": app.recruitee.email,
-                    "stage": app.stage,
-                    "cv_score": cv_score,
-                    "completion_score": completion_score,
-                    "quality_score": quality_score,
-                    "overall_score": overall,
-                    "explanation": explanation,
-                    "history_count": history_count,
-                    "has_history": history_count > 0,
-                    "latest_match_id": latest_match.id if latest_match else None,
-                    "latest_fit_label": latest_match.fit_label if latest_match else "",
-                    "latest_summary": latest_match.summary if latest_match else "",
-                    "latest_matched_at": latest_match.created_at if latest_match else None,
-                }
-            )
-
+        items = _build_pipeline_items(recruitees)
         items.sort(key=lambda x: x["overall_score"], reverse=True)
         serializer = RankedPipelineItemSerializer(items, many=True)
         return Response(serializer.data)
+
 
 class GlobalRankedPipelineView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get(self, request):
-        candidates = Recruitee.objects.filter(company=request.user.company)
+        recruitees = Recruitee.objects.filter(company=request.user.company)
 
-        items = []
-        for candidate in candidates:
-            matches = list(CVJobMatch.objects.filter(application__recruitee=candidate).order_by("-created_at"))
-            latest_match = matches[0] if matches else None
-            history_count = len(matches)
-            cv_score = latest_match.score if latest_match else 0.0
-
-            stats = CandidateAssignment.objects.filter(recruitee=candidate).aggregate(
-                total=Count("id"),
-                completed=Count("id", filter=Q(status="COMPLETED")),
-            )
-            total = stats["total"] or 0
-            completed = stats["completed"] or 0
-            completion_score = round((completed / total) * 100, 2) if total > 0 else 0.0
-
-            quality_score = round(min(completion_score, 100.0), 2)
-            overall = round((0.6 * cv_score) + (0.2 * completion_score) + (0.2 * quality_score), 2)
-
-            candidate_name = f"{candidate.first_name or ''} {candidate.last_name or ''}".strip()
-            if not candidate_name:
-                candidate_name = candidate.email
-
-            items.append(
-                {
-                    "application_id": latest_match.application.id if latest_match else None,
-                    "candidate_id": str(candidate.id),
-                    "candidate_name": candidate_name,
-                    "candidate_email": candidate.email,
-                    "stage": latest_match.application.stage if latest_match else "new",
-                    "cv_score": cv_score,
-                    "completion_score": completion_score,
-                    "quality_score": quality_score,
-                    "overall_score": overall,
-                    "history_count": history_count,
-                    "has_history": history_count > 0,
-                }
-            )
-
+        items = _build_pipeline_items(recruitees)
         items.sort(key=lambda x: x["overall_score"], reverse=True)
-        return Response(items)
+        serializer = RankedPipelineItemSerializer(items, many=True)
+        return Response(serializer.data)
+
+def _build_pipeline_items(recruitees):
+    items = []
+    
+    for candidate in recruitees:
+        # Get all matches across all applications for this candidate.
+        history = list(CVJobMatch.objects.filter(application__recruitee=candidate).order_by('-created_at'))
+        latest_match = history[0] if history else None
+        history_count = len(history)
+        cv_score = latest_match.score if latest_match else 0.0
+
+        assignments = CandidateAssignment.objects.filter(recruitee=candidate)
+        total = assignments.count()
+        completed_assignments = [a for a in assignments if a.status == "COMPLETED"]
+        completed = len(completed_assignments)
+        completion_score = round((completed / total) * 100, 2) if total > 0 else 0.0
+
+        assessment_scores = []
+        ai_reports = []
+        for assignment in completed_assignments:
+            if assignment.metrics:
+                score = assignment.metrics.get("score")
+                if score is not None:
+                    assessment_scores.append(float(score))
+            if assignment.ai_report:
+                ai_reports.append(assignment.ai_report.strip())
+        
+        assessment_score = sum(assessment_scores) / len(assessment_scores) if assessment_scores else 0.0
+        assessment_score = round(assessment_score, 2)
+
+        overall = round((0.6 * cv_score) + (0.2 * completion_score) + (0.2 * assessment_score), 2)
+
+        candidate_name = f"{candidate.first_name or ''} {candidate.last_name or ''}".strip()
+        if not candidate_name:
+            candidate_name = candidate.email
+
+        if latest_match and latest_match.ranking_breakdown:
+            analysis_summary = latest_match.ranking_breakdown.get("structured_analysis", {}).get("summary", "")
+        else:
+            analysis_summary = "No CV analysis has been run yet for this candidate."
+            
+        combined_ai_report = " ".join(ai_reports)
+        
+        explanation_parts = [
+            f"CV fit {cv_score:.1f}, assessments completed {completed}/{total}, assessment score {assessment_score:.1f}.",
+            f"Match Summary: {analysis_summary}"
+        ]
+        if combined_ai_report:
+            explanation_parts.append(f"Assessment Insights: {combined_ai_report}")
+            
+        explanation = " ".join(explanation_parts)
+
+        items.append(
+            {
+                "candidate_id": candidate.id,
+                "candidate_name": candidate_name,
+                "candidate_email": candidate.email,
+                "position": candidate.position,
+                "stage": candidate.status,
+                "cv_score": cv_score,
+                "completion_score": completion_score,
+                "assessment_score": assessment_score,
+                "overall_score": overall,
+                "explanation": explanation,
+                "history_count": history_count,
+                "has_history": history_count > 0,
+                "latest_match_id": latest_match.id if latest_match else None,
+                "latest_fit_label": latest_match.fit_label if latest_match else "",
+                "latest_summary": latest_match.summary if latest_match else "",
+                "latest_matched_at": latest_match.created_at if latest_match else None,
+            }
+        )
+    return items
+

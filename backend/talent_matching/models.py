@@ -55,14 +55,12 @@ class CandidateCV(models.Model):
 
 class CandidateJobApplication(models.Model):
     STAGE_CHOICES = [
-        ("new", "New"),
-        ("shortlisted", "Shortlisted"),
-        ("assessment_pending", "Assessment Pending"),
-        ("assessment_completed", "Assessment Completed"),
-        ("interview", "Interview"),
-        ("offer", "Offer"),
-        ("rejected", "Rejected"),
+        ("pending", "Pending"),
+        ("invited", "Invited"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
         ("hired", "Hired"),
+        ("rejected", "Rejected"),
     ]
 
     recruitee = models.ForeignKey(
@@ -77,7 +75,7 @@ class CandidateJobApplication(models.Model):
         on_delete=models.SET_NULL,
         related_name="applications",
     )
-    stage = models.CharField(max_length=32, choices=STAGE_CHOICES, default="new")
+    stage = models.CharField(max_length=32, choices=STAGE_CHOICES, default="pending")
     notes = models.TextField(blank=True)
     source = models.CharField(max_length=64, blank=True)
     created_by = models.ForeignKey(

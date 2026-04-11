@@ -22,17 +22,21 @@ export function HistoryModal({
   setHistoryOpen,
   historyLoading,
   historyItems,
+  archiveLoading,
+  archiveItems,
   activeResult,
   historyDetailLoading,
   handleViewMatchDetail,
 }) {
+  const isArchiveView = !historyCandidate;
+
   return (
     <Modal
       open={historyOpen}
       title={
         historyCandidate
           ? `AI Match History - ${historyCandidate.name}`
-          : "AI Match History"
+          : "Archived Candidates Snapshot"
       }
       onClose={() => setHistoryOpen(false)}
       contentClassName="recruitment-match-modal-content"
@@ -42,7 +46,85 @@ export function HistoryModal({
         </button>
       }
     >
-      {historyLoading ? (
+      {isArchiveView ? (
+        archiveLoading ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.textSecondary }}>
+            <Loader2 className="spin" size={16} /> Loading archived candidates...
+          </div>
+        ) : archiveItems.length === 0 ? (
+          <p style={{ margin: 0, color: COLORS.textSecondary, fontSize: 13 }}>
+            No archived candidates (hired/rejected) found yet.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 12, maxHeight: "60vh", overflowY: "auto", paddingRight: 2 }}>
+            {archiveItems.map((item) => (
+              <div
+                key={item.candidate_id}
+                style={{
+                  border: `1px solid ${COLORS.borderColor}`,
+                  borderRadius: 10,
+                  padding: 12,
+                  backgroundColor: "white",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>
+                      {item.candidate_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: COLORS.textSecondary }}>
+                      {item.candidate_email}
+                    </div>
+                    <div style={{ fontSize: 12, color: COLORS.textSecondary }}>
+                      Role: {item.position || "Not specified"}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, textTransform: "capitalize", color: item.status === "hired" ? "#047857" : "#b91c1c" }}>
+                      {item.status}
+                    </div>
+                    <div style={{ fontSize: 11, color: COLORS.textSecondary }}>
+                      Last score: {item.latest_overall_score == null ? "-" : `${Number(item.latest_overall_score).toFixed(1)}%`}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 12, color: COLORS.textSecondary }}>
+                  Applications: {item.applications?.length || 0} | Assessments: {item.assessments?.length || 0} | Matches: {item.matches?.length || 0}
+                </div>
+
+                <div style={{ display: "grid", gap: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textPrimary }}>
+                    Timeline
+                  </div>
+                  {(item.timeline || []).map((event, idx) => (
+                    <div
+                      key={`${item.candidate_id}-${idx}`}
+                      style={{
+                        border: `1px solid ${COLORS.borderColor}`,
+                        borderRadius: 8,
+                        padding: "8px 10px",
+                        backgroundColor: "#f8fafc",
+                        fontSize: 12,
+                        color: COLORS.textSecondary,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: COLORS.textPrimary, marginBottom: 2 }}>
+                        {event.title}
+                      </div>
+                      <div>
+                        {event.occurred_at ? new Date(event.occurred_at).toLocaleString() : "-"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : historyLoading ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.textSecondary }}>
           <Loader2 className="spin" size={16} /> Loading history...
         </div>
@@ -788,6 +870,7 @@ export function CandidateFormModal({
   handleSaveCandidate,
   formData,
   setFormData,
+  jobs = [],
 }) {
   return (
     <Modal
@@ -840,14 +923,28 @@ export function CandidateFormModal({
           </div>
         </div>
         <div>
-          <label style={styles.label}>Position</label>
-          <input
+          <label style={styles.label}>Job</label>
+          <select
             style={styles.input}
-            value={formData.position}
-            onChange={(e) =>
-              setFormData({ ...formData, position: e.target.value })
-            }
-          />
+            value={formData.job_id || ""}
+            onChange={(e) => {
+              const selectedJob = jobs.find(
+                (job) => String(job.id) === String(e.target.value)
+              );
+              setFormData({
+                ...formData,
+                job_id: e.target.value,
+                position: selectedJob?.title || "",
+              });
+            }}
+          >
+            <option value="">Select a registered job</option>
+            {jobs.map((job) => (
+              <option key={job.id} value={job.id}>
+                {job.title}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label style={styles.label}>Status</label>
@@ -860,7 +957,8 @@ export function CandidateFormModal({
           >
             <option value="pending">Pending</option>
             <option value="invited">Invited</option>
-            <option value="interview">Interview</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
             <option value="hired">Hired</option>
             <option value="rejected">Rejected</option>
           </select>
