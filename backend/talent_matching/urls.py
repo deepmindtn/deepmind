@@ -2,10 +2,16 @@ from django.urls import path
 
 from .views import (
     CandidateApplicationAttachView,
+    CandidateArchiveSnapshotView,
+    CandidateBulkStatusUpdateView,
     CandidateApplicationDetachView,
     CandidateCVDeleteView,
+    CandidateGlobalMatchHistoryView,
     CandidateCVListView,
     CandidateMatchHistoryView,
+    CandidateScoreExplanationDetailView,
+    CandidateScoreExplanationGenerateView,
+    CandidateScoreExplanationHistoryView,
     CandidateCVSetActiveView,
     CandidateCVUploadView,
     CandidateJobApplicationListCreateView,
@@ -29,8 +35,29 @@ urlpatterns = [
     path("talent-matching/applications/", CandidateJobApplicationListCreateView.as_view(), name="tm-app-list-create"),
     path("talent-matching/applications/attach/", CandidateApplicationAttachView.as_view(), name="tm-app-attach"),
     path("talent-matching/applications/<int:pk>/detach/", CandidateApplicationDetachView.as_view(), name="tm-app-detach"),
+    path("talent-matching/applications/bulk-status/", CandidateBulkStatusUpdateView.as_view(), name="tm-app-bulk-status"),
     path("talent-matching/match/", TalentMatchView.as_view(), name="tm-match"),
     path("talent-matching/matches/<int:pk>/", CVJobMatchDetailView.as_view(), name="tm-match-detail"),
+    path(
+        "talent-matching/candidates/<uuid:candidate_id>/score-explanation/",
+        CandidateScoreExplanationGenerateView.as_view(),
+        name="tm-candidate-score-explanation-generate",
+    ),
+    path(
+        "talent-matching/candidates/<uuid:candidate_id>/score-explanations/",
+        CandidateScoreExplanationHistoryView.as_view(),
+        name="tm-candidate-score-explanation-history",
+    ),
+    path(
+        "talent-matching/score-explanations/<int:pk>/",
+        CandidateScoreExplanationDetailView.as_view(),
+        name="tm-candidate-score-explanation-detail",
+    ),
+    path(
+        "talent-matching/candidates/<uuid:candidate_id>/match-history/",
+        CandidateGlobalMatchHistoryView.as_view(),
+        name="tm-candidate-global-match-history",
+    ),
     path(
         "talent-matching/jobs/<int:job_id>/candidates/<uuid:candidate_id>/match-history/",
         CandidateMatchHistoryView.as_view(),
@@ -38,4 +65,5 @@ urlpatterns = [
     ),
     path("talent-matching/jobs/<int:job_id>/pipeline/", RankedPipelineView.as_view(), name="tm-ranked-pipeline"),
     path("talent-matching/pipeline/", GlobalRankedPipelineView.as_view(), name="tm-global-pipeline"),
+    path("talent-matching/archive/", CandidateArchiveSnapshotView.as_view(), name="tm-candidate-archive"),
 ]

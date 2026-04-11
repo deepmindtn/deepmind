@@ -7,7 +7,6 @@ import {
   JobOfferingsSection,
   PipelineSection,
   RecruitmentMatchHeader,
-  SearchBar,
 } from "../../components/recruitment-match/Sections";
 import {
   AssignAssessmentModal,
@@ -18,9 +17,12 @@ import {
   HistoryModal,
   JobFormModal,
   ResultModal,
+  ScoreExplainModal,
   ToastNotification,
   ViewAssignmentsModal,
 } from "../../components/recruitment-match/Modals";
+
+const PAGE_SIZE = 5;
 
 // -----------------------
 // Main Component
@@ -38,6 +40,7 @@ export default function RecruitmentMatch() {
   const [toast, setToast] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [q, setQ] = useState("");
+  const [pipelineStatusFilter, setPipelineStatusFilter] = useState("all");
 
   // Selection States
   const [selectedIds, setSelectedIds] = useState([]);
@@ -51,6 +54,7 @@ export default function RecruitmentMatch() {
     first_name: "",
     last_name: "",
     position: "",
+    job_id: "",
     status: "pending",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -82,13 +86,33 @@ export default function RecruitmentMatch() {
   const [historyCandidate, setHistoryCandidate] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [archiveItems, setArchiveItems] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [archiveQuery, setArchiveQuery] = useState("");
+  const [archiveStatusFilter, setArchiveStatusFilter] = useState("hired,rejected");
+  const [archivePage, setArchivePage] = useState(1);
+  const [archiveTotalPages, setArchiveTotalPages] = useState(1);
+  const [archiveTotalCount, setArchiveTotalCount] = useState(0);
   const [historyDetailLoading, setHistoryDetailLoading] = useState(false);
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [resultModalFromHistory, setResultModalFromHistory] = useState(false);
+  const [scoreExplainOpen, setScoreExplainOpen] = useState(false);
+  const [scoreExplainCandidate, setScoreExplainCandidate] = useState(null);
+  const [scoreExplainLoading, setScoreExplainLoading] = useState(false);
+  const [scoreExplainDetailLoading, setScoreExplainDetailLoading] = useState(false);
+  const [scoreExplainHistory, setScoreExplainHistory] = useState([]);
+  const [activeScoreExplain, setActiveScoreExplain] = useState(null);
+  const [explainingCandidateId, setExplainingCandidateId] = useState(null);
 
   // Talent Matching Job States
   const [jobs, setJobs] = useState([]);
+  const [allJobs, setAllJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsQuery, setJobsQuery] = useState("");
+  const [jobsStatusFilter, setJobsStatusFilter] = useState("all");
+  const [jobsPage, setJobsPage] = useState(1);
+  const [jobsTotalPages, setJobsTotalPages] = useState(1);
+  const [jobsTotalCount, setJobsTotalCount] = useState(0);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [jobFormOpen, setJobFormOpen] = useState(false);
   const [jobFormMode, setJobFormMode] = useState("create");
@@ -101,6 +125,9 @@ export default function RecruitmentMatch() {
   });
   const [pipelineRankings, setPipelineRankings] = useState([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [pipelinePage, setPipelinePage] = useState(1);
+  const [pipelineTotalPages, setPipelineTotalPages] = useState(1);
+  const [pipelineTotalCount, setPipelineTotalCount] = useState(0);
   const [cvManagerOpen, setCvManagerOpen] = useState(false);
   const [cvManagerCandidate, setCvManagerCandidate] = useState(null);
   const [candidateCvs, setCandidateCvs] = useState([]);
@@ -145,73 +172,201 @@ export default function RecruitmentMatch() {
     }
   }, [API_BASE, authHeader]);
 
-  const fetchJobs = useCallback(async () => {
-    setJobsLoading(true);
+  const fetchJobs = useCallback(
+    async ({ page = 1, query = "", status = "all" } = {}) => {
+      setJobsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          page_size: String(PAGE_SIZE),
+        });
+        if (query.trim()) {
+          params.set("q", query.trim());
+        }
+        if (status && status !== "all") {
+          params.set("status", status);
+        }
+
+        const res = await fetch(`${API_BASE}/api/talent-matching/jobs/?${params.toString()}`, {
+          headers: authHeader,
+        });
+        if (!res.ok) throw new Error("Failed to fetch jobs");
+        const data = await res.json();
+        const results = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.results)
+            ? data.results
+            : [];
+
+        setJobs(results);
+        setJobsTotalCount(Number(data?.count) || results.length || 0);
+        setJobsTotalPages(Math.max(Number(data?.total_pages) || 1, 1));
+      } catch (e) {
+        console.error(e);
+        setJobs([]);
+        setJobsTotalCount(0);
+        setJobsTotalPages(1);
+        setToast({ message: "Failed to load job offerings", type: "error" });
+      } finally {
+        setJobsLoading(false);
+      }
+    },
+    [API_BASE, authHeader]
+  );
+
+  const fetchAllJobs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/talent-matching/jobs/`, {
+      const res = await fetch(`${API_BASE}/api/talent-matching/jobs/?all=true`, {
         headers: authHeader,
       });
-      if (!res.ok) throw new Error("Failed to fetch jobs");
+      if (!res.ok) {
+        throw new Error("Failed to fetch full jobs list");
+      }
       const data = await res.json();
-      setJobs(Array.isArray(data) ? data : []);
+      setAllJobs(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
-      setToast({ message: "Failed to load job offerings", type: "error" });
-    } finally {
-      setJobsLoading(false);
+      setAllJobs([]);
     }
   }, [API_BASE, authHeader]);
 
-  const fetchRankedPipeline = useCallback(async (jobId) => {
-    setPipelineLoading(true);
-    try {
-      const url = jobId ? `${API_BASE}/api/talent-matching/jobs/${jobId}/pipeline/` : `${API_BASE}/api/talent-matching/pipeline/`;
-      const res = await fetch(url, { headers: authHeader });
-      if (!res.ok) throw new Error("Failed to load ranked pipeline");
-      const data = await res.json();
-      setPipelineRankings(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
-      setPipelineRankings([]);
-      setToast({ message: "Failed to load rankings", type: "error" });
-    } finally {
-      setPipelineLoading(false);
-    }
-  }, [API_BASE, authHeader]);
+  const fetchRankedPipeline = useCallback(
+    async ({ page = 1, query = "", status = "all", jobId = "" } = {}) => {
+      setPipelineLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          page_size: String(PAGE_SIZE),
+        });
+        if (query.trim()) {
+          params.set("q", query.trim());
+        }
+        if (status && status !== "all") {
+          params.set("status", status);
+        }
+        if (jobId) {
+          params.set("job_id", String(jobId));
+        }
+
+        const url = `${API_BASE}/api/talent-matching/pipeline/?${params.toString()}`;
+        const res = await fetch(url, { headers: authHeader });
+        if (!res.ok) throw new Error("Failed to load ranked pipeline");
+        const data = await res.json();
+        const results = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.results)
+            ? data.results
+            : [];
+
+        setPipelineRankings(results);
+        setPipelineTotalCount(Number(data?.count) || results.length || 0);
+        setPipelineTotalPages(Math.max(Number(data?.total_pages) || 1, 1));
+      } catch (e) {
+        console.error(e);
+        setPipelineRankings([]);
+        setPipelineTotalCount(0);
+        setPipelineTotalPages(1);
+        setToast({ message: "Failed to load rankings", type: "error" });
+      } finally {
+        setPipelineLoading(false);
+      }
+    },
+    [API_BASE, authHeader]
+  );
+
+  const fetchArchiveSnapshots = useCallback(
+    async ({ page = 1, query = "", status = "hired,rejected" } = {}) => {
+      setArchiveLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          page_size: String(PAGE_SIZE),
+        });
+        if (query.trim()) {
+          params.set("q", query.trim());
+        }
+        if (status.trim()) {
+          params.set("status", status.trim());
+        }
+
+        const res = await fetch(`${API_BASE}/api/talent-matching/archive/?${params.toString()}`, {
+          headers: authHeader,
+        });
+        if (!res.ok) throw new Error("Failed to load archive snapshots");
+        const data = await res.json();
+
+        const results = Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+        setArchiveItems(results);
+        setArchiveTotalCount(Number(data?.count) || results.length || 0);
+        setArchiveTotalPages(Math.max(Number(data?.total_pages) || 1, 1));
+      } catch (e) {
+        console.error(e);
+        setArchiveItems([]);
+        setArchiveTotalCount(0);
+        setArchiveTotalPages(1);
+        setToast({ message: "Failed to load archive snapshots.", type: "error" });
+      } finally {
+        setArchiveLoading(false);
+      }
+    },
+    [API_BASE, authHeader]
+  );
 
   useEffect(() => {
     fetchCandidates();
-    fetchJobs();
-    fetchRankedPipeline(null); // Fetch global pipeline on load
-  }, [fetchCandidates, fetchJobs, fetchRankedPipeline]);
+    fetchAllJobs();
+  }, [fetchCandidates, fetchAllJobs]);
+
+  useEffect(() => {
+    fetchJobs({ page: jobsPage, query: jobsQuery, status: jobsStatusFilter });
+  }, [fetchJobs, jobsPage, jobsQuery, jobsStatusFilter]);
+
+  useEffect(() => {
+    fetchRankedPipeline({
+      page: pipelinePage,
+      query: q,
+      status: pipelineStatusFilter,
+      jobId: selectedJobId,
+    });
+  }, [fetchRankedPipeline, pipelinePage, q, pipelineStatusFilter, selectedJobId]);
+
+  useEffect(() => {
+    if (historyOpen && !historyCandidate) {
+      fetchArchiveSnapshots({
+        page: archivePage,
+        query: archiveQuery,
+        status: archiveStatusFilter,
+      });
+    }
+  }, [
+    historyOpen,
+    historyCandidate,
+    archivePage,
+    archiveQuery,
+    archiveStatusFilter,
+    fetchArchiveSnapshots,
+  ]);
 
   useEffect(() => {
     if (!selectedJobId) {
       setJobDescription("");
-      setHistoryOpen(false);
-      setHistoryCandidate(null);
-      setHistoryItems([]);
-      setResults([]);
-      setActiveResultId(null);
-      setResultModalOpen(false);
-      setResultModalFromHistory(false);
-      fetchRankedPipeline(null);
       return;
     }
-    fetchRankedPipeline(selectedJobId);
-    setHistoryOpen(false);
-    setHistoryCandidate(null);
-    setHistoryItems([]);
-    setResults([]);
-    setActiveResultId(null);
-    setResultModalOpen(false);
-    setResultModalFromHistory(false);
 
-    const selected = jobs.find(
+    const selected = allJobs.find(
       (job) => String(job.id) === String(selectedJobId)
     );
     setJobDescription(selected?.description || "");
-  }, [selectedJobId, jobs, fetchRankedPipeline]);
+  }, [selectedJobId, allJobs]);
+
+  useEffect(() => {
+    setPipelinePage(1);
+  }, [selectedJobId]);
 
   const normalizeMatchResult = ({
     payload,
@@ -294,19 +449,15 @@ export default function RecruitmentMatch() {
   };
 
   const handleOpenMatchHistory = async (candidate) => {
-    if (!selectedJobId) {
-      setToast({ message: "Select a job first.", type: "error" });
-      return;
-    }
-
     setHistoryCandidate(candidate);
     setHistoryItems([]);
+    setArchiveItems([]);
     setHistoryLoading(true);
     setHistoryOpen(true);
 
     try {
       const res = await fetch(
-        `${API_BASE}/api/talent-matching/jobs/${selectedJobId}/candidates/${candidate.id}/match-history/`,
+        `${API_BASE}/api/talent-matching/candidates/${candidate.id}/match-history/`,
         { headers: authHeader }
       );
       if (!res.ok) throw new Error("Failed to load match history");
@@ -318,6 +469,88 @@ export default function RecruitmentMatch() {
       setToast({ message: "Failed to load match history.", type: "error" });
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const handleOpenArchiveHistory = async () => {
+    setHistoryCandidate(null);
+    setHistoryItems([]);
+    setArchiveItems([]);
+    setArchivePage(1);
+    setHistoryOpen(true);
+  };
+
+  const handleExplainScore = async (candidateRow) => {
+    if (!candidateRow?.candidate_id) {
+      return;
+    }
+
+    const candidatePayload = {
+      id: candidateRow.candidate_id,
+      name: candidateRow.candidate_name,
+      candidate_name: candidateRow.candidate_name,
+      candidate_email: candidateRow.candidate_email,
+      position: candidateRow.position,
+    };
+
+    setScoreExplainCandidate(candidatePayload);
+    setScoreExplainOpen(true);
+    setScoreExplainLoading(true);
+    setScoreExplainDetailLoading(false);
+    setScoreExplainHistory([]);
+    setActiveScoreExplain(null);
+    setExplainingCandidateId(candidateRow.candidate_id);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/candidates/${candidateRow.candidate_id}/score-explanation/`,
+        {
+          method: "POST",
+          headers: authHeader,
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || "Failed to generate ranking explanation.");
+      }
+
+      const history = Array.isArray(data?.history) ? data.history : [];
+      setScoreExplainHistory(history);
+      setActiveScoreExplain(data?.report || null);
+
+      if (!data?.cached) {
+        setToast({ message: "Ranking explanation generated.", type: "success" });
+      }
+    } catch (e) {
+      console.error(e);
+      setScoreExplainOpen(false);
+      setToast({ message: e.message || "Failed to generate ranking explanation.", type: "error" });
+    } finally {
+      setScoreExplainLoading(false);
+      setExplainingCandidateId(null);
+    }
+  };
+
+  const handleOpenScoreExplainHistoryItem = async (reportId) => {
+    if (!reportId) {
+      return;
+    }
+    setScoreExplainDetailLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/talent-matching/score-explanations/${reportId}/`, {
+        headers: authHeader,
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load explanation history item.");
+      }
+      const data = await res.json();
+      setActiveScoreExplain(data);
+    } catch (e) {
+      console.error(e);
+      setToast({ message: "Failed to load explanation history item.", type: "error" });
+    } finally {
+      setScoreExplainDetailLoading(false);
     }
   };
 
@@ -372,7 +605,9 @@ export default function RecruitmentMatch() {
         message: isEdit ? "Job offering updated." : "Job offering created.",
         type: "success",
       });
-      await fetchJobs();
+      await fetchJobs({ page: 1, query: jobsQuery, status: jobsStatusFilter });
+      await fetchAllJobs();
+      setJobsPage(1);
       setSelectedJobId(String(saved.id));
       setJobDescription(saved.description || "");
     } catch (e) {
@@ -394,9 +629,18 @@ export default function RecruitmentMatch() {
 
       if (String(selectedJobId) === String(jobId)) {
         setSelectedJobId("");
-        setPipelineRankings([]);
+        setJobDescription("");
       }
-      await fetchJobs();
+      await Promise.all([
+        fetchJobs({ page: jobsPage, query: jobsQuery, status: jobsStatusFilter }),
+        fetchAllJobs(),
+        fetchRankedPipeline({
+          page: pipelinePage,
+          query: q,
+          status: pipelineStatusFilter,
+          jobId: selectedJobId,
+        }),
+      ]);
       setToast({ message: "Job offering deleted.", type: "success" });
     } catch (e) {
       console.error(e);
@@ -576,37 +820,18 @@ export default function RecruitmentMatch() {
         cvManagerCandidate.id,
         selectedMatchCandidate?.id === cvManagerCandidate.id
       );
-      if (selectedJobId) {
-        await fetchRankedPipeline(selectedJobId);
-      }
+      await fetchRankedPipeline({
+        page: pipelinePage,
+        query: q,
+        status: pipelineStatusFilter,
+        jobId: selectedJobId,
+      });
       setToast({ message: "CV deleted.", type: "success" });
     } catch (e) {
       console.error(e);
       setToast({ message: "Failed to delete CV.", type: "error" });
     } finally {
       setCvActionLoading(false);
-    }
-  };
-
-  const handleDetachCandidateFromJob = async (applicationId, candidateName) => {
-    if (!selectedJobId || !applicationId) return;
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/talent-matching/applications/${applicationId}/detach/`,
-        {
-          method: "POST",
-          headers: authHeader,
-        }
-      );
-      if (!res.ok) throw new Error("Failed to detach candidate");
-      await fetchRankedPipeline(selectedJobId);
-      setToast({
-        message: `${candidateName} unassigned from selected job.`,
-        type: "success",
-      });
-    } catch (e) {
-      console.error(e);
-      setToast({ message: "Failed to unassign candidate.", type: "error" });
     }
   };
 
@@ -621,48 +846,37 @@ export default function RecruitmentMatch() {
     setToast({ message: `CV #${cv.id} selected for match.`, type: "success" });
   };
 
-  const handleAttachCandidateToJob = async (candidate) => {
-    if (!selectedJobId) {
-      setToast({ message: "Select a job first.", type: "error" });
-      return;
-    }
+  const filtered = pipelineRankings;
+
+  const handleChangeStatus = async (newStatus) => {
+    if (!selectedIds.length) return;
     try {
-      const res = await fetch(`${API_BASE}/api/talent-matching/applications/attach/`, {
+      const res = await fetch(`${API_BASE}/api/talent-matching/applications/bulk-status/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({
-          candidate_id: candidate.id,
-          job_id: Number(selectedJobId),
-          source: "hr_manual",
+          candidate_ids: selectedIds.filter((id) => id),
+          status: newStatus,
         }),
       });
-      if (!res.ok) throw new Error("Failed to attach candidate");
-      await fetchRankedPipeline(selectedJobId);
-      setToast({ message: `${candidate.name} attached to selected job.`, type: "success" });
+      if (!res.ok) throw new Error("Failed to change status");
+      setToast({ message: "Status updated successfully.", type: "success" });
+      await Promise.all([
+        fetchCandidates(),
+        fetchRankedPipeline({
+          page: pipelinePage,
+          query: q,
+          status: pipelineStatusFilter,
+          jobId: selectedJobId,
+        }),
+      ]);
     } catch (e) {
       console.error(e);
-      setToast({ message: "Failed to attach candidate.", type: "error" });
+      setToast({ message: "Failed to update status", type: "error" });
     }
   };
 
-  const rankingByCandidateId = pipelineRankings.reduce((acc, item) => {
-    acc[item.candidate_id] = item;
-    return acc;
-  }, {});
-
-  const filtered = candidates
-    .filter(
-      (c) =>
-        c.name.toLowerCase().includes(q.toLowerCase()) ||
-        c.position.toLowerCase().includes(q.toLowerCase())
-    )
-    .sort((a, b) => {
-      const scoreA = rankingByCandidateId[a.id]?.overall_score ?? -1;
-      const scoreB = rankingByCandidateId[b.id]?.overall_score ?? -1;
-      return scoreB - scoreA;
-    });
-
-  const selectedJob = jobs.find(
+  const selectedJob = allJobs.find(
     (job) => String(job.id) === String(selectedJobId)
   );
 
@@ -675,13 +889,6 @@ export default function RecruitmentMatch() {
   const activeGaps = activeStructured?.gaps || [];
   const activeRecommendations = activeStructured?.recommendations || [];
   const activeDimensions = activeStructured?.dimensions || [];
-
-  const openBulkAssignModal = () => {
-    if (selectedIds.length === 0) return;
-    setAssignRow(null);
-    setSelectedCodes([]);
-    setAssignOpen(true);
-  };
 
   const parseCSV = (str) => {
     const arr = [];
@@ -750,7 +957,15 @@ export default function RecruitmentMatch() {
         }
       }
       setToast({ message: `Successfully imported ${count} candidates.`, type: "success" });
-      fetchCandidates();
+      await Promise.all([
+        fetchCandidates(),
+        fetchRankedPipeline({
+          page: pipelinePage,
+          query: q,
+          status: pipelineStatusFilter,
+          jobId: selectedJobId,
+        }),
+      ]);
     };
     reader.readAsText(file);
     e.target.value = null;
@@ -797,7 +1012,9 @@ export default function RecruitmentMatch() {
         } catch(err) { console.error(err); }
       }
       setToast({ message: `Successfully imported ${count} jobs.`, type: "success" });
-      fetchJobs();
+      await fetchJobs({ page: 1, query: jobsQuery, status: jobsStatusFilter });
+      await fetchAllJobs();
+      setJobsPage(1);
     };
     reader.readAsText(file);
     e.target.value = null;
@@ -809,6 +1026,11 @@ export default function RecruitmentMatch() {
       setToast({ message: "Email and Name are required.", type: "error" });
       return;
     }
+    if (!isEditing && !formData.job_id) {
+      setToast({ message: "Please select a job for this candidate.", type: "error" });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const method = isEditing ? "PUT" : "POST";
@@ -816,19 +1038,59 @@ export default function RecruitmentMatch() {
         ? `${API_BASE}/api/recruitment/candidates/${formData.id}/`
         : `${API_BASE}/api/recruitment/candidates/`;
 
+      const selectedJobForCandidate = allJobs.find(
+        (job) => String(job.id) === String(formData.job_id)
+      );
+      const payload = {
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        position: selectedJobForCandidate?.title || formData.position || "",
+        status: formData.status,
+      };
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Failed to save candidate");
 
-      await fetchCandidates();
+      const savedCandidate = await res.json();
+
+      let attachFailed = false;
+      if (formData.job_id) {
+        const attachRes = await fetch(`${API_BASE}/api/talent-matching/applications/attach/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({
+            candidate_id: savedCandidate.id || formData.id,
+            job_id: Number(formData.job_id),
+            source: "candidate_form",
+          }),
+        });
+
+        attachFailed = !attachRes.ok;
+      }
+
+      await Promise.all([
+        fetchCandidates(),
+        fetchRankedPipeline({
+          page: pipelinePage,
+          query: q,
+          status: pipelineStatusFilter,
+          jobId: selectedJobId,
+        }),
+      ]);
       setFormOpen(false);
       setToast({
-        message: isEditing ? "Candidate updated!" : "Candidate added!",
-        type: "success",
+        message: attachFailed
+          ? "Candidate saved, but linking to the selected job failed."
+          : isEditing
+            ? "Candidate updated!"
+            : "Candidate added!",
+        type: attachFailed ? "error" : "success",
       });
     } catch {
       setToast({ message: "Error saving candidate.", type: "error" });
@@ -857,6 +1119,15 @@ export default function RecruitmentMatch() {
         setSelectedMatchCv(null);
         setSelectedCandidateCvs([]);
       }
+        await Promise.all([
+          fetchCandidates(),
+          fetchRankedPipeline({
+            page: pipelinePage,
+            query: q,
+            status: pipelineStatusFilter,
+            jobId: selectedJobId,
+          }),
+        ]);
       setDeleteOpen(false);
       setToast({ message: "Candidate removed.", type: "success" });
     } catch {
@@ -874,6 +1145,7 @@ export default function RecruitmentMatch() {
       first_name: c.first_name,
       last_name: c.last_name,
       position: c.position,
+      job_id: allJobs.find((job) => (job.title || "") === (c.position || ""))?.id || "",
       status: c.status,
     });
     setFormOpen(true);
@@ -887,6 +1159,7 @@ export default function RecruitmentMatch() {
       first_name: "",
       last_name: "",
       position: "",
+      job_id: "",
       status: "pending",
     });
     setFormOpen(true);
@@ -1024,7 +1297,12 @@ export default function RecruitmentMatch() {
       setResultModalFromHistory(false);
       setResultModalOpen(true);
 
-      await fetchRankedPipeline(selectedJobId);
+      await fetchRankedPipeline({
+        page: pipelinePage,
+        query: q,
+        status: pipelineStatusFilter,
+        jobId: selectedJobId,
+      });
       setToast({ message: "Match analysis complete.", type: "success" });
     } catch (err) {
       console.error(err);
@@ -1039,14 +1317,25 @@ export default function RecruitmentMatch() {
       <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
       <div className="main-wrapper-card" style={styles.mainWrapperCard}>
-        <RecruitmentMatchHeader
-          selectedIds={selectedIds}
-          openBulkAssignModal={openBulkAssignModal}
-        />
+        <RecruitmentMatchHeader />
 
         <JobOfferingsSection
           jobsLoading={jobsLoading}
           jobs={jobs}
+          jobsTotalCount={jobsTotalCount}
+          jobsQuery={jobsQuery}
+          setJobsQuery={(next) => {
+            setJobsQuery(next);
+            setJobsPage(1);
+          }}
+          jobsStatusFilter={jobsStatusFilter}
+          setJobsStatusFilter={(next) => {
+            setJobsStatusFilter(next);
+            setJobsPage(1);
+          }}
+          jobsPage={jobsPage}
+          jobsTotalPages={jobsTotalPages}
+          onJobsPageChange={setJobsPage}
           selectedJob={selectedJob}
           selectedJobId={selectedJobId}
           setSelectedJobId={setSelectedJobId}
@@ -1056,15 +1345,27 @@ export default function RecruitmentMatch() {
           handleJobCsvUpload={handleJobCsvUpload}
         />
 
-        <SearchBar q={q} setQ={setQ} />
+        {/* Search + status controls moved into PipelineSection header (see Sections.jsx) */}
 
         <PipelineSection
-          selectedJob={selectedJob}
           selectedMatchCandidate={selectedMatchCandidate}
-          selectedJobId={selectedJobId}
           pipelineLoading={pipelineLoading}
+          pipelineTotalCount={pipelineTotalCount}
+          pipelinePage={pipelinePage}
+          pipelineTotalPages={pipelineTotalPages}
+          onPipelinePageChange={setPipelinePage}
+          q={q}
+          setQ={(next) => {
+            setQ(next);
+            setPipelinePage(1);
+          }}
+          pipelineStatusFilter={pipelineStatusFilter}
+          setPipelineStatusFilter={(next) => {
+            setPipelineStatusFilter(next);
+            setPipelinePage(1);
+          }}
+          openHistory={handleOpenArchiveHistory}
           filtered={filtered}
-          rankingByCandidateId={rankingByCandidateId}
           handleToggleMatchCandidate={handleToggleMatchCandidate}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
@@ -1076,13 +1377,14 @@ export default function RecruitmentMatch() {
           setSelectedCodes={setSelectedCodes}
           setAssignOpen={setAssignOpen}
           openCvManager={openCvManager}
-          handleAttachCandidateToJob={handleAttachCandidateToJob}
-          handleDetachCandidateFromJob={handleDetachCandidateFromJob}
           openEditModal={openEditModal}
           setDeleteId={setDeleteId}
           setDeleteOpen={setDeleteOpen}
+          handleExplainScore={handleExplainScore}
+          explainingCandidateId={explainingCandidateId}
           handleCandidateCsvUpload={handleCandidateCsvUpload}
           openAddModal={openAddModal}
+          handleChangeStatus={handleChangeStatus}
         />
 
         <AIMatcherSection
@@ -1109,6 +1411,22 @@ export default function RecruitmentMatch() {
         setHistoryOpen={setHistoryOpen}
         historyLoading={historyLoading}
         historyItems={historyItems}
+        archiveLoading={archiveLoading}
+        archiveItems={archiveItems}
+        archiveQuery={archiveQuery}
+        setArchiveQuery={(next) => {
+          setArchiveQuery(next);
+          setArchivePage(1);
+        }}
+        archiveStatusFilter={archiveStatusFilter}
+        setArchiveStatusFilter={(next) => {
+          setArchiveStatusFilter(next);
+          setArchivePage(1);
+        }}
+        archivePage={archivePage}
+        archiveTotalPages={archiveTotalPages}
+        archiveTotalCount={archiveTotalCount}
+        onArchivePageChange={setArchivePage}
         activeResult={activeResult}
         historyDetailLoading={historyDetailLoading}
         handleViewMatchDetail={handleViewMatchDetail}
@@ -1127,6 +1445,17 @@ export default function RecruitmentMatch() {
         activeRecommendations={activeRecommendations}
         activeDimensions={activeDimensions}
         activeStructured={activeStructured}
+      />
+
+      <ScoreExplainModal
+        scoreExplainOpen={scoreExplainOpen}
+        setScoreExplainOpen={setScoreExplainOpen}
+        scoreExplainCandidate={scoreExplainCandidate}
+        scoreExplainLoading={scoreExplainLoading}
+        scoreExplainDetailLoading={scoreExplainDetailLoading}
+        scoreExplainHistory={scoreExplainHistory}
+        activeScoreExplain={activeScoreExplain}
+        onOpenScoreExplainHistoryItem={handleOpenScoreExplainHistoryItem}
       />
 
       <JobFormModal
@@ -1172,6 +1501,7 @@ export default function RecruitmentMatch() {
         handleSaveCandidate={handleSaveCandidate}
         formData={formData}
         setFormData={setFormData}
+        jobs={allJobs}
       />
 
       <DeleteCandidateModal

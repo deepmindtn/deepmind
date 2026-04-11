@@ -5,7 +5,13 @@ from rest_framework import serializers
 
 from accounts.models import Recruitee
 
-from .models import CandidateCV, CandidateJobApplication, CVJobMatch, JobPosting
+from .models import (
+    CandidateCV,
+    CandidateJobApplication,
+    CandidateScoreExplanation,
+    CVJobMatch,
+    JobPosting,
+)
 
 
 class JobPostingSerializer(serializers.ModelSerializer):
@@ -155,14 +161,14 @@ class TalentMatchRequestSerializer(serializers.Serializer):
 
 
 class RankedPipelineItemSerializer(serializers.Serializer):
-    application_id = serializers.IntegerField()
     candidate_id = serializers.UUIDField()
     candidate_name = serializers.CharField()
     candidate_email = serializers.EmailField()
+    position = serializers.CharField(allow_blank=True, required=False)
     stage = serializers.CharField()
     cv_score = serializers.FloatField()
     completion_score = serializers.FloatField()
-    quality_score = serializers.FloatField()
+    assessment_score = serializers.FloatField()
     overall_score = serializers.FloatField()
     explanation = serializers.CharField()
     history_count = serializers.IntegerField()
@@ -171,6 +177,10 @@ class RankedPipelineItemSerializer(serializers.Serializer):
     latest_fit_label = serializers.CharField(allow_blank=True)
     latest_summary = serializers.CharField(allow_blank=True)
     latest_matched_at = serializers.DateTimeField(allow_null=True)
+    completed_assessments = serializers.IntegerField()
+    total_assessments = serializers.IntegerField()
+    latest_explanation_id = serializers.IntegerField(allow_null=True)
+    explanation_count = serializers.IntegerField()
 
 
 class CandidateApplicationAttachSerializer(serializers.Serializer):
@@ -178,3 +188,63 @@ class CandidateApplicationAttachSerializer(serializers.Serializer):
     job_id = serializers.IntegerField()
     source = serializers.CharField(required=False, allow_blank=True)
     notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class CandidateBulkStatusUpdateSerializer(serializers.Serializer):
+    candidate_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+    )
+    status = serializers.ChoiceField(choices=[choice[0] for choice in Recruitee.STATUS_CHOICES])
+
+    def validate_candidate_ids(self, value):
+        # Keep deterministic order while removing duplicates.
+        seen = set()
+        deduped = []
+        for candidate_id in value:
+            key = str(candidate_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(candidate_id)
+        return deduped
+
+
+class CandidateScoreExplanationListSerializer(serializers.ModelSerializer):
+    latest_match_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CandidateScoreExplanation
+        fields = [
+            "id",
+            "latest_match_id",
+            "cv_score",
+            "assessment_score",
+            "completion_score",
+            "overall_score",
+            "completed_assessments",
+            "total_assessments",
+            "created_at",
+        ]
+
+
+class CandidateScoreExplanationDetailSerializer(serializers.ModelSerializer):
+    latest_match_id = serializers.IntegerField(read_only=True)
+    candidate_id = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        model = CandidateScoreExplanation
+        fields = [
+            "id",
+            "candidate_id",
+            "latest_match_id",
+            "cv_score",
+            "assessment_score",
+            "completion_score",
+            "overall_score",
+            "completed_assessments",
+            "total_assessments",
+            "assessment_breakdown",
+            "report_payload",
+            "created_at",
+        ]

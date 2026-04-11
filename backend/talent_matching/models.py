@@ -55,14 +55,12 @@ class CandidateCV(models.Model):
 
 class CandidateJobApplication(models.Model):
     STAGE_CHOICES = [
-        ("new", "New"),
-        ("shortlisted", "Shortlisted"),
-        ("assessment_pending", "Assessment Pending"),
-        ("assessment_completed", "Assessment Completed"),
-        ("interview", "Interview"),
-        ("offer", "Offer"),
-        ("rejected", "Rejected"),
+        ("pending", "Pending"),
+        ("invited", "Invited"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
         ("hired", "Hired"),
+        ("rejected", "Rejected"),
     ]
 
     recruitee = models.ForeignKey(
@@ -77,7 +75,7 @@ class CandidateJobApplication(models.Model):
         on_delete=models.SET_NULL,
         related_name="applications",
     )
-    stage = models.CharField(max_length=32, choices=STAGE_CHOICES, default="new")
+    stage = models.CharField(max_length=32, choices=STAGE_CHOICES, default="pending")
     notes = models.TextField(blank=True)
     source = models.CharField(max_length=64, blank=True)
     created_by = models.ForeignKey(
@@ -129,3 +127,58 @@ class CVJobMatch(models.Model):
 
     def __str__(self):
         return f"{self.application.recruitee.email} - {self.job.title}: {self.score}"
+
+
+class CandidateScoreExplanation(models.Model):
+    candidate = models.ForeignKey(
+        "accounts.Recruitee",
+        on_delete=models.CASCADE,
+        related_name="score_explanations",
+    )
+    company = models.ForeignKey(
+        "accounts.Company",
+        on_delete=models.CASCADE,
+        related_name="candidate_score_explanations",
+    )
+    latest_match = models.ForeignKey(
+        CVJobMatch,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="score_explanations",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_candidate_score_explanations",
+    )
+    snapshot_signature = models.CharField(max_length=64, db_index=True)
+    cv_score = models.FloatField(default=0)
+    assessment_score = models.FloatField(default=0)
+    completion_score = models.FloatField(default=0)
+    overall_score = models.FloatField(default=0)
+    completed_assessments = models.PositiveIntegerField(default=0)
+    total_assessments = models.PositiveIntegerField(default=0)
+    assessment_breakdown = models.JSONField(default=list, blank=True)
+    report_payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["candidate", "snapshot_signature"],
+                name="uniq_candidate_score_explanation_signature",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["candidate", "created_at"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"Score explanation {self.id} for {self.candidate.email} "
+            f"({self.overall_score:.1f})"
+        )
