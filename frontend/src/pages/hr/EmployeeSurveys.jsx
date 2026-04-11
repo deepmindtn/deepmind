@@ -365,13 +365,8 @@ const EmployeeSurveys = () => {
   useEffect(() => {
     (async () => {
       try {
-        const [surveysRes, assessmentsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/employee/surveys/`, { headers: authHeader }),
-          fetch(`${API_BASE}/api/assessments/my/`, { headers: authHeader }),
-        ]);
-
-        const surveysData = surveysRes.ok ? await surveysRes.json() : [];
-        const assessmentsData = assessmentsRes.ok ? await assessmentsRes.json() : [];
+        const res = await fetch(`${API_BASE}/api/employee/surveys/`, { headers: authHeader });
+        const surveysData = res.ok ? await res.json() : [];
 
         const manualSurveyItems = (Array.isArray(surveysData) ? surveysData : []).map((item) => ({
           id: `survey-${item.id}`,
@@ -383,26 +378,16 @@ const EmployeeSurveys = () => {
           response_type: item.survey_response_type,
         }));
 
-        const assessmentItems = (Array.isArray(assessmentsData) ? assessmentsData : []).map((item) => ({
-          id: `assessment-${item.id}`,
-          source: "assessment",
-          assignmentId: item.id,
-          status: String(item.status || "PENDING").toLowerCase(),
-          assigned_at: item.assigned_at,
-          title: item.template_name || item.template_code || "Assessment",
-          template_code: item.template_code,
-        }));
-
-        const combined = [...manualSurveyItems, ...assessmentItems].sort((a, b) => {
+        const sorted = manualSurveyItems.sort((a, b) => {
           const aTs = a.assigned_at ? new Date(a.assigned_at).getTime() : 0;
           const bTs = b.assigned_at ? new Date(b.assigned_at).getTime() : 0;
           return bTs - aTs;
         });
 
-        setSurveys(combined);
+        setSurveys(sorted);
       } catch (e) {
         console.error(e);
-        setToast({ message: "Could not load assigned items.", type: "error" });
+        setToast({ message: "Could not load assigned surveys.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -545,7 +530,7 @@ const EmployeeSurveys = () => {
                   lineHeight: "1.2",
                 }}
               >
-                Assigned Surveys & Assessments
+                Assigned Surveys
               </h1>
               <p
                 style={{
@@ -554,7 +539,7 @@ const EmployeeSurveys = () => {
                   margin: "0",
                 }}
               >
-                Start manual surveys and psychometric assessments from one place.
+                Start your assigned surveys from this page.
               </p>
             </div>
           </div>
@@ -794,7 +779,7 @@ const EmployeeSurveys = () => {
                       Submitting...
                     </>
                   ) : (
-                    <>Submit Assessment</>
+                    <>Submit Survey</>
                   )}
                 </button>
               </div>
