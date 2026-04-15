@@ -236,7 +236,7 @@ function App() {
         <Route
           path="/assessments"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["HR"]}>
               <LayoutComponent>
                 <SendAssessment />
               </LayoutComponent>

@@ -8,7 +8,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import HttpResponse
 from rest_framework.generics import ListCreateAPIView, RetrieveAPIView 
 from django.utils import timezone 
-from django.db.models import Q
+from django.db.models import Q, Count
+from django.db import transaction
 
 # ✅ RENAMED IMPORT TO AVOID CONFLICT
 from rest_framework.response import Response as APIResponse 
@@ -402,18 +403,26 @@ class ExportDepartmentsView(APIView):
 # --------------------------
 class CreateSurveyView(ListCreateAPIView):
     serializer_class = SurveyCreateSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def get_queryset(self):
-        return Survey.objects.filter(company=self.request.user.company).order_by('-created_at')
+        return (
+            Survey.objects.filter(company=self.request.user.company)
+            .annotate(assignments_count=Count('assignments'))
+            .order_by('-created_at')
+        )
 
 class SurveyDetailView(RetrieveAPIView):
     serializer_class = SurveyRetrieveSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsHR]
     queryset = Survey.objects.all()
 
     def get_queryset(self):
-        return Survey.objects.filter(company=self.request.user.company)
+        return Survey.objects.filter(company=self.request.user.company).prefetch_related(
+            'questions',
+            'assignments__responses__question',
+            'assignments__user',
+        )
 
 # ==========================================
 # Employee Survey Views
@@ -434,7 +443,7 @@ class EmployeeMySurveysView(generics.ListAPIView):
         ).filter(
             Q(survey__scheduled_for__isnull=True) | 
             Q(survey__scheduled_for__lte=now)
-        ).order_by('-assigned_at')
+        ).select_related('survey').order_by('-assigned_at')
 
 class EmployeeTakeSurveyView(APIView):
     """ GET questions & POST answers """
@@ -450,38 +459,79 @@ class EmployeeTakeSurveyView(APIView):
 
     def post(self, request, pk):
         try:
-            assignment = Assignment.objects.get(id=pk, user=request.user)
-            
-            if assignment.status == Assignment.Status.COMPLETED:
-                return APIResponse({"error": "You have already completed this survey."}, status=400)
+            with transaction.atomic():
+                assignment = Assignment.objects.select_for_update().select_related('survey').get(
+                    id=pk,
+                    user=request.user,
+                )
 
-            answers_data = request.data.get('answers', [])
-            
-            if not answers_data:
-                return APIResponse({"error": "No answers provided."}, status=400)
+                if assignment.status == Assignment.Status.COMPLETED:
+                    return APIResponse({"error": "You have already completed this survey."}, status=400)
 
-            # Save Responses
-            for item in answers_data:
-                q_id = item.get('question_id')
-                text = item.get('text')
-                
-                try:
-                    question = Question.objects.get(id=q_id, survey=assignment.survey)
-                    # ✅ This now uses the correctly imported Response model
-                    Response.objects.create(
-                        assignment=assignment,
-                        question=question,
-                        answer_text=text
+                answers_data = request.data.get('answers', [])
+                if not isinstance(answers_data, list) or not answers_data:
+                    return APIResponse({"error": "No answers provided."}, status=400)
+
+                survey_questions = list(assignment.survey.questions.all().order_by('order'))
+                if not survey_questions:
+                    return APIResponse({"error": "This survey has no questions configured."}, status=400)
+
+                valid_question_ids = {q.id for q in survey_questions}
+                normalized_answers = {}
+                invalid_question_ids = set()
+
+                for item in answers_data:
+                    if not isinstance(item, dict):
+                        return APIResponse({"error": "Invalid answers payload."}, status=400)
+
+                    q_id = item.get('question_id')
+                    try:
+                        q_id = int(q_id)
+                    except (TypeError, ValueError):
+                        invalid_question_ids.add(q_id)
+                        continue
+
+                    answer_text = (item.get('text') or '').strip()
+                    if not answer_text:
+                        return APIResponse({"error": f"Answer text is required for question {q_id}."}, status=400)
+
+                    if q_id not in valid_question_ids:
+                        invalid_question_ids.add(q_id)
+                        continue
+
+                    normalized_answers[q_id] = answer_text
+
+                if invalid_question_ids:
+                    return APIResponse(
+                        {
+                            "error": "One or more questions are invalid for this survey.",
+                            "invalid_question_ids": sorted([str(i) for i in invalid_question_ids]),
+                        },
+                        status=400,
                     )
-                except Question.DoesNotExist:
-                    continue 
 
-            # Mark Assignment as Completed
-            assignment.status = Assignment.Status.COMPLETED
-            assignment.completed_at = timezone.now() # ✅ Now timezone is defined
-            assignment.save()
+                missing_question_ids = sorted(valid_question_ids - set(normalized_answers.keys()))
+                if missing_question_ids:
+                    return APIResponse(
+                        {
+                            "error": "All survey questions must be answered before submission.",
+                            "missing_question_ids": missing_question_ids,
+                        },
+                        status=400,
+                    )
 
-            return APIResponse({"message": "Survey submitted successfully!"}, status=200)
+                for question_id, answer_text in normalized_answers.items():
+                    Response.objects.update_or_create(
+                        assignment=assignment,
+                        question_id=question_id,
+                        defaults={'answer_text': answer_text},
+                    )
+
+                assignment.status = Assignment.Status.COMPLETED
+                assignment.completed_at = timezone.now()
+                assignment.save(update_fields=['status', 'completed_at'])
+
+                return APIResponse({"message": "Survey submitted successfully!"}, status=200)
 
         except Assignment.DoesNotExist:
             return APIResponse({"error": "Survey not found."}, status=404)

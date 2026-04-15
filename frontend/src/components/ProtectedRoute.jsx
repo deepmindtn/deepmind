@@ -12,8 +12,19 @@ const parseJwt = (token) => {
   }
 };
 
-const ProtectedRoute = ({ children }) => {
+const readStoredRole = () => {
+  try {
+    const me = JSON.parse(localStorage.getItem("me") || "{}");
+    return me?.role || null;
+  } catch {
+    return null;
+  }
+};
+
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const [isValid, setIsValid] = useState(null); // null = checking, true/false = result
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [resolvedRole, setResolvedRole] = useState(null);
 
   useEffect(() => {
     const checkToken = () => {
@@ -32,12 +43,25 @@ const ProtectedRoute = ({ children }) => {
         toast.info("Session expired. Please log in again.");
         setIsValid(false);
       } else {
+        const role = readStoredRole() || decoded.role || decoded.user_role || null;
+        setResolvedRole(role);
+
+        if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+          const authorized = allowedRoles.includes(role);
+          setIsAuthorized(authorized);
+          if (!authorized) {
+            toast.error("You do not have permission to access this page.");
+          }
+        } else {
+          setIsAuthorized(true);
+        }
+
         setIsValid(true);
       }
     };
 
     checkToken();
-  }, []);
+  }, [allowedRoles]);
 
   if (isValid === null) {
     return <div>Loading...</div>; // Or a spinner
@@ -45,6 +69,11 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isValid) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isAuthorized) {
+    const fallbackPath = resolvedRole === "HR" ? "/dashboard" : "/surveys";
+    return <Navigate to={fallbackPath} replace />;
   }
 
   return children;

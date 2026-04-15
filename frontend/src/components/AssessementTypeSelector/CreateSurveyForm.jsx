@@ -507,21 +507,54 @@ const SurveyHistoryCard = ({ survey, onViewDetails }) => {
 const SurveyDetailsView = ({ surveyId, onBack, API_BASE, authHeader }) => {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [detailsError, setDetailsError] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`${API_BASE}/api/surveys/${surveyId}/`, { headers: authHeader })
-      .then((res) => res.json())
-      .then((data) => setDetails(data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [surveyId]);
+    const fetchDetails = async () => {
+      setLoading(true);
+      setDetailsError(null);
+      try {
+        const res = await fetch(`${API_BASE}/api/surveys/${surveyId}/`, {
+          headers: authHeader,
+        });
+
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data?.error || data?.detail || "Failed to load survey details.");
+        }
+
+        if (!data || typeof data !== "object") {
+          throw new Error("Malformed survey details response.");
+        }
+
+        setDetails({
+          ...data,
+          assignments: Array.isArray(data.assignments) ? data.assignments : [],
+          questions: Array.isArray(data.questions) ? data.questions : [],
+        });
+      } catch (error) {
+        console.error(error);
+        setDetails(null);
+        setDetailsError(error.message || "Failed to load survey details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetails();
+  }, [API_BASE, authHeader, surveyId]);
 
   if (loading)
     return (
       <div style={{ textAlign: "center", padding: "40px" }}>
         <Loader2 className="animate-spin" /> Loading...
+      </div>
+    );
+  if (detailsError)
+    return (
+      <div style={{ textAlign: "center", padding: "40px", color: COLORS.textSecondary }}>
+        {detailsError}
       </div>
     );
   if (!details) return <div>Error loading details.</div>;
@@ -714,6 +747,7 @@ const CreateSurveyForm = () => {
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loadingAudience, setLoadingAudience] = useState(true);
+  const [audienceLoadError, setAudienceLoadError] = useState(false);
 
   // Auto-dismiss Toast
   useEffect(() => {
@@ -727,11 +761,17 @@ const CreateSurveyForm = () => {
   useEffect(() => {
     async function fetchAudienceData() {
       setLoadingAudience(true);
+      setAudienceLoadError(false);
       try {
         const [depRes, empRes] = await Promise.all([
           fetch(`${API_BASE}/api/departments/`, { headers: authHeader }),
           fetch(`${API_BASE}/api/users/`, { headers: authHeader }),
         ]);
+
+        if (!depRes.ok || !empRes.ok) {
+          throw new Error("Could not load departments/employees.");
+        }
+
         const depData = depRes.ok ? await depRes.json() : [];
         setDepartments(Array.isArray(depData) ? depData : []);
         const empData = empRes.ok ? await empRes.json() : [];
@@ -747,12 +787,17 @@ const CreateSurveyForm = () => {
         }
       } catch (e) {
         console.error("Failed to load audience data", e);
+        setAudienceLoadError(true);
+        setToast({
+          message: "Could not load audience data. Please refresh before creating a survey.",
+          type: "error",
+        });
       } finally {
         setLoadingAudience(false);
       }
     }
     fetchAudienceData();
-  }, []);
+  }, [API_BASE]);
 
   // Fetch History
   useEffect(() => {
@@ -780,6 +825,17 @@ const CreateSurveyForm = () => {
   };
 
   const handleSubmit = async () => {
+    if (!access) {
+      return setToast({ message: "Session missing. Please log in again.", type: "error" });
+    }
+
+    if (audienceLoadError) {
+      return setToast({
+        message: "Audience data failed to load. Refresh and try again.",
+        type: "error",
+      });
+    }
+
     if (!title.trim())
       return setToast({ message: "Title is required.", type: "error" });
 
@@ -792,6 +848,16 @@ const CreateSurveyForm = () => {
     if (validQuestions.length === 0) {
       return setToast({
         message: "Please add or import at least one question.",
+        type: "error",
+      });
+    }
+
+    if (
+      (audience.type === "departments" || audience.type === "employees") &&
+      (!Array.isArray(audience.selected) || audience.selected.length === 0)
+    ) {
+      return setToast({
+        message: "Please select at least one target audience option.",
         type: "error",
       });
     }
@@ -816,8 +882,13 @@ const CreateSurveyForm = () => {
         setToast({ message: "Survey Created Successfully!", type: "success" });
         setTitle("");
         setQuestions([{ id: Date.now(), text: "" }]);
+        setAudience({ type: "all", selected: [] });
       } else {
-        setToast({ message: "Failed to create survey.", type: "error" });
+        const errorData = await response.json().catch(() => ({}));
+        setToast({
+          message: errorData?.audience || errorData?.error || errorData?.detail || "Failed to create survey.",
+          type: "error",
+        });
       }
     } catch {
       setToast({ message: "Network error.", type: "error" });

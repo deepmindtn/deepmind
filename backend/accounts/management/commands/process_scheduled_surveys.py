@@ -33,11 +33,12 @@ class Command(BaseCommand):
             assignments = survey.assignments.all()
             
             count = 0
+            failed = 0
             for assign in assignments:
                 user = assign.user
                 if user.email:
                     try:
-                        send_mail(
+                        sent_count = send_mail(
                             subject=f"New Survey Assigned: {survey.title}",
                             message=(
                                 f"Hi {user.first_name},\n\n"
@@ -48,14 +49,24 @@ class Command(BaseCommand):
                             ),
                             from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[user.email],
-                            fail_silently=True 
+                            fail_silently=False
                         )
-                        count += 1
+                        if sent_count > 0:
+                            count += 1
+                        else:
+                            failed += 1
                     except Exception as e:
+                        failed += 1
                         self.stdout.write(self.style.ERROR(f"Failed to send to {user.email}"))
 
-            # ✅ Mark as sent so we don't send again
-            survey.emails_sent = True
-            survey.save()
-            
-            self.stdout.write(self.style.SUCCESS(f"✅ Sent {count} emails for survey '{survey.title}'"))
+            if failed == 0:
+                # Mark sent only when every recipient email attempt succeeded.
+                survey.emails_sent = True
+                survey.save(update_fields=['emails_sent'])
+                self.stdout.write(self.style.SUCCESS(f"✅ Sent {count} emails for survey '{survey.title}'"))
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"⚠️ Sent {count} emails and failed {failed} for survey '{survey.title}'. emails_sent remains false for retry."
+                    )
+                )

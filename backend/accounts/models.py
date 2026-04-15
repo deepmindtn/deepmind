@@ -350,6 +350,14 @@ class Response(models.Model):
     answer_text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['assignment', 'question'],
+                name='unique_response_per_assignment_question',
+            )
+        ]
+
     def __str__(self):
         return f"Response to Q{self.question.order}"
     
