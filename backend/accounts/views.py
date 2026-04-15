@@ -10,6 +10,8 @@ from rest_framework.generics import ListCreateAPIView, RetrieveAPIView
 from django.utils import timezone 
 from django.db.models import Q, Count
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 
 # ✅ RENAMED IMPORT TO AVOID CONFLICT
 from rest_framework.response import Response as APIResponse 
@@ -238,7 +240,67 @@ from accounts.models import EmailTemplate
 
 class ImportEmployeesView(APIView):
     parser_classes = [MultiPartParser, FormParser]
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+
+    HEADER_ALIASES = {
+        "email": {"email", "email address", "email_address"},
+        "first_name": {"first name", "first_name", "firstname"},
+        "last_name": {"last name", "last_name", "lastname"},
+        "department": {"department", "dept", "team"},
+    }
+
+    def _normalize_header(self, value):
+        return " ".join((value or "").strip().lower().replace("_", " ").split())
+
+    def _resolve_headers(self, reader):
+        fieldnames = reader.fieldnames or []
+        resolved = {}
+        normalized = {self._normalize_header(name): name for name in fieldnames}
+
+        for logical_name, aliases in self.HEADER_ALIASES.items():
+            for alias in aliases:
+                original = normalized.get(self._normalize_header(alias))
+                if original:
+                    resolved[logical_name] = original
+                    break
+        return resolved
+
+    def _resolve_department_id(self, company, raw_department):
+        if not raw_department:
+            return None
+
+        normalized = str(raw_department).strip().lower()
+        if not normalized:
+            return None
+
+        choice_to_label = {
+            choice: label.lower() for choice, label in User.Departments.choices
+        }
+        label_to_choice = {
+            label.lower(): choice for choice, label in User.Departments.choices
+        }
+
+        choice_value = None
+        if normalized in choice_to_label:
+            choice_value = normalized
+        elif normalized in label_to_choice:
+            choice_value = label_to_choice[normalized]
+
+        department_obj = None
+        if choice_value:
+            department_obj = Department.objects.filter(
+                company=company,
+                name__iexact=choice_to_label[choice_value],
+            ).first()
+
+        if department_obj:
+            return department_obj.id
+
+        department_obj = Department.objects.filter(company=company, name__iexact=str(raw_department).strip()).first()
+        if department_obj:
+            return department_obj.id
+
+        return None
 
     def post(self, request, *args, **kwargs):
         file_obj = request.FILES.get("file")
@@ -253,36 +315,48 @@ class ImportEmployeesView(APIView):
         # -------------------------
         try:
             decoded_file = file_obj.read().decode("utf-8-sig").splitlines()
+            if not decoded_file:
+                return APIResponse(
+                    {"error": "CSV file is empty."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             reader = csv.DictReader(decoded_file)
-            reader.fieldnames = [h.strip() for h in reader.fieldnames]
+            if not reader.fieldnames:
+                return APIResponse(
+                    {"error": "CSV is missing header row."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            reader.fieldnames = [(h or "").strip() for h in reader.fieldnames]
+            resolved_headers = self._resolve_headers(reader)
         except Exception as e:
             return APIResponse(
                 {"error": f"CSV Read Error: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # -------------------------
-        # Department mapping
-        # -------------------------
-        dept_map = {
-            "Sales": "sales",
-            "HR": "hr",
-            "Finance": "finance",
-            "Operations": "operations",
-            "Design": "design",
-            "Product": "product",
-            "Other": "other",
-        }
+        if "email" not in resolved_headers:
+            return APIResponse(
+                {
+                    "error": "CSV must include an email column (accepted headers: Email Address, Email)."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
         base_url = f"{origin}/accept-invite"
 
         added_count = 0
+        email_sent_count = 0
         errors = []
+        warnings = []
+        processed_rows = 0
 
         # -------------------------
         # Load email template ONCE
         # -------------------------
+        email_template = None
         try:
             email_template = EmailTemplate.objects.get(
                 name="Welcome Email",
@@ -290,39 +364,50 @@ class ImportEmployeesView(APIView):
                 status="active",
             )
         except EmailTemplate.DoesNotExist:
-            return APIResponse(
-                {"error": "Welcome Email template not found or inactive."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            warnings.append("Welcome Email template not found or inactive. Invites were created without sending emails.")
 
         # -------------------------
         # Process CSV rows
         # -------------------------
-        for row in reader:
-            email = row.get("Email Address", "").strip()
-            first_name = row.get("First Name", "").strip()
-            last_name = row.get("Last Name", "").strip()
-            raw_dept = row.get("Department", "").strip()
+        for index, row in enumerate(reader, start=2):
+            processed_rows += 1
+            email = str(row.get(resolved_headers.get("email", ""), "") or "").strip().lower()
+            first_name = str(row.get(resolved_headers.get("first_name", ""), "") or "").strip()
+            last_name = str(row.get(resolved_headers.get("last_name", ""), "") or "").strip()
+            raw_dept = str(row.get(resolved_headers.get("department", ""), "") or "").strip()
 
             if not email:
+                errors.append(f"Row {index}: Missing email.")
                 continue
 
-            if User.objects.filter(email=email).exists():
-                errors.append(f"Skipped {email}: User already registered.")
+            try:
+                validate_email(email)
+            except DjangoValidationError:
+                errors.append(f"Row {index}: Invalid email '{email}'.")
                 continue
 
-            if Invite.objects.filter(email=email).exists():
-                errors.append(f"Skipped {email}: Invite already sent/pending.")
+            if User.objects.filter(email__iexact=email).exists():
+                errors.append(f"Row {index}: Skipped {email} (user already registered).")
                 continue
 
-            department_key = dept_map.get(raw_dept) or raw_dept.lower()
+            if Invite.objects.filter(email__iexact=email, company=request.user.company, is_accepted=False).exists():
+                errors.append(f"Row {index}: Skipped {email} (invite already pending).")
+                continue
+
+            department_id = self._resolve_department_id(request.user.company, raw_dept)
+            if raw_dept and not department_id:
+                errors.append(
+                    f"Row {index}: Unknown department '{raw_dept}' for {email}. Create that department first or leave department blank."
+                )
+                continue
 
             invite_data = {
                 "email": email,
                 "first_name": first_name,
                 "last_name": last_name,
-                "department": department_key,
             }
+            if department_id:
+                invite_data["department_id"] = department_id
 
             serializer = InviteCreateSerializer(
                 data=invite_data,
@@ -333,7 +418,7 @@ class ImportEmployeesView(APIView):
                 err_msg = "; ".join(
                     [f"{k}: {v[0]}" for k, v in serializer.errors.items()]
                 )
-                errors.append(f"Skipped {email}: {err_msg}")
+                errors.append(f"Row {index}: Skipped {email} ({err_msg})")
                 continue
 
             # -------------------------
@@ -357,39 +442,49 @@ class ImportEmployeesView(APIView):
                     "inviteLink": invite_link,
                 }
 
-                subject, html_body = render_email_subject_and_body(email_template, context)
+                if email_template:
+                    subject, html_body = render_email_subject_and_body(email_template, context)
 
                 # -------------------------
                 # Send email
                 # -------------------------
-                try:
-                    email_msg = EmailMultiAlternatives(
-                        subject=subject,
-                        body="Please view this email in HTML format.",
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        to=[email],
-                    )
-                    email_msg.attach_alternative(html_body, "text/html")
-                    attach_inline_logo(email_msg)
-                    email_msg.send()
-
-                    print(f"✅ Invite email sent to {email}")
-
-                except Exception as email_error:
-                    print(f"❌ Email failed for {email}: {email_error}")
-                    errors.append(
-                        f"Created {email} but failed to send email."
-                    )
+                if email_template:
+                    try:
+                        email_msg = EmailMultiAlternatives(
+                            subject=subject,
+                            body="Please view this email in HTML format.",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            to=[email],
+                        )
+                        email_msg.attach_alternative(html_body, "text/html")
+                        attach_inline_logo(email_msg)
+                        email_msg.send()
+                        email_sent_count += 1
+                    except Exception as email_error:
+                        errors.append(
+                            f"Row {index}: Created invite for {email} but failed to send email ({email_error})."
+                        )
+                else:
+                    warnings.append(f"Invite created for {email}, but no welcome email template is active.")
 
             except Exception as e:
-                errors.append(f"DB Error {email}: {str(e)}")
+                errors.append(f"Row {index}: DB error for {email} ({str(e)})")
+
+        if processed_rows == 0:
+            return APIResponse(
+                {"error": "CSV does not contain any data rows."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return APIResponse(
             {
                 "message": f"Successfully created {added_count} invites.",
+                "processed_rows": processed_rows,
+                "emails_sent": email_sent_count,
                 "errors": errors,
+                "warnings": warnings,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_201_CREATED if added_count > 0 else status.HTTP_400_BAD_REQUEST,
         )
 
 # --------------------------

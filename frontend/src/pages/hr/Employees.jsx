@@ -1511,7 +1511,7 @@ export default function Employees() {
                   color: COLORS.textSecondary,
                 }}
               >
-                Upload a CSV file with the following headers (case-sensitive):
+                Upload a CSV file with these columns (header names are flexible, e.g. Email or Email Address):
               </p>
               <ul
                 style={{
@@ -1573,6 +1573,33 @@ export default function Employees() {
             <p style={{ fontSize: "14px", marginBottom: "16px" }}>
               {importResult.message}
             </p>
+            {importResult.warnings && importResult.warnings.length > 0 && (
+              <div
+                style={{
+                  padding: "16px",
+                  backgroundColor: "#eff6ff",
+                  borderRadius: "12px",
+                  border: `1px solid ${COLORS.blue}`,
+                  marginBottom: "12px",
+                }}
+              >
+                <strong style={{ fontSize: "14px" }}>Warnings:</strong>
+                <div
+                  style={{
+                    maxHeight: "140px",
+                    overflowY: "auto",
+                    fontSize: "13px",
+                    marginTop: "8px",
+                  }}
+                >
+                  <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                    {importResult.warnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
             {importResult.errors && importResult.errors.length > 0 && (
               <div
                 style={{
