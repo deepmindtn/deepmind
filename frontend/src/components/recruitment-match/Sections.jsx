@@ -16,50 +16,10 @@ import {
   Upload,
   BarChart3,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { StatusBadge } from "./Shared";
 import { COLORS, styles } from "./Constants";
-
-function PaginationControls({ page, totalPages, onPageChange }) {
-  const isSinglePage = totalPages <= 1;
-  const disablePrev = isSinglePage || page <= 1;
-  const disableNext = isSinglePage || page >= totalPages;
-
-  const navButtonStyle = (disabled) => ({
-    ...styles.btnPrimary,
-    padding: "6px 10px",
-    backgroundColor: disabled ? "#f1f5f9" : "white",
-    color: disabled ? COLORS.textMuted : COLORS.textPrimary,
-    border: `1px solid ${COLORS.borderColor}`,
-    cursor: disabled ? "not-allowed" : "pointer",
-  });
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <button
-        style={navButtonStyle(disablePrev)}
-        onClick={() => onPageChange(Math.max(1, page - 1))}
-        disabled={disablePrev}
-        aria-label="Previous page"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
-        Page {page} / {Math.max(totalPages, 1)}
-      </span>
-      <button
-        style={navButtonStyle(disableNext)}
-        onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-        disabled={disableNext}
-        aria-label="Next page"
-      >
-        <ChevronRight size={16} />
-      </button>
-    </div>
-  );
-}
+import PaginationControls from "../shared/PaginationControls";
 
 export function RecruitmentMatchHeader() {
   return (
@@ -322,6 +282,8 @@ export function JobOfferingsSection({
           page={jobsPage}
           totalPages={jobsTotalPages}
           onPageChange={onJobsPageChange}
+          styles={styles}
+          colors={COLORS}
         />
       </div>
     </div>
@@ -984,6 +946,8 @@ export function PipelineSection({
           page={pipelinePage}
           totalPages={pipelineTotalPages}
           onPageChange={onPipelinePageChange}
+          styles={styles}
+          colors={COLORS}
         />
       </div>
     </div>

@@ -13,6 +13,7 @@ from django.db import transaction
 
 # ✅ RENAMED IMPORT TO AVOID CONFLICT
 from rest_framework.response import Response as APIResponse 
+from core.pagination import FixedPageSizePagination
 
 # Models
 from .models import (
@@ -186,9 +187,47 @@ class MeView(APIView):
 class UsersListView(generics.ListAPIView):
     serializer_class = UserListSerializer
     permission_classes = [permissions.IsAuthenticated, IsHR]
+    pagination_class = FixedPageSizePagination
+
+    def paginate_queryset(self, queryset):
+        all_records = (self.request.query_params.get("all") or "").strip().lower()
+        if all_records in {"1", "true", "yes"}:
+            return None
+        return super().paginate_queryset(queryset)
 
     def get_queryset(self):
-        return User.objects.filter(company=self.request.user.company).order_by("-date_joined")
+        queryset = User.objects.filter(company=self.request.user.company).order_by("-date_joined")
+
+        q = (self.request.query_params.get("q") or "").strip()
+        if q:
+            queryset = queryset.filter(
+                Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(email__icontains=q)
+                | Q(role__icontains=q)
+            )
+
+        department = (self.request.query_params.get("department") or "").strip()
+        if department and department.lower() != "all":
+            queryset = queryset.filter(department__iexact=department)
+
+        status_filter = (self.request.query_params.get("status") or "").strip().lower()
+        status_filter = status_filter.replace("-", "_").replace(" ", "_")
+        if status_filter and status_filter != "all":
+            if status_filter == "active":
+                queryset = queryset.filter(
+                    Q(employment_status__iexact="active")
+                    | Q(employment_status__isnull=True, is_active=True)
+                )
+            elif status_filter == "inactive":
+                queryset = queryset.filter(
+                    Q(employment_status__iexact="inactive")
+                    | Q(employment_status__isnull=True, is_active=False)
+                )
+            elif status_filter == "on_leave":
+                queryset = queryset.filter(employment_status__iexact="on_leave")
+
+        return queryset
 
 # --------------------------
 # CSV Import View
