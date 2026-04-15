@@ -365,8 +365,19 @@ const EmployeeSurveys = () => {
   useEffect(() => {
     (async () => {
       try {
+        if (!access) {
+          setToast({ message: "Session missing. Please log in again.", type: "error" });
+          setLoading(false);
+          return;
+        }
+
         const res = await fetch(`${API_BASE}/api/employee/surveys/`, { headers: authHeader });
-        const surveysData = res.ok ? await res.json() : [];
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData?.error || errorData?.detail || "Could not load assigned surveys.");
+        }
+
+        const surveysData = await res.json();
 
         const manualSurveyItems = (Array.isArray(surveysData) ? surveysData : []).map((item) => ({
           id: `survey-${item.id}`,
@@ -433,7 +444,11 @@ const EmployeeSurveys = () => {
         setActiveSurvey({ ...data, assignmentId });
         setAnswers({});
       } else {
-        setToast({ message: "Could not load survey.", type: "error" });
+        const errorData = await res.json().catch(() => ({}));
+        setToast({
+          message: errorData?.error || errorData?.detail || "Could not load survey.",
+          type: "error",
+        });
       }
     } catch (e) {
       console.error(e);
@@ -461,13 +476,39 @@ const EmployeeSurveys = () => {
 
   const handleSubmit = async () => {
     if (!activeSurvey) return;
+
+    if (!access) {
+      setToast({ message: "Session missing. Please log in again.", type: "error" });
+      return;
+    }
+
+    const questionList = Array.isArray(activeSurvey.questions)
+      ? activeSurvey.questions
+      : [];
+    const payloadAnswers = questionList.map((q) => {
+      const normalizedQuestionId = Number(q.id);
+      const answerText = (answers[q.id] || "").trim();
+      return {
+        question_id: normalizedQuestionId,
+        text: answerText,
+      };
+    });
+
+    const hasMissingAnswers = payloadAnswers.some(
+      (item) => !item.question_id || !item.text
+    );
+    if (hasMissingAnswers) {
+      setToast({
+        message: "Please answer all questions before submission.",
+        type: "error",
+      });
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = {
-      answers: Object.keys(answers).map((qId) => ({
-        question_id: qId,
-        text: answers[qId],
-      })),
+      answers: payloadAnswers,
     };
 
     try {
@@ -491,7 +532,11 @@ const EmployeeSurveys = () => {
           )
         );
       } else {
-        setToast({ message: "Submission failed.", type: "error" });
+        const errorData = await res.json().catch(() => ({}));
+        setToast({
+          message: errorData?.error || errorData?.detail || "Submission failed.",
+          type: "error",
+        });
       }
     } catch (e) {
       console.error(e);

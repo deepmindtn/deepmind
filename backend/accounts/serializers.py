@@ -173,7 +173,7 @@ from rest_framework import serializers
 from core.email_template_utils import attach_inline_logo, render_email_subject_and_body
 
 class SurveyCreateSerializer(serializers.ModelSerializer):
-    questions = QuestionSerializer(many=True, required=False)
+    questions = QuestionSerializer(many=True, required=True)
     audience = serializers.JSONField(write_only=True) 
     recipient_count = serializers.SerializerMethodField()
 
@@ -186,7 +186,47 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
         ]
 
     def get_recipient_count(self, obj):
-        return obj.assignments.count()
+        return getattr(obj, 'assignments_count', obj.assignments.count())
+
+    def validate_questions(self, value):
+        if not isinstance(value, list) or not value:
+            raise serializers.ValidationError("Survey must contain at least one question.")
+
+        cleaned = []
+        for item in value:
+            text = (item.get('text') if isinstance(item, dict) else None) or ''
+            text = text.strip()
+            if not text:
+                continue
+            cleaned.append({
+                'text': text,
+                'order': item.get('order', 0) if isinstance(item, dict) else 0,
+            })
+
+        if not cleaned:
+            raise serializers.ValidationError("Survey must contain at least one non-empty question.")
+        return cleaned
+
+    def validate_audience(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Audience must be an object.")
+
+        audience_type = value.get('type', 'all')
+        selected = value.get('selected', [])
+
+        if audience_type not in {'all', 'departments', 'specific', 'employees'}:
+            raise serializers.ValidationError("Invalid audience type.")
+
+        if not isinstance(selected, list):
+            raise serializers.ValidationError("Audience selected must be a list.")
+
+        if audience_type in {'departments', 'specific', 'employees'} and not selected:
+            raise serializers.ValidationError("Please select at least one audience target.")
+
+        return {
+            'type': audience_type,
+            'selected': selected,
+        }
 
     @transaction.atomic
     def create(self, validated_data):
@@ -210,6 +250,11 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
                 Question.objects.create(survey=survey, text=q_data.get('text'), order=index)
 
         target_users = self._get_target_users(user.company, audience_data)
+        if not target_users.exists():
+            raise serializers.ValidationError(
+                {"audience": "No active employees matched the selected audience."}
+            )
+
         assignments = [
             Assignment(survey=survey, user=target_user, status=Assignment.Status.PENDING)
             for target_user in target_users
@@ -269,9 +314,13 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
                 print(f"❌ Failed to send email to {employee.email}: {str(e)}")
 
     def _get_target_users(self, company, audience):
-        # ... (Your existing filtering logic stays the same)
         audience_type = audience.get('type', 'all')
-        selected_ids = audience.get('selected', []) 
+        selected_ids = audience.get('selected', [])
+
+        try:
+            selected_ids = [int(item) for item in selected_ids]
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({"audience": "Audience selected values must be numeric IDs."})
         
         base_employees = User.objects.filter(
             company=company, 
@@ -282,9 +331,16 @@ class SurveyCreateSerializer(serializers.ModelSerializer):
         if audience_type == 'all':
             return base_employees
         elif audience_type == 'departments':
-            return base_employees.filter(department_id__in=selected_ids)
+            departments = Department.objects.filter(company=company, id__in=selected_ids)
+            department_names = list(departments.values_list('name', flat=True))
+            if len(department_names) != len(set(selected_ids)):
+                raise serializers.ValidationError({"audience": "One or more selected departments are invalid."})
+            return base_employees.filter(department__in=department_names)
         elif audience_type in ['specific', 'employees']:
-            return base_employees.filter(id__in=selected_ids)
+            users = base_employees.filter(id__in=selected_ids)
+            if users.count() != len(set(selected_ids)):
+                raise serializers.ValidationError({"audience": "One or more selected employees are invalid."})
+            return users
             
         return base_employees.none()
 
@@ -326,7 +382,7 @@ class SurveyRetrieveSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Survey
-        fields = ['id', 'title', 'method', 'created_at', 'questions', 'assignments']
+        fields = ['id', 'title', 'method', 'response_type', 'created_at', 'questions', 'assignments']
 
 
 class EmployeeAssignmentListSerializer(serializers.ModelSerializer):
