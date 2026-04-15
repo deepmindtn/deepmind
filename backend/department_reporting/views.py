@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 
 from accounts.models import User
 from assessments.models import Assignment
+from core.pagination import FixedPageSizePagination
 
 from .models import DepartmentReport
 from .serializers import (
@@ -142,8 +143,11 @@ class DepartmentReportView(APIView):
             if department_filter:
                 reports = reports.filter(department__iexact=department_filter)
 
-            serializer = DepartmentReportListSerializer(reports, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            # paginate reports using the same FixedPageSizePagination as talent-matching
+            paginator = FixedPageSizePagination()
+            page = paginator.paginate_queryset(reports, request)
+            serializer = DepartmentReportListSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
         except ProgrammingError:
             return Response(
                 {"error": "Department report storage is not initialized. Run database migrations."},

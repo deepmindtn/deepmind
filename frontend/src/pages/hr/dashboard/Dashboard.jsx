@@ -464,14 +464,20 @@ const Dashboard = () => {
     async function fetchData() {
       try {
         const [uRes, aRes] = await Promise.all([
-          fetch(`${API_BASE}/api/users/`, { headers: { ...authHeader } }),
+          fetch(`${API_BASE}/api/users/?all=true`, { headers: { ...authHeader } }),
           fetch(`${API_BASE}/api/assessments/admin/`, {
             headers: { ...authHeader },
           }),
         ]);
         if (!uRes.ok || !aRes.ok) throw new Error("Failed to load data");
         const [uJson, aJson] = await Promise.all([uRes.json(), aRes.json()]);
-        setUsers(Array.isArray(uJson) ? uJson : []);
+        setUsers(
+          Array.isArray(uJson)
+            ? uJson
+            : Array.isArray(uJson?.results)
+              ? uJson.results
+              : []
+        );
         setAssignments(Array.isArray(aJson) ? aJson : aJson?.results || []);
       } catch (e) {
         setErr(e.message);

@@ -13,12 +13,12 @@ from pydantic import BaseModel, Field
 from PyPDF2 import PdfReader
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import Recruitee, User
 from assessments.models import CandidateAssignment
+from core.pagination import FixedPageSizePagination
 
 from .models import (
     CandidateCV,
@@ -45,24 +45,6 @@ from .serializers import (
 class IsHR(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and getattr(request.user, "role", "") == User.Roles.HR
-
-
-class FixedPageSizePagination(PageNumberPagination):
-    page_size = 5
-
-    def get_paginated_response(self, data, extra=None):
-        payload = {
-            "count": self.page.paginator.count,
-            "next": self.get_next_link(),
-            "previous": self.get_previous_link(),
-            "page": self.page.number,
-            "page_size": self.page.paginator.per_page,
-            "total_pages": self.page.paginator.num_pages,
-            "results": data,
-        }
-        if extra:
-            payload.update(extra)
-        return Response(payload)
 
 
 def extract_text(file_obj):
@@ -1626,14 +1608,14 @@ class CandidateScoreExplanationHistoryView(APIView):
             return Response({"detail": "Candidate not found."}, status=status.HTTP_404_NOT_FOUND)
 
         history_qs = CandidateScoreExplanation.objects.filter(candidate=candidate).order_by("-created_at")
-        serializer = CandidateScoreExplanationListSerializer(history_qs, many=True)
-        return Response(
-            {
-                "candidate_id": candidate_id,
-                "count": history_qs.count(),
-                "history": serializer.data,
-            }
-        )
+        paginator = FixedPageSizePagination()
+        page = paginator.paginate_queryset(history_qs, request)
+        serializer = CandidateScoreExplanationListSerializer(page, many=True)
+        paged = paginator.get_paginated_response(serializer.data)
+        # attach candidate_id for client convenience
+        payload = paged.data if hasattr(paged, 'data') else paged
+        payload.update({"candidate_id": str(candidate_id)})
+        return paged
 
 
 class CandidateScoreExplanationDetailView(APIView):

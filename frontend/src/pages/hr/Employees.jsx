@@ -85,6 +85,7 @@ import {
   ChevronDown,
   Check,
 } from "lucide-react";
+import PaginationControls from "../../components/shared/PaginationControls";
 
 // -----------------------
 // Theme Constants
@@ -478,8 +479,9 @@ export default function Employees() {
   const [q, setQ] = useState("");
   const [dep, setDep] = useState("All");
   const [status, setStatus] = useState("All");
-  const [page, _setPage] = useState(1);
-  const pageSize = 6;
+  const [page, setPage] = useState(1);
+  const [employeesTotalPages, setEmployeesTotalPages] = useState(1);
+  const [employeesTotalCount, setEmployeesTotalCount] = useState(0);
 
   const [availableDepts, setAvailableDepts] = useState([]);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -510,13 +512,21 @@ export default function Employees() {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pastReports, setPastReports] = useState([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [historyTotalCount, setHistoryTotalCount] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (historyOpen) {
       const fetchPastReports = async () => {
+        setHistoryLoading(true);
         try {
           const access = localStorage.getItem("access");
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/hr/department-reports/`, {
+          const params = new URLSearchParams({
+            page: String(historyPage),
+          });
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/hr/department-reports/?${params.toString()}`, {
             headers: {
               "Content-Type": "application/json",
               Authorization: access ? `Bearer ${access}` : undefined,
@@ -524,15 +534,27 @@ export default function Employees() {
           });
           if (response.ok) {
             const data = await response.json();
-            setPastReports(data);
+            const results = Array.isArray(data)
+              ? data
+              : Array.isArray(data?.results)
+                ? data.results
+                : [];
+            setPastReports(results);
+            setHistoryTotalCount(Number(data?.count) || results.length || 0);
+            setHistoryTotalPages(Math.max(Number(data?.total_pages) || 1, 1));
           }
         } catch (err) {
           console.error("Failed to fetch past reports:", err);
+          setPastReports([]);
+          setHistoryTotalCount(0);
+          setHistoryTotalPages(1);
+        } finally {
+          setHistoryLoading(false);
         }
       };
       fetchPastReports();
     }
-  }, [historyOpen]);
+  }, [historyOpen, historyPage]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [invite, setInvite] = useState({
@@ -559,6 +581,10 @@ export default function Employees() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [API_BASE, authHeader]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, dep, status]);
 
   // --- Toast Timer ---
   useEffect(() => {
@@ -613,13 +639,31 @@ export default function Employees() {
     async function run() {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/users/`, {
+        const params = new URLSearchParams({
+          page: String(page),
+        });
+        if (q.trim()) {
+          params.set("q", q.trim());
+        }
+        if (dep !== "All") {
+          params.set("department", dep);
+        }
+        if (status !== "All") {
+          params.set("status", status);
+        }
+
+        const res = await fetch(`${API_BASE}/api/users/?${params.toString()}`, {
           headers: { "Content-Type": "application/json", ...authHeader },
         });
         if (!res.ok) throw new Error("Failed to load users");
         const data = await res.json();
         if (!ignore) {
-          const mapped = data.map((u) => ({
+          const results = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.results)
+              ? data.results
+              : [];
+          const mapped = results.map((u) => ({
             id: String(u.id),
             name:
               `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
@@ -630,9 +674,16 @@ export default function Employees() {
             email: u.email,
           }));
           setRows(mapped);
+          setEmployeesTotalCount(Number(data?.count) || mapped.length || 0);
+          setEmployeesTotalPages(Math.max(Number(data?.total_pages) || 1, 1));
         }
       } catch (e) {
         console.error(e);
+        if (!ignore) {
+          setRows([]);
+          setEmployeesTotalCount(0);
+          setEmployeesTotalPages(1);
+        }
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -641,7 +692,7 @@ export default function Employees() {
     return () => {
       ignore = true;
     };
-  }, [API_BASE, authHeader]);
+  }, [API_BASE, authHeader, page, q, dep, status]);
 
   useEffect(() => {
     async function fetchDepts() {
@@ -804,25 +855,12 @@ export default function Employees() {
     }
   }
 
-  const filtered = rows.filter((r) => {
-    const matchQ =
-      !q ||
-      r.name.toLowerCase().includes(q.toLowerCase()) ||
-      r.role.toLowerCase().includes(q.toLowerCase()) ||
-      r.email.toLowerCase().includes(q.toLowerCase());
-    const matchDep = dep === "All" || r.department === dep;
-    const matchStatus = status === "All" || r.status === status;
-    return matchQ && matchDep && matchStatus;
-  });
-
-  const current = filtered.slice((page - 1) * pageSize, page * pageSize);
-
   const stats = useMemo(() => {
-    const all = rows.length;
+    const all = employeesTotalCount;
     const active = rows.filter((r) => r.status === "Active").length;
     const leave = rows.filter((r) => r.status === "On Leave").length;
     return { all, active, leave };
-  }, [rows]);
+  }, [employeesTotalCount, rows]);
 
   return (
     <div style={styles.container}>
@@ -1123,7 +1161,10 @@ export default function Employees() {
                 ...styles.btnSecondary,
                 width: isMobile ? "100%" : "auto",
               }}
-              onClick={() => setHistoryOpen(true)}
+              onClick={() => {
+                setHistoryPage(1);
+                setHistoryOpen(true);
+              }}
             >
               <Clock size={18} /> Report History
             </button>
@@ -1171,7 +1212,7 @@ export default function Employees() {
                 gap: "12px",
               }}
             >
-              {current.map((r) => (
+              {rows.map((r) => (
                 <div
                   key={r.id}
                   style={{
@@ -1304,7 +1345,7 @@ export default function Employees() {
                   </tr>
                 </thead>
                 <tbody>
-                  {current.map((r) => (
+                  {rows.map((r) => (
                     <tr
                       key={r.id}
                       style={{
@@ -1387,6 +1428,29 @@ export default function Employees() {
               </table>
             </div>
           )}
+
+          <div
+            style={{
+              padding: "12px 16px",
+              borderTop: `1px solid ${COLORS.borderColor}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              flexDirection: isMobile ? "column" : "row",
+            }}
+          >
+            <div style={{ fontSize: "13px", color: COLORS.textSecondary }}>
+              Page {page} of {employeesTotalPages} • {employeesTotalCount} employees
+            </div>
+            <PaginationControls
+              page={page}
+              totalPages={employeesTotalPages}
+              onPageChange={setPage}
+              styles={styles}
+              colors={COLORS}
+            />
+          </div>
         </div>
       </div>
 
@@ -2557,8 +2621,13 @@ export default function Employees() {
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {pastReports.length > 0 ? (
-            pastReports.map((report) => (
+          {historyLoading ? (
+            <p style={{ color: COLORS.textSecondary, textAlign: "center", padding: "20px" }}>
+              Loading report history...
+            </p>
+          ) : pastReports.length > 0 ? (
+            <>
+            {pastReports.map((report) => (
               <div
                 key={report.id}
                 style={{
@@ -2608,11 +2677,11 @@ export default function Employees() {
                           },
                         }
                       );
-                      
+
                       if (!response.ok) {
                         throw new Error(`Failed to fetch report: ${response.status}`);
                       }
-                      
+
                       const fullReportData = await response.json();
                       setHistoryOpen(false);
                       navigate("/hr/department-report", {
@@ -2648,7 +2717,28 @@ export default function Employees() {
                   View
                 </button>
               </div>
-            ))
+            ))}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                flexDirection: isMobile ? "column" : "row",
+              }}
+            >
+              <div style={{ fontSize: "13px", color: COLORS.textSecondary }}>
+                Page {historyPage} of {historyTotalPages} • {historyTotalCount} reports
+              </div>
+              <PaginationControls
+                page={historyPage}
+                totalPages={historyTotalPages}
+                onPageChange={setHistoryPage}
+                styles={styles}
+                colors={COLORS}
+              />
+            </div>
+            </>
           ) : (
             <p style={{ color: COLORS.textSecondary, textAlign: "center", padding: "20px" }}>
               No past reports found

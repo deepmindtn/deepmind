@@ -765,7 +765,7 @@ const CreateSurveyForm = () => {
       try {
         const [depRes, empRes] = await Promise.all([
           fetch(`${API_BASE}/api/departments/`, { headers: authHeader }),
-          fetch(`${API_BASE}/api/users/`, { headers: authHeader }),
+          fetch(`${API_BASE}/api/users/?all=true`, { headers: authHeader }),
         ]);
 
         if (!depRes.ok || !empRes.ok) {
@@ -775,16 +775,19 @@ const CreateSurveyForm = () => {
         const depData = depRes.ok ? await depRes.json() : [];
         setDepartments(Array.isArray(depData) ? depData : []);
         const empData = empRes.ok ? await empRes.json() : [];
-        if (Array.isArray(empData)) {
-          const formattedEmployees = empData.map((u) => ({
-            id: u.id,
-            name:
-              `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
-            department: u.department || "No Department",
-            email: u.email,
-          }));
-          setEmployees(formattedEmployees);
-        }
+        const empList = Array.isArray(empData)
+          ? empData
+          : Array.isArray(empData?.results)
+            ? empData.results
+            : [];
+        const formattedEmployees = empList.map((u) => ({
+          id: u.id,
+          name:
+            `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+          department: u.department || "No Department",
+          email: u.email,
+        }));
+        setEmployees(formattedEmployees);
       } catch (e) {
         console.error("Failed to load audience data", e);
         setAudienceLoadError(true);
