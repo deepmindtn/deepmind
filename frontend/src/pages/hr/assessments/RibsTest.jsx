@@ -11,14 +11,13 @@ import {
 import StructuredReport from "./StructuredReport";
 import {
   Lightbulb,
+  BrainCircuit,
   ArrowRight,
   ArrowLeft,
   Download,
   RotateCcw,
   Loader2,
-  CheckCircle2,
   AlertTriangle,
-  FileText,
 } from "lucide-react";
 
 // -----------------------
@@ -426,6 +425,21 @@ export default function RIBSTest() {
               margin: "40px auto",
             }}
           >
+            <div
+              style={{
+                width: "76px",
+                height: "76px",
+                borderRadius: "20px",
+                backgroundColor: COLORS.primaryLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px",
+                boxShadow: COLORS.shadowHuge,
+              }}
+            >
+              <Lightbulb size={34} color={COLORS.gold} />
+            </div>
             <h2
               style={{
                 fontSize: "24px",
@@ -433,7 +447,7 @@ export default function RIBSTest() {
                 marginBottom: "24px",
               }}
             >
-              Bienvenue
+              Bienvenue au test RIBS
             </h2>
             <div
               style={{
@@ -476,7 +490,7 @@ export default function RIBSTest() {
               </ul>
             </div>
             <button
-              style={styles.btn("primary")}
+              style={{ ...styles.btn("primary"), margin: "0 auto", width: "fit-content" }}
               className="btn-hover"
               onClick={() => setStep(1)}
             >
@@ -718,33 +732,22 @@ export default function RIBSTest() {
               >
                 {aiReport ? (
                   <div style={{ ...styles.questionCard, padding: "24px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        color: COLORS.success,
-                        marginBottom: "16px",
-                      }}
-                    >
-                      <CheckCircle2 size={20} />
-                      <span style={{ fontWeight: "600" }}>
-                        Analyse Terminée
-                      </span>
+                    <div style={{ 
+                      backgroundColor: COLORS.primaryLight, 
+                      padding: "16px", 
+                      borderRadius: "12px", 
+                      display: "flex", 
+                      gap: "12px",
+                      color: COLORS.primary,
+                      marginBottom: "16px"
+                    }}>
+                      <BrainCircuit size={24} />
+                      <div>
+                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA</strong>
+                        <span style={{ fontSize: "14px" }}>Interprétation personnalisée de votre profil.</span>
+                      </div>
                     </div>
                     <div style={styles.aiReportBox}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginBottom: "16px",
-                          color: COLORS.textPrimary,
-                        }}
-                      >
-                        <FileText size={18} />{" "}
-                        <strong>Interprétation IA</strong>
-                      </div>
                       <StructuredReport report={aiReport} />
                     </div>
                   </div>

@@ -426,8 +426,24 @@ export default function ISETest() {
         {step === 0 && (
           <div className="animate-fade-in" style={{ textAlign: "center", padding: "40px 0" }}>
             <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+              <div
+                style={{
+                  width: "76px",
+                  height: "76px",
+                  borderRadius: "20px",
+                  backgroundColor: COLORS.primaryLight,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 24px",
+                  boxShadow: COLORS.shadowMd,
+                }}
+              >
+                <Lightbulb size={34} color={COLORS.primary} />
+              </div>
+
               <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "16px", color: COLORS.textPrimary }}>
-                Bienvenue
+                Bienvenue au test ISE
               </h2>
               <p style={{ fontSize: "16px", color: COLORS.textSecondary, lineHeight: "1.6", marginBottom: "32px" }}>
                 Ce questionnaire évalue votre confiance en vos capacités d'innovation.
@@ -435,7 +451,7 @@ export default function ISETest() {
               </p>
               
               <button 
-                style={styles.btn("primary")} 
+                style={{ ...styles.btn("primary"), margin: "0 auto", width: "fit-content" }} 
                 className="btn-hover"
                 onClick={() => setStep(1)}
               >
@@ -597,8 +613,8 @@ export default function ISETest() {
                     }}>
                       <BrainCircuit size={24} />
                       <div>
-                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA Générée</strong>
-                        <span style={{ fontSize: "14px" }}>Interprétation du score d'auto-efficacité.</span>
+                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA</strong>
+                        <span style={{ fontSize: "14px" }}>Interprétation personnalisée de votre profil.</span>
                       </div>
                     </div>
                     

@@ -641,13 +641,29 @@ export default function BigFiveAssessment() {
       className="fade-in"
       style={{ ...styles.card, textAlign: "center", padding: "60px 40px" }}
     >
+      <div
+        style={{
+          width: "74px",
+          height: "74px",
+          borderRadius: "18px",
+          backgroundColor: VARS.primaryLight,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 24px",
+          boxShadow: "0 8px 20px -10px rgba(99, 102, 241, 0.6)",
+        }}
+      >
+        <Brain size={36} color={VARS.primary} />
+      </div>
+
       <div style={{ margin: "0 auto 32px auto", width: "fit-content" }}>
         <img
           src={bigFiveImage}
           alt="Big Five personality traits diagram"
           style={{
             width: "100%",
-            maxWidth: "420px",
+            maxWidth: "320px",
             height: "auto",
             borderRadius: "16px",
           }}
@@ -662,7 +678,7 @@ export default function BigFiveAssessment() {
           marginBottom: "16px",
         }}
       >
-        Discover your DNA
+        Bienvenue au test Big Five
       </h2>
       <p
         style={{
@@ -672,8 +688,8 @@ export default function BigFiveAssessment() {
           margin: "0 auto 40px",
         }}
       >
-        Understand the 5 dimensions that drive your behavior, work style, and
-        relationships.
+        Découvrez les 5 dimensions clés qui structurent votre style de travail,
+        vos interactions et votre manière de décider.
       </p>
       <button
         style={{
@@ -684,7 +700,7 @@ export default function BigFiveAssessment() {
         }}
         onClick={handleStart}
       >
-        Start Assessment <ArrowRight size={20} />
+        Commencer le test <ArrowRight size={20} />
       </button>
     </div>
   );
@@ -850,16 +866,21 @@ export default function BigFiveAssessment() {
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: "10px",
               marginBottom: "16px",
               color: VARS.primary,
             }}
           >
-            <Sparkles size={20} />
-            <h3 style={{ fontSize: "18px", fontWeight: "700", margin: 0 }}>
-              AI Insight
-            </h3>
+            <Brain size={20} />
+            <div>
+              <strong style={{ fontSize: "18px", fontWeight: "700", display: "block" }}>
+                Analyse IA
+              </strong>
+              <span style={{ fontSize: "14px", color: VARS.textSecondary }}>
+                Interprétation personnalisée de votre profil.
+              </span>
+            </div>
           </div>
           {aiLoading ? (
             <div
@@ -871,7 +892,7 @@ export default function BigFiveAssessment() {
                 color: VARS.textSecondary,
               }}
             >
-              <Loader2 className="spin" size={20} /> Generating analysis...
+              <Loader2 className="spin" size={20} /> Génération de l'analyse...
             </div>
           ) : (
             <StructuredReport report={aiReport} />

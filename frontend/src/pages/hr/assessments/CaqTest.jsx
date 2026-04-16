@@ -6,6 +6,7 @@ import {
 import StructuredReport from "./StructuredReport";
 import {
   Trophy,
+  BrainCircuit,
   Star,
   Check,
   ArrowRight,
@@ -13,8 +14,6 @@ import {
   Download,
   RotateCcw,
   Loader2,
-  CheckCircle2,
-  FileText,
   Palette
 } from "lucide-react";
 
@@ -426,7 +425,23 @@ export default function CAQTest() {
         {/* INTRO */}
         {step === 0 && (
           <div className="animate-fade-in" style={{ textAlign: "center", maxWidth: "600px", margin: "40px auto" }}>
-            <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "24px" }}>Vos réalisations</h2>
+            <div
+              style={{
+                width: "76px",
+                height: "76px",
+                borderRadius: "20px",
+                backgroundColor: COLORS.primaryLight,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px",
+                boxShadow: COLORS.shadowHuge,
+              }}
+            >
+              <Trophy size={34} color={COLORS.primary} />
+            </div>
+
+            <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "24px" }}>Bienvenue au test CAQ</h2>
             <div style={{ 
               backgroundColor: COLORS.cardBg, 
               padding: "24px", 
@@ -448,7 +463,11 @@ export default function CAQTest() {
                 <li>Durée : ~3 minutes</li>
               </ul>
             </div>
-            <button style={styles.btn("primary")} className="btn-hover" onClick={() => setStep(1)}>
+            <button
+              style={{ ...styles.btn("primary"), margin: "0 auto", width: "fit-content" }}
+              className="btn-hover"
+              onClick={() => setStep(1)}
+            >
               Commencer <ArrowRight size={18} />
             </button>
           </div>
@@ -567,14 +586,22 @@ export default function CAQTest() {
               <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
                 {aiReport ? (
                   <div style={{ ...styles.card, padding: "24px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", color: COLORS.success, marginBottom: "16px" }}>
-                      <CheckCircle2 size={20} />
-                      <span style={{ fontWeight: "600" }}>Analyse Terminée</span>
+                    <div style={{ 
+                      backgroundColor: COLORS.primaryLight, 
+                      padding: "16px", 
+                      borderRadius: "12px", 
+                      display: "flex", 
+                      gap: "12px",
+                      color: COLORS.primary,
+                      marginBottom: "16px"
+                    }}>
+                      <BrainCircuit size={24} />
+                      <div>
+                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA</strong>
+                        <span style={{ fontSize: "14px" }}>Interprétation personnalisée de votre profil.</span>
+                      </div>
                     </div>
                     <div style={styles.aiReportBox}>
-                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", color: COLORS.textPrimary }}>
-                         <FileText size={18} /> <strong>Interprétation IA</strong>
-                       </div>
                        <StructuredReport report={aiReport} />
                     </div>
                   </div>

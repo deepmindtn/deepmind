@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Download, RotateCcw, ArrowRight, ArrowLeft, Briefcase } from "lucide-react";
+import { Download, RotateCcw, ArrowRight, ArrowLeft, Briefcase, BrainCircuit } from "lucide-react";
 import StructuredReport from "./StructuredReport";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -601,13 +601,32 @@ export default function JssTest() {
         <div style={styles.contentBody}>
           {step === 0 && (
             <div style={styles.introBox} className="animate-fade-in">
-              <h2 style={styles.introTitle}>Bienvenue</h2>
+              <div
+                style={{
+                  width: "76px",
+                  height: "76px",
+                  borderRadius: "20px",
+                  backgroundColor: COLORS.primaryLight,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 24px",
+                  boxShadow: COLORS.shadowMd,
+                }}
+              >
+                <Briefcase size={34} color={COLORS.primary} />
+              </div>
+              <h2 style={styles.introTitle}>Bienvenue au test JSS</h2>
               <p style={styles.introText}>
                 Répondez honnêtement aux 36 affirmations sur votre satisfaction au travail.
                 <br/>
                 Vos réponses sont confidentielles et utilisées uniquement pour cette évaluation.
               </p>
-              <button style={styles.btn("primary")} className="jss-btn-hover" onClick={() => setStep(1)}>
+              <button
+                style={{ ...styles.btn("primary"), margin: "0 auto", width: "fit-content" }}
+                className="jss-btn-hover"
+                onClick={() => setStep(1)}
+              >
                 Commencer <ArrowRight size={18} />
               </button>
             </div>
@@ -791,7 +810,23 @@ export default function JssTest() {
               {/* AI Report */}
               {aiReport && (
                 <div style={styles.reportCard} className="animate-fade-in">
-                  <div style={styles.reportTitle}>Rapport IA — Analyse JSS</div>
+                  <div
+                    style={{
+                      backgroundColor: COLORS.primaryLight,
+                      padding: "16px",
+                      borderRadius: "12px",
+                      display: "flex",
+                      gap: "12px",
+                      color: COLORS.primary,
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <BrainCircuit size={24} />
+                    <div>
+                      <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA</strong>
+                      <span style={{ fontSize: "14px" }}>Interprétation personnalisée de votre profil.</span>
+                    </div>
+                  </div>
                   <div style={styles.reportContent}>
                     <StructuredReport report={aiReport} />
                   </div>

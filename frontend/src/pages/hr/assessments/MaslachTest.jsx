@@ -6,6 +6,7 @@ import {
 import StructuredReport from "./StructuredReport";
 import {
   Heart,
+  BrainCircuit,
   ChevronRight,
   ChevronLeft,
   Download,
@@ -306,7 +307,6 @@ export default function MaslachTest() {
     };
   };
 
-  const [lang, setLang] = useState("fr");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [aiReport, setAiReport] = useState(null);
@@ -319,7 +319,7 @@ export default function MaslachTest() {
   const pageQuestions = QUESTIONS.slice((step - 1) * perPage, step * perPage);
   const canNext = pageQuestions.every((q) => answers[q.id] !== undefined);
   const scores = useMemo(() => computeScores(answers), [answers]);
-  const t = i18n[lang];
+  const t = i18n.fr;
 
   // Verify assignment and restore results if already completed
   useEffect(() => {
@@ -353,7 +353,7 @@ export default function MaslachTest() {
   // Submit logic with loading state
   async function submitAnswers() {
     if (Object.keys(answers).length !== QUESTIONS.length) {
-      alert(lang === "fr" ? "Veuillez répondre à toutes les questions." : "Please answer all questions.");
+      alert("Veuillez répondre à toutes les questions.");
       return;
     }
     setLoading(true);
@@ -407,7 +407,7 @@ export default function MaslachTest() {
       <div style={{ ...styles.mainWrapper, alignItems: "center", justifyContent: "center" }}>
         <Loader2 className="loading-spin" size={40} color={COLORS.primary} />
         <p style={{ marginTop: 16, color: COLORS.textSecondary }}>
-          {lang === "fr" ? "Chargement..." : "Loading..."}
+          Chargement...
         </p>
       </div>
     );
@@ -419,15 +419,13 @@ export default function MaslachTest() {
         <div style={styles.heroSection}>
           <div style={styles.headerRow}>
             <h1 style={{ fontSize: "24px", fontWeight: "800", color: COLORS.textPrimary, margin: 0 }}>
-              {lang === "fr" ? "Test Burnout" : "Burnout Test"}
+              Test Burnout
             </h1>
           </div>
         </div>
         <div style={styles.contentBody}>
           <p style={{ color: COLORS.textSecondary }}>
-            {lang === "fr"
-              ? "Veuillez démarrer ce test depuis Mes Évaluations."
-              : "Please start this test from My Assessments."}
+            Veuillez démarrer ce test depuis Mes Évaluations.
           </p>
         </div>
       </div>
@@ -460,25 +458,11 @@ export default function MaslachTest() {
               </p>
             </div>
           </div>
-          
+
           <div style={{ textAlign: "right" }}>
-            <select
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                border: `1px solid ${COLORS.borderColor}`,
-                backgroundColor: COLORS.cardBg,
-                color: COLORS.textPrimary,
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-              aria-label="Language"
-            >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
-            </select>
+            <span style={{ fontSize: "14px", fontWeight: "600", color: COLORS.primary }}>
+              {step > totalPages ? "Terminé" : `${step === 0 ? 0 : percent}% complété`}
+            </span>
           </div>
         </div>
         
@@ -509,7 +493,7 @@ export default function MaslachTest() {
               </div>
               
               <h2 style={{ fontSize: "28px", fontWeight: "700", marginBottom: "16px", color: COLORS.textPrimary }}>
-                {t.appTitle}
+                Bienvenue au test Burnout (Maslach)
               </h2>
               <p style={{ fontSize: "16px", color: COLORS.textSecondary, lineHeight: "1.6", marginBottom: "32px" }}>
                 {t.intro}
@@ -529,7 +513,7 @@ export default function MaslachTest() {
               </div>
               
               <button 
-                style={styles.btn("primary")}
+                style={{ ...styles.btn("primary"), margin: "0 auto", width: "fit-content" }}
                 className="btn-hover"
                 onClick={() => setStep(1)}
               >
@@ -546,7 +530,7 @@ export default function MaslachTest() {
               <div key={q.id} style={styles.questionCard}>
                 <div style={{ ...styles.questionTitle, display: "flex", gap: "12px", alignItems: "flex-start" }}>
                   <span style={{ color: COLORS.primary, opacity: 0.8, flexShrink: 0 }}>Q{q.id}.</span>
-                  <span>{q[lang]}</span>
+                  <span>{q.fr}</span>
                 </div>
                 
                 <div style={styles.optionGrid}>
@@ -708,7 +692,7 @@ export default function MaslachTest() {
                     gap: "12px",
                     color: COLORS.primary,
                   }}>
-                    <AlertCircle size={24} style={{ flexShrink: 0 }} />
+                    <BrainCircuit size={24} style={{ flexShrink: 0 }} />
                     <div>
                       <strong style={{ display: "block", marginBottom: "4px" }}>{t.aiTitle}</strong>
                       <span style={{ fontSize: "14px" }}>{t.aiSubtitle}</span>

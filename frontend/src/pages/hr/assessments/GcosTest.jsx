@@ -464,8 +464,24 @@ export default function GCOSTest() {
         {step === 0 && (
           <div className="animate-fade-in" style={{ textAlign: "center", padding: "40px 0" }}>
             <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+              <div
+                style={{
+                  width: "76px",
+                  height: "76px",
+                  borderRadius: "20px",
+                  backgroundColor: COLORS.primaryLight,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 24px",
+                  boxShadow: COLORS.shadowMd,
+                }}
+              >
+                <Target size={34} color={COLORS.primary} />
+              </div>
+
               <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "16px", color: COLORS.textPrimary }}>
-                Instructions
+                Bienvenue au test GCOS
               </h2>
               <div style={{ 
                 backgroundColor: "#fff", 
@@ -489,7 +505,7 @@ export default function GCOSTest() {
               </div>
               
               <button 
-                style={styles.btn("primary")} 
+                style={{ ...styles.btn("primary"), margin: "0 auto", width: "fit-content" }} 
                 className="btn-hover"
                 onClick={() => setStep(1)}
               >
@@ -635,8 +651,8 @@ export default function GCOSTest() {
                     }}>
                       <BrainCircuit size={24} />
                       <div>
-                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse Psychométrique</strong>
-                        <span style={{ fontSize: "14px" }}>Interprétation des scores d'autonomie et de contrôle.</span>
+                        <strong style={{ display: "block", marginBottom: "4px" }}>Analyse IA</strong>
+                        <span style={{ fontSize: "14px" }}>Interprétation personnalisée de votre profil.</span>
                       </div>
                     </div>
                     
