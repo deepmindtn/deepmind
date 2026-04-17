@@ -265,9 +265,16 @@ function safeNum(n) {
   return Number.isFinite(x) ? x : 0;
 }
 
+function normalizeTemplateCode(code) {
+  const key = String(code || "").trim().toUpperCase();
+  if (key === "CDRISC") return "CDRISC10";
+  return key;
+}
+
 function takeBigFive(m) {
-  if (!m || !m.trait) return null;
-  const t = m.trait;
+  if (!m) return null;
+  const t = m.trait || m.traitScores;
+  if (!t) return null;
   return {
     N: safeNum(t.N),
     E: safeNum(t.E),
@@ -278,13 +285,14 @@ function takeBigFive(m) {
 }
 
 function takeKarasek(m) {
-  if (!m || !m.dim) return null;
-  const d = m.dim;
+  if (!m) return null;
+  const d = m.dim || m.dimScores;
+  if (!d) return null;
   return {
     D: safeNum(d.D),
     C: safeNum(d.C),
     S: safeNum(d.S),
-    quadrant: m.quadrant || null,
+    quadrant: m.quadrant || m.profile?.quadrant || null,
   };
 }
 
@@ -308,8 +316,16 @@ function takeMaslach(m) {
 }
 
 function takeDISC(m) {
-  if (!m || !m.trait) return null;
-  const t = m.trait;
+  if (!m) return null;
+  const t = m.trait || m.percent || m;
+  if (
+    t.D === undefined &&
+    t.I === undefined &&
+    t.S === undefined &&
+    t.C === undefined
+  ) {
+    return null;
+  }
   return { 
     D: safeNum(t.D), 
     I: safeNum(t.I), 
@@ -319,19 +335,43 @@ function takeDISC(m) {
 }
 
 function takeJSS(m) {
-  if (!m || !m.dimScores) return null;
-  const dim = m.dimScores;
+  if (!m) return null;
+  const dim = m.dimScores || m.subscores;
+  if (!dim) return null;
   return Object.fromEntries(
     Object.entries(dim).map(([k, v]) => [k, safeNum(v)])
   );
 }
 
 function takeBRS(m) {
-  if (!m || m.average === undefined) return null;
+  if (!m || (m.average === undefined && m.avg === undefined)) return null;
   return { 
-    avg: safeNum(m.average), 
+    avg: safeNum(m.average ?? m.avg), 
     level: m.level || "" 
   };
+}
+
+function takeSimpleAverage(m) {
+  if (!m || m.average === undefined) return null;
+  return safeNum(m.average);
+}
+
+function takeGCOS(m) {
+  if (!m) return null;
+  const auto = safeNum(m.autonomous ?? m.auto);
+  const ctrl = safeNum(m.controlled ?? m.ctrl);
+  const imp = safeNum(m.impersonal ?? m.impers);
+  if (auto === 0 && ctrl === 0 && imp === 0) return null;
+  return { autonomous: auto, controlled: ctrl, impersonal: imp };
+}
+
+function takeCAQ(m) {
+  if (!m || !m.domainScores) return null;
+  const values = Object.values(m.domainScores).map((v) => safeNum(v));
+  if (!values.length) return null;
+  const total = safeNum(m.total);
+  const avgDomain = values.reduce((a, b) => a + b, 0) / values.length;
+  return { total, avgDomain };
 }
 
 // -----------------------
@@ -498,7 +538,7 @@ const Dashboard = () => {
     const compsByTemplate = {};
     
     assignments.forEach((a) => {
-      const code = a.template_code;
+      const code = normalizeTemplateCode(a.template_code);
       if (code) {
         totalsByTemplate[code] = (totalsByTemplate[code] || 0) + 1;
         if (a.status === "COMPLETED") {
@@ -520,6 +560,12 @@ const Dashboard = () => {
     let discSum = { D: 0, I: 0, S: 0, C: 0 }, dCount = 0;
     let jssSum = {}, jssCount = 0;
     let brsSum = 0, brsCount = 0;
+    let cdriscSum = 0, cdriscCount = 0;
+    let wsesSum = 0, wsesCount = 0;
+    let iseSum = 0, iseCount = 0;
+    let ribsSum = 0, ribsCount = 0;
+    let caqTotalSum = 0, caqDomainAvgSum = 0, caqCount = 0;
+    let gcosSum = { autonomous: 0, controlled: 0, impersonal: 0 }, gcosCount = 0;
     const quadrantCounts = {
       highStrain: 0,
       active: 0,
@@ -528,7 +574,7 @@ const Dashboard = () => {
     };
 
     completed.forEach((a) => {
-      const code = a.template_code;
+      const code = normalizeTemplateCode(a.template_code);
       const m = a.metrics;
       
       // Skip if no metrics
@@ -579,6 +625,57 @@ const Dashboard = () => {
           brsCount++;
         }
       }
+
+      if (code === "CDRISC10") {
+        const avgScore = takeSimpleAverage(m);
+        if (avgScore > 0) {
+          cdriscSum += avgScore;
+          cdriscCount++;
+        }
+      }
+
+      if (code === "WSES") {
+        const avgScore = takeSimpleAverage(m);
+        if (avgScore > 0) {
+          wsesSum += avgScore;
+          wsesCount++;
+        }
+      }
+
+      if (code === "ISE") {
+        const avgScore = takeSimpleAverage(m);
+        if (avgScore > 0) {
+          iseSum += avgScore;
+          iseCount++;
+        }
+      }
+
+      if (code === "RIBS") {
+        const avgScore = takeSimpleAverage(m);
+        if (avgScore > 0) {
+          ribsSum += avgScore;
+          ribsCount++;
+        }
+      }
+
+      if (code === "GCOS") {
+        const g = takeGCOS(m);
+        if (g) {
+          gcosSum.autonomous += g.autonomous;
+          gcosSum.controlled += g.controlled;
+          gcosSum.impersonal += g.impersonal;
+          gcosCount++;
+        }
+      }
+
+      if (code === "CAQ") {
+        const c = takeCAQ(m);
+        if (c) {
+          caqTotalSum += c.total;
+          caqDomainAvgSum += c.avgDomain;
+          caqCount++;
+        }
+      }
     });
 
     const avg = (sum, n) =>
@@ -597,6 +694,13 @@ const Dashboard = () => {
         KARASEK: pct(compsByTemplate.KARASEK || 0, totalsByTemplate.KARASEK || 0),
         DISC: pct(compsByTemplate.DISC || 0, totalsByTemplate.DISC || 0),
         JSS: pct(compsByTemplate.JSS || 0, totalsByTemplate.JSS || 0),
+        BRS: pct(compsByTemplate.BRS || 0, totalsByTemplate.BRS || 0),
+        CDRISC10: pct(compsByTemplate.CDRISC10 || 0, totalsByTemplate.CDRISC10 || 0),
+        WSES: pct(compsByTemplate.WSES || 0, totalsByTemplate.WSES || 0),
+        GCOS: pct(compsByTemplate.GCOS || 0, totalsByTemplate.GCOS || 0),
+        RIBS: pct(compsByTemplate.RIBS || 0, totalsByTemplate.RIBS || 0),
+        CAQ: pct(compsByTemplate.CAQ || 0, totalsByTemplate.CAQ || 0),
+        ISE: pct(compsByTemplate.ISE || 0, totalsByTemplate.ISE || 0),
       },
       bigFiveAvg: avg(bigFiveSum, bfCount),
       maslachAvg: avg(maslachSum, mCount),
@@ -604,6 +708,23 @@ const Dashboard = () => {
       discAvg: avg(discSum, dCount),
       jssAvg: avg(jssSum, jssCount),
       brsAvg: brsCount ? (brsSum / brsCount).toFixed(2) : "0.00",
+      cdriscAvg: cdriscCount ? (cdriscSum / cdriscCount).toFixed(2) : "0.00",
+      wsesAvg: wsesCount ? (wsesSum / wsesCount).toFixed(2) : "0.00",
+      iseAvg: iseCount ? (iseSum / iseCount).toFixed(2) : "0.00",
+      ribsAvg: ribsCount ? (ribsSum / ribsCount).toFixed(2) : "0.00",
+      gcosAvg: gcosCount
+        ? {
+            autonomous: Math.round(gcosSum.autonomous / gcosCount),
+            controlled: Math.round(gcosSum.controlled / gcosCount),
+            impersonal: Math.round(gcosSum.impersonal / gcosCount),
+          }
+        : { autonomous: 0, controlled: 0, impersonal: 0 },
+      caqInsights: caqCount
+        ? {
+            total: (caqTotalSum / caqCount).toFixed(2),
+            avgDomain: (caqDomainAvgSum / caqCount).toFixed(2),
+          }
+        : { total: "0.00", avgDomain: "0.00" },
       quadrantCounts,
       hasCompletedData: completed.length > 0,
       hasBigFiveData: bfCount > 0,
@@ -611,19 +732,50 @@ const Dashboard = () => {
       hasKarasekData: kCount > 0,
       hasDiscData: dCount > 0,
       hasJssData: jssCount > 0,
+      hasBRSData: brsCount > 0,
+      hasCdriscData: cdriscCount > 0,
+      hasWsesData: wsesCount > 0,
+      hasIseData: iseCount > 0,
+      hasRibsData: ribsCount > 0,
+      hasGcosData: gcosCount > 0,
+      hasCaqData: caqCount > 0,
     };
   }, [users, assignments]);
 
   const commonOptions = {
     chart: { 
       toolbar: { show: false }, 
-      fontFamily: "Inter",
+      fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
       background: 'transparent'
     },
     plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
     colors: CHART_COLORS,
     grid: { borderColor: COLORS.borderColor, strokeDashArray: 4 },
     dataLabels: { enabled: false },
+    xaxis: {
+      labels: {
+        style: {
+          fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+          fontSize: "12px",
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+          fontSize: "12px",
+        },
+      },
+    },
+    legend: {
+      fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+    },
+    tooltip: {
+      style: {
+        fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+      },
+    },
     theme: { mode: 'light' }
   };
 
@@ -1023,6 +1175,92 @@ const Dashboard = () => {
                 />
               ) : (
                 <EmptyChartState message="No JSS assessments completed yet" />
+              )}
+            </div>
+
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                Resilience & Efficacy Averages
+              </h4>
+              {data.hasBRSData || data.hasCdriscData || data.hasWsesData || data.hasIseData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    colors: [COLORS.primary],
+                    xaxis: {
+                      categories: ["BRS", "CD-RISC10", "WSES", "ISE"],
+                    },
+                    yaxis: { max: 5, min: 0 },
+                  }}
+                  series={[
+                    {
+                      name: "Average",
+                      data: [
+                        safeNum(data.brsAvg),
+                        safeNum(data.cdriscAvg),
+                        safeNum(data.wsesAvg),
+                        safeNum(data.iseAvg),
+                      ],
+                    },
+                  ]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No BRS/CD-RISC/WSES/ISE data completed yet" />
+              )}
+            </div>
+
+            <div className="dashboard-chart-card" style={styles.chartCard}>
+              <h4
+                className="dashboard-chart-title"
+                style={{ margin: "0 0 15px 0" }}
+              >
+                Additional Test Insights
+              </h4>
+              {data.hasGcosData || data.hasRibsData || data.hasCaqData ? (
+                <Chart
+                  options={{
+                    ...commonOptions,
+                    xaxis: {
+                      categories: [
+                        "GCOS Autonomous",
+                        "GCOS Controlled",
+                        "GCOS Impersonal",
+                        "RIBS Avg",
+                        "CAQ Domain Avg",
+                      ],
+                      labels: {
+                        ...commonOptions.xaxis?.labels,
+                        rotate: -22,
+                        rotateAlways: true,
+                        hideOverlappingLabels: false,
+                        trim: false,
+                        minHeight: 72,
+                      },
+                    },
+                    yaxis: { min: 0 },
+                  }}
+                  series={[
+                    {
+                      name: "Insight",
+                      data: [
+                        safeNum(data.gcosAvg.autonomous),
+                        safeNum(data.gcosAvg.controlled),
+                        safeNum(data.gcosAvg.impersonal),
+                        safeNum(data.ribsAvg),
+                        safeNum(data.caqInsights.avgDomain),
+                      ],
+                    },
+                  ]}
+                  type="bar"
+                  height={300}
+                />
+              ) : (
+                <EmptyChartState message="No GCOS/RIBS/CAQ insights available yet" />
               )}
             </div>
           </div>
