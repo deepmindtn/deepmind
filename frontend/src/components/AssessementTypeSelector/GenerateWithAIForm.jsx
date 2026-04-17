@@ -1,12 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Sparkles,
-  MessageSquare,
-  Users,
   Calendar,
   Send,
   Wand2,
-  ChevronRight,
   Layout,
   Target,
   Loader2,
@@ -273,47 +270,130 @@ const responsiveStyles = `
 const GenerateWithAIForm = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingAudience, setIsLoadingAudience] = useState(true);
+  const [audienceLoadError, setAudienceLoadError] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+  const access = localStorage.getItem("access");
+  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
 
   // Mock states for external components
-  const [responseType, setResponseType] = useState("");
-  const [audience, setAudience] = useState({ type: "", selected: [] });
+  const [responseType, setResponseType] = useState("named");
+  const [audience, setAudience] = useState({ type: "all", selected: [] });
   const [schedule, setSchedule] = useState(null);
+
+  useEffect(() => {
+    const fetchAudienceData = async () => {
+      setIsLoadingAudience(true);
+      setAudienceLoadError(false);
+
+      try {
+        const audienceHeaders = access ? { Authorization: `Bearer ${access}` } : {};
+        const [depRes, empRes] = await Promise.all([
+          fetch(`${API_BASE}/api/departments/`, { headers: audienceHeaders }),
+          fetch(`${API_BASE}/api/users/?all=true`, { headers: audienceHeaders }),
+        ]);
+
+        if (!depRes.ok || !empRes.ok) {
+          throw new Error("Could not load departments/employees.");
+        }
+
+        const depData = await depRes.json();
+        setDepartments(Array.isArray(depData) ? depData : []);
+
+        const empData = await empRes.json();
+        const empList = Array.isArray(empData)
+          ? empData
+          : Array.isArray(empData?.results)
+            ? empData.results
+            : [];
+
+        const formattedEmployees = empList.map((u) => ({
+          id: u.id,
+          name: `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+          department: u.department || "No Department",
+          email: u.email,
+        }));
+        setEmployees(formattedEmployees);
+      } catch (e) {
+        console.error("Failed to load audience data", e);
+        setAudienceLoadError(true);
+      } finally {
+        setIsLoadingAudience(false);
+      }
+    };
+
+    fetchAudienceData();
+  }, [API_BASE, access]);
 
   const handleSubmit = () => {
     const run = async () => {
+      const trimmedPrompt = String(prompt || "").trim();
+      if (!trimmedPrompt) {
+        alert("Please provide an AI prompt.");
+        return;
+      }
+
+      if (audienceLoadError) {
+        alert("Audience data failed to load. Refresh and try again.");
+        return;
+      }
+
+      if (schedule) {
+        alert("Scheduled delivery is not supported yet for AI-generated surveys. Please use Send Now.");
+        return;
+      }
+
+      if ((audience.type === "departments" || audience.type === "employees") && (!Array.isArray(audience.selected) || audience.selected.length === 0)) {
+        alert("Please select at least one audience option.");
+        return;
+      }
+
       setIsGenerating(true);
       try {
-        const templateName = (prompt || "AI Survey").slice(0, 100) || "AI Survey";
-        let candidate_emails = [];
-        try {
-          if (Array.isArray(audience?.selected) && audience.selected.length) {
-            // support both objects with email or plain strings
-            candidate_emails = audience.selected.map((s) => (s?.email ? s.email : s));
-          }
-        } catch (e) {
-          candidate_emails = [];
-        }
+        const templateName = (trimmedPrompt || "AI Survey").slice(0, 100) || "AI Survey";
 
-        const resp = await fetch("/api/assessments/generate-and-launch/", {
+        const resp = await fetch(`${API_BASE}/api/assessments/generate-and-launch/`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeader,
+          },
           body: JSON.stringify({
             template_name: templateName,
-            template_code: undefined,
-            prompt: prompt,
-            response_type: responseType,
-            candidate_emails,
+            prompt: trimmedPrompt,
+            response_type: responseType || "named",
+            audience: {
+              type: audience?.type || "all",
+              selected: Array.isArray(audience?.selected) ? audience.selected : [],
+            },
             send_emails: true,
           }),
         });
 
-        const data = await resp.json();
+        let data = {};
+        try {
+          data = await resp.json();
+        } catch {
+          data = {};
+        }
+
         if (!resp.ok) {
           console.error("AI generate error", data);
           alert(data.detail || data.error || "Failed to generate and launch assessment.");
         } else {
           console.log("AI generate success", data);
-          alert("AI Survey generated and launched.");
+          const assignedCount = Number(data.assigned_count || 0);
+          const errors = Array.isArray(data.errors) ? data.errors : [];
+
+          if (errors.length) {
+            alert(`Survey created. Assigned to ${assignedCount} recipients with ${errors.length} warning(s). Check console for details.`);
+            console.warn("AI generate launch warnings", errors);
+          } else {
+            alert(`AI Survey generated and launched for ${assignedCount} recipient(s).`);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -481,8 +561,26 @@ const GenerateWithAIForm = () => {
                   fontSize: "14px",
                 }}
               >
-                <AudienceSelector value={audience} onChange={setAudience} />
+                <AudienceSelector
+                  value={audience}
+                  onChange={setAudience}
+                  departments={departments}
+                  employees={employees}
+                  loading={isLoadingAudience}
+                />
               </div>
+              {audienceLoadError && (
+                <div
+                  style={{
+                    marginTop: "10px",
+                    color: COLORS.red,
+                    fontSize: "12px",
+                    textAlign: "left",
+                  }}
+                >
+                  Could not load employees/departments. Refresh before generating.
+                </div>
+              )}
             </div>
           </div>
 
@@ -555,11 +653,11 @@ const GenerateWithAIForm = () => {
               className="ai-form-btn-primary"
               style={{
                 ...styles.btnPrimary,
-                opacity: isGenerating ? 0.7 : 1,
-                cursor: isGenerating ? "not-allowed" : "pointer",
+                opacity: isGenerating || isLoadingAudience ? 0.7 : 1,
+                cursor: isGenerating || isLoadingAudience ? "not-allowed" : "pointer",
               }}
               onClick={handleSubmit}
-              disabled={isGenerating}
+              disabled={isGenerating || isLoadingAudience}
             >
               {isGenerating ? (
                 <Loader2 size={20} className="spin" />
@@ -568,6 +666,8 @@ const GenerateWithAIForm = () => {
               )}
               {isGenerating
                 ? "Processing Architect..."
+                : isLoadingAudience
+                  ? "Loading Audience..."
                 : "Generate & Launch Survey"}
             </button>
           </div>

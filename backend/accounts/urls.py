@@ -5,7 +5,7 @@ from .views import (
     SignupView, InviteCreateView, AcceptInviteView, MeView, UsersListView,
     RecruiteeListCreateView, RecruiteeDetailView, ImportEmployeesView,
     DepartmentListCreateView, DepartmentDetailView, ExportDepartmentsView,
-    CreateSurveyView, SurveyDetailView, EmployeeMySurveysView, EmployeeTakeSurveyView,
+    CreateSurveyView, SurveyDetailView, SurveyQuestionExtractionView, EmployeeMySurveysView, EmployeeTakeSurveyView,
     EmailTemplateViewSet ,EisenhowerTaskListCreateView, EisenhowerTaskDetailView,
     DailyChallengeListCreateView, DailyChallengeDetailView, CompanyMeView
 )
@@ -45,6 +45,7 @@ urlpatterns = [
 
     # Surveys
     path("surveys/create/", CreateSurveyView.as_view(), name="survey-create"),
+    path("surveys/extract-questions/", SurveyQuestionExtractionView.as_view(), name="survey-extract-questions"),
     path("surveys/<int:pk>/", SurveyDetailView.as_view(), name="survey-detail"),
 
     # Employee Survey Routes

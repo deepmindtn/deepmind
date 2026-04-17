@@ -2405,80 +2405,194 @@ class GenerateAndLaunchAssessmentView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def post(self, request):
-        prompt = request.data.get("prompt")
-        response_type = request.data.get("response_type", "multiple-choice")
-        candidate_emails = request.data.get("candidate_emails", [])
-        send_emails = request.data.get("send_emails", True)
-
-        if not prompt or not candidate_emails:
-            return Response({"detail": "prompt and candidate_emails are required."}, status=400)
-
-        # Generate Assessment via AI
         import json
-        from langchain_openai import ChatOpenAI
+        import re
         from langchain_core.messages import HumanMessage
-        
+        from langchain_openai import ChatOpenAI
+        from accounts.models import Department
+
+        prompt = str(request.data.get("prompt") or "").strip()
+        response_type = str(request.data.get("response_type") or "named").strip() or "named"
+        audience = request.data.get("audience") or {}
+        send_emails_raw = request.data.get("send_emails", True)
+        requester_company_id = getattr(request.user, "company_id", None)
+
+        if isinstance(send_emails_raw, bool):
+            send_emails = send_emails_raw
+        else:
+            send_emails = str(send_emails_raw).strip().lower() not in {"0", "false", "no", "off"}
+
+        if not prompt:
+            return Response({"detail": "prompt is required."}, status=400)
+
+        def _normalize_email_list(raw_value):
+            if raw_value is None:
+                return []
+            if isinstance(raw_value, str):
+                chunks = raw_value.split(",")
+            elif isinstance(raw_value, list):
+                chunks = raw_value
+            else:
+                chunks = [raw_value]
+
+            cleaned = []
+            for item in chunks:
+                email = str(item or "").strip().lower()
+                if email and "@" in email:
+                    cleaned.append(email)
+            return cleaned
+
+        recipient_emails = _normalize_email_list(request.data.get("candidate_emails", []))
+
+        if audience not in (None, {}, []):
+            if not isinstance(audience, dict):
+                return Response({"detail": "audience must be an object."}, status=400)
+
+            audience_type = str(audience.get("type") or "all").strip().lower()
+            selected = audience.get("selected", [])
+            if selected is None:
+                selected = []
+            if not isinstance(selected, list):
+                return Response({"detail": "audience.selected must be a list."}, status=400)
+
+            base_employees = User.objects.filter(role=User.Roles.EMPLOYEE, is_active=True)
+            if requester_company_id:
+                base_employees = base_employees.filter(company_id=requester_company_id)
+
+            if audience_type == "all":
+                recipient_emails.extend(list(base_employees.values_list("email", flat=True)))
+            elif audience_type in {"employees", "specific"}:
+                try:
+                    selected_ids = [int(item) for item in selected]
+                except (TypeError, ValueError):
+                    return Response({"detail": "audience.selected must contain numeric user ids."}, status=400)
+
+                if not selected_ids:
+                    return Response({"detail": "At least one employee must be selected."}, status=400)
+
+                selected_users = base_employees.filter(id__in=selected_ids)
+                if selected_users.count() != len(set(selected_ids)):
+                    return Response({"detail": "One or more selected employees are invalid."}, status=400)
+
+                recipient_emails.extend(list(selected_users.values_list("email", flat=True)))
+            elif audience_type == "departments":
+                try:
+                    selected_ids = [int(item) for item in selected]
+                except (TypeError, ValueError):
+                    return Response({"detail": "audience.selected must contain numeric department ids."}, status=400)
+
+                if not selected_ids:
+                    return Response({"detail": "At least one department must be selected."}, status=400)
+
+                departments = Department.objects.filter(id__in=selected_ids)
+                if requester_company_id:
+                    departments = departments.filter(company_id=requester_company_id)
+
+                department_names = list(departments.values_list("name", flat=True))
+                if len(department_names) != len(set(selected_ids)):
+                    return Response({"detail": "One or more selected departments are invalid."}, status=400)
+
+                recipient_emails.extend(list(base_employees.filter(department__in=department_names).values_list("email", flat=True)))
+            else:
+                return Response({"detail": "Invalid audience type."}, status=400)
+
+        recipient_emails = sorted(set(_normalize_email_list(recipient_emails)))
+        if not recipient_emails:
+            return Response({"detail": "No valid recipients found for this request."}, status=400)
+
+        if not settings.OPENAI_API_KEY:
+            return Response({"detail": "OPENAI_API_KEY is not configured."}, status=500)
+
         system_prompt = f"""
-You are an expert HR organizational psychologist. Base on this request: "{prompt}"
-Generate a high-conversion {response_type} assessment tailored to the goals.
+You are an expert HR organizational psychologist.
+Based on this request: "{prompt}"
+Generate a high-quality {response_type} assessment tailored to the goals.
+Generate open-ended questions only.
+Do NOT include predefined answer options (no multiple-choice options arrays).
 Return ONLY valid JSON in this format:
 {{
   "title": "Assessment Name",
   "questions": [
-     {{ "id": "1", "text": "Question 1", "options": ["A", "B", "C", "D"] }}
+      {{ "id": "1", "text": "Question 1" }}
   ]
 }}
 """
+
         try:
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, api_key=settings.OPENAI_API_KEY)
             ai_response = llm.invoke([HumanMessage(content=system_prompt)])
-            # Strip potential markdown fences
-            raw_content = ai_response.content.strip()
-            if raw_content.startswith("```json"):
-                raw_content = raw_content[7:]
-            if raw_content.endswith("```"):
-                raw_content = raw_content[:-3]
-            
-            assessment_data = json.loads(raw_content.strip())
-            template_name = assessment_data.get("title", "AI Generated Assessment")
-            questions = assessment_data.get("questions", [])
-        except Exception as e:
-            # Fallback if generation fails
-            template_name = f"AI Assessment - {prompt[:30]}"
+            raw_content = ai_response.content if isinstance(ai_response.content, str) else str(ai_response.content)
+            raw_content = raw_content.strip()
+
+            cleaned = re.sub(r"^```(?:json)?\s*", "", raw_content, flags=re.IGNORECASE)
+            cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+
+            try:
+                assessment_data = json.loads(cleaned)
+            except json.JSONDecodeError:
+                match = re.search(r"\{[\s\S]*\}", cleaned)
+                if not match:
+                    raise
+                assessment_data = json.loads(match.group(0))
+
+            if not isinstance(assessment_data, dict):
+                return Response({"detail": "AI returned an invalid payload format."}, status=502)
+
+            template_name = str(assessment_data.get("title") or "AI Generated Assessment").strip()[:128] or "AI Generated Assessment"
+            raw_questions = assessment_data.get("questions", [])
+            if not isinstance(raw_questions, list):
+                return Response({"detail": "AI returned invalid questions format."}, status=502)
+
             questions = []
-            print(f"❌ AI Generation Failed: {e}")
+            for idx, question in enumerate(raw_questions, start=1):
+                if isinstance(question, str):
+                    text = question.strip()
+                elif isinstance(question, dict):
+                    text = str(question.get("text") or question.get("question") or "").strip()
+                else:
+                    continue
+
+                if not text:
+                    continue
+
+                questions.append({"id": str(idx), "text": text})
+
+            if not questions:
+                return Response({"detail": "AI generated no usable questions. Please refine your prompt and retry."}, status=502)
+        except Exception as e:
+            logger.exception("AI generation failed")
+            return Response({"detail": f"AI generation failed: {str(e)}"}, status=502)
 
         template_code = f"AI_{uuid.uuid4().hex[:8].upper()}"
-
-        # Create template with generated questions
         template = AssessmentTemplate.objects.create(
             code=template_code,
             name=template_name,
-            questions=questions
+            questions=questions,
         )
 
-        # Load email template
-        try:
-            email_template = EmailTemplate.objects.get(
-                name="Candidate Assessment Invitation",
-                audience_type="candidate",
-                status="active",
-            )
-        except EmailTemplate.DoesNotExist:
-            return Response({"detail": "Candidate Assessment Invitation email template not found or inactive."}, status=500)
+        email_template = None
+        if send_emails:
+            try:
+                email_template = EmailTemplate.objects.get(
+                    name="Candidate Assessment Invitation",
+                    audience_type="candidate",
+                    status="active",
+                )
+            except EmailTemplate.DoesNotExist:
+                return Response({"detail": "Candidate Assessment Invitation email template not found or inactive."}, status=500)
 
         origin = request.META.get("HTTP_ORIGIN") or settings.FRONTEND_URL
         assigned_count = 0
         errors = []
 
         with transaction.atomic():
-            for email in candidate_emails:
-                recipient_email = str(email or "").strip().lower()
-                if not recipient_email:
-                    continue
-
+            for recipient_email in recipient_emails:
                 # Priority 1: candidate flow (token-based)
-                recruitee = Recruitee.objects.filter(email=recipient_email).first()
+                recruitee_qs = Recruitee.objects.filter(email=recipient_email)
+                if requester_company_id:
+                    recruitee_qs = recruitee_qs.filter(company_id=requester_company_id)
+                recruitee = recruitee_qs.first()
+
                 if recruitee:
                     try:
                         assignment, created_assign = CandidateAssignment.objects.get_or_create(
@@ -2486,7 +2600,6 @@ Return ONLY valid JSON in this format:
                             template=template,
                         )
 
-                        # If it already existed, rotate token and reset timestamps so link is fresh
                         if not created_assign:
                             assignment.token = uuid.uuid4()
                             assignment.assigned_at = timezone.now()
@@ -2499,7 +2612,7 @@ Return ONLY valid JSON in this format:
                                 "token", "assigned_at", "status", "completed_at", "answers", "metrics", "ai_report"
                             ])
 
-                        if send_emails:
+                        if send_emails and email_template:
                             assignment_link = f"{origin}/take-assessment/{assignment.token}"
                             context = {
                                 "firstName": recruitee.first_name or "Candidate",
@@ -2508,7 +2621,6 @@ Return ONLY valid JSON in this format:
                             }
 
                             subject, html_body = render_email_subject_and_body(email_template, context)
-
                             email_msg = EmailMultiAlternatives(
                                 subject=subject,
                                 body="Please view this email in HTML format.",
@@ -2521,7 +2633,6 @@ Return ONLY valid JSON in this format:
                                 email_msg.send()
                             except Exception as e:
                                 errors.append(f"Failed sending to {recipient_email}: {str(e)}")
-                                print(f"❌ Email error for {recipient_email}: {str(e)}")
                                 continue
 
                         assigned_count += 1
@@ -2530,10 +2641,9 @@ Return ONLY valid JSON in this format:
                         errors.append(f"Failed for {recipient_email}: {str(e)}")
                         continue
 
-                # Priority 2: employee flow (session/JWT-based)
+                # Priority 2: employee flow
                 try:
-                    employee_qs = User.objects.filter(email=recipient_email)
-                    requester_company_id = getattr(request.user, "company_id", None)
+                    employee_qs = User.objects.filter(email=recipient_email, role=User.Roles.EMPLOYEE)
                     if requester_company_id:
                         employee_qs = employee_qs.filter(company_id=requester_company_id)
 
@@ -2559,7 +2669,7 @@ Return ONLY valid JSON in this format:
                             "status", "assigned_at", "completed_at", "answers", "metrics", "ai_report"
                         ])
 
-                    if send_emails:
+                    if send_emails and email_template:
                         assignment_link = f"{origin}/dynamic-test?assignment={assignment.id}"
                         context = {
                             "firstName": getattr(employee, "first_name", "") or "Employee",
@@ -2568,7 +2678,6 @@ Return ONLY valid JSON in this format:
                         }
 
                         subject, html_body = render_email_subject_and_body(email_template, context)
-
                         email_msg = EmailMultiAlternatives(
                             subject=subject,
                             body="Please view this email in HTML format.",
@@ -2581,7 +2690,6 @@ Return ONLY valid JSON in this format:
                             email_msg.send()
                         except Exception as e:
                             errors.append(f"Failed sending to {recipient_email}: {str(e)}")
-                            print(f"❌ Email error for {recipient_email}: {str(e)}")
                             continue
 
                     assigned_count += 1
@@ -2590,6 +2698,10 @@ Return ONLY valid JSON in this format:
 
         return Response({
             "message": f"Processed {assigned_count} assignments.",
+            "template_code": template.code,
+            "template_name": template.name,
+            "question_count": len(questions),
+            "assigned_count": assigned_count,
             "errors": errors,
         })
 

@@ -73,95 +73,125 @@ const styles = {
     width: "100%",
     border: `1px solid ${COLORS.red}`,
   },
+  infoBox: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    backgroundColor: COLORS.primaryLight,
+    border: `1px solid ${COLORS.primary}`,
+    color: COLORS.textPrimary,
+    fontSize: "13px",
+  },
+  successBox: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    backgroundColor: "#ecfdf3",
+    border: "1px solid #86efac",
+    color: "#166534",
+    fontSize: "13px",
+    fontWeight: "600",
+  },
 };
 
-const UploadSurveyFile = ({ onQuestionsImported }) => {
+const UploadSurveyFile = ({ apiBase, authHeader, onQuestionsImported }) => {
   const [fileName, setFileName] = useState(null);
   const [error, setError] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [warnings, setWarnings] = useState([]);
+  const [reviewMessage, setReviewMessage] = useState("");
 
-  const handleFileChange = (e) => {
+  const normalizeImportedQuestions = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items
+      .map((q, i) => {
+        const text = typeof q === "string" ? q : q?.text || q?.question || "";
+        return {
+          id: Date.now() + i,
+          text: String(text || "").trim(),
+        };
+      })
+      .filter((q) => q.text.length > 0);
+  };
+
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setError(null);
-    setFileName(file.name);
+    setWarnings([]);
+    setReviewMessage("");
+    setIsUploading(true);
 
-    const reader = new FileReader();
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    reader.onload = (event) => {
-      const content = event.target.result;
+      const response = await fetch(`${apiBase}/api/surveys/extract-questions/`, {
+        method: "POST",
+        headers: {
+          ...(authHeader || {}),
+        },
+        body: formData,
+      });
 
-      try {
-        let questions = [];
+      const data = await response.json().catch(() => ({}));
 
-        if (file.name.toLowerCase().endsWith(".json")) {
-          const parsed = JSON.parse(content);
-          if (!Array.isArray(parsed))
-            throw new Error("JSON must be an array of questions.");
+      const extracted = normalizeImportedQuestions(data?.questions);
+      setWarnings(Array.isArray(data?.warnings) ? data.warnings : []);
 
-          questions = parsed.map((q, i) => ({
-            id: Date.now() + i,
-            text: typeof q === "string" ? q : q.text || q.question || "",
-          }));
-        } else if (file.name.toLowerCase().endsWith(".csv")) {
-          const lines = content
-            .split(/\r\n|\n|\r/)
-            .filter((line) => line.trim() !== "");
-          if (lines.length < 2)
-            throw new Error("CSV file is empty or missing headers.");
-
-          const firstLine = lines[0];
-          const delimiter = firstLine.includes(";") ? ";" : ",";
-          const headers = firstLine
-            .toLowerCase()
-            .split(delimiter)
-            .map((h) => h.trim());
-
-          let questionColIndex = headers.findIndex(
-            (h) => h.includes("question") || h.includes("text")
-          );
-          if (questionColIndex === -1) {
-            questionColIndex = headers.length > 1 ? 1 : 0;
-          }
-
-          questions = lines.slice(1).map((line, i) => {
-            const cols = line.split(delimiter);
-            let text = cols[questionColIndex] || cols[0] || "";
-            text = text.replace(/^"|"$/g, "").trim();
-            return { id: Date.now() + i, text: text };
-          });
-        } else {
-          throw new Error("Unsupported file type. Please upload .csv or .json");
-        }
-
-        const validQuestions = questions.filter(
-          (q) => q.text && q.text.length > 0
+      if (!response.ok) {
+        throw new Error(
+          data?.detail ||
+          data?.error ||
+          "Failed to process this file. Try using clearer numbering and spacing between questions."
         );
-        if (validQuestions.length === 0)
-          throw new Error("No valid questions found in file.");
-
-        if (onQuestionsImported) onQuestionsImported(validQuestions);
-      } catch (err) {
-        setError(err.message || "Failed to parse file.");
-        setFileName(null);
-        if (onQuestionsImported) onQuestionsImported([]);
-      } finally {
-        e.target.value = null;
       }
-    };
 
-    reader.readAsText(file);
+      if (!extracted.length) {
+        throw new Error("No questions detected in this file.");
+      }
+
+      setFileName(file.name);
+      setReviewMessage(
+        data?.review_message || "Please review the questions before submission and edit them as needed."
+      );
+
+      if (onQuestionsImported) {
+        onQuestionsImported(extracted, {
+          warnings: Array.isArray(data?.warnings) ? data.warnings : [],
+          reviewMessage: data?.review_message,
+        });
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to parse file.");
+      setFileName(null);
+      if (onQuestionsImported) {
+        onQuestionsImported([], { error: true });
+      }
+    } finally {
+      setIsUploading(false);
+      e.target.value = null;
+    }
   };
 
   return (
     <div style={styles.container}>
+      <div style={styles.infoBox}>
+        <div style={{ fontWeight: "700", marginBottom: "6px" }}>Preferred source format tips</div>
+        <div>1. Use numbering like 1. or 1) or 1- at the beginning of each question.</div>
+        <div>2. Keep a blank line between questions for better detection.</div>
+        <div>3. For PDF, use selectable typed text (not handwritten/scanned images).</div>
+      </div>
+
       {!fileName ? (
         <label style={styles.dropZone}>
           <input
             type="file"
-            accept=".csv,.json"
+            accept=".csv,.json,.txt,.md,.docx,.pdf"
             onChange={handleFileChange}
             style={{ display: "none" }}
+            disabled={isUploading}
           />
           <Upload
             size={32}
@@ -169,7 +199,7 @@ const UploadSurveyFile = ({ onQuestionsImported }) => {
             style={{ marginBottom: "12px" }}
           />
           <div style={{ color: COLORS.textPrimary, fontWeight: "600" }}>
-            Click to Upload
+            {isUploading ? "Processing file..." : "Click to Upload"}
           </div>
           <div
             style={{
@@ -178,7 +208,7 @@ const UploadSurveyFile = ({ onQuestionsImported }) => {
               marginTop: "4px",
             }}
           >
-            CSV or JSON (Column: "Questions" or "Text")
+            Supported: DOCX, PDF, TXT, MD, CSV, JSON
           </div>
         </label>
       ) : (
@@ -189,7 +219,9 @@ const UploadSurveyFile = ({ onQuestionsImported }) => {
           <button
             onClick={() => {
               setFileName(null);
-              if (onQuestionsImported) onQuestionsImported([]);
+              setWarnings([]);
+              setReviewMessage("");
+              if (onQuestionsImported) onQuestionsImported([], { cleared: true });
             }}
             style={{
               background: "none",
@@ -201,6 +233,19 @@ const UploadSurveyFile = ({ onQuestionsImported }) => {
           >
             <X size={18} color={COLORS.textMuted} />
           </button>
+        </div>
+      )}
+
+      {reviewMessage && (
+        <div style={styles.successBox}>{reviewMessage}</div>
+      )}
+
+      {warnings.length > 0 && (
+        <div style={styles.infoBox}>
+          <div style={{ fontWeight: "700", marginBottom: "6px" }}>File-specific warnings</div>
+          {warnings.map((warning, idx) => (
+            <div key={idx}>{warning}</div>
+          ))}
         </div>
       )}
 
