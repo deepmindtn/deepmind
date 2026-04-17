@@ -22,6 +22,8 @@ import {
   Activity,
   BrainCircuit,
 } from "lucide-react";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 
 // -----------------------
 // 1. DATA & CONSTANTS
@@ -267,6 +269,7 @@ export default function ISETest() {
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0); // 0=Intro, 1..N=Questions, N+1=Results
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -291,6 +294,7 @@ export default function ISETest() {
            if(r.status === 401) throw new Error("Unauthorized: Invalid Token");
            throw new Error(data?.detail || "Fetch failed");
         }
+        setAssignmentInfo(data || null);
         return data;
       })
       .then((data) => {
@@ -366,15 +370,28 @@ export default function ISETest() {
     { name: "Mon Score", value: metrics.average, full: 5 }
   ];
 
-  function downloadReport() {
-    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
-        const blob = new Blob([_reportStr], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ise-report-${assignmentId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function handleDownload() {
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "ISE",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `ise-report-${assignmentId}.pdf`,
+      metadata,
+    });
+    if (blob && assignmentId) {
+      const fd = new FormData();
+      fd.append("file", blob, `ise-${assignmentId}.pdf`);
+      const headers = isCandidate
+        ? { "X-Candidate-Token": candidateToken }
+        : { Authorization: `Bearer ${hrToken}` };
+      await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
+        method: "PUT",
+        headers,
+        body: fd,
+      }).catch(console.error);
+    }
   }
 
   if (fetching) {
@@ -546,12 +563,12 @@ export default function ISETest() {
 
         {/* STEP END: RESULTS */}
         {step > totalPages && (
-          <div className="animate-fade-in" style={{ paddingBottom: "40px" }}>
+          <div className="animate-fade-in" style={{ paddingBottom: "40px" }} id="results-root">
             <div style={styles.headerRow}>
               <h2 style={{ fontSize: "24px", fontWeight: "700", color: COLORS.textPrimary }}>
                 Résultats ISE
               </h2>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px" }} data-pdf-exclude="true">
                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
                    setAnswers({});
                    setStep(1);
@@ -559,7 +576,7 @@ export default function ISETest() {
                 }}>
                   <RotateCcw size={16} /> Recommencer
                 </button>
-                <button style={styles.btn("primary")} className="btn-hover" onClick={downloadReport}>
+                <button style={styles.btn("primary")} className="btn-hover" onClick={handleDownload}>
                   <Download size={16} /> Télécharger
                 </button>
               </div>
