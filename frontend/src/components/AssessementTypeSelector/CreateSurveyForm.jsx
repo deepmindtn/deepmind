@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   FileText,
   Edit3,
@@ -727,7 +727,10 @@ const SurveyDetailsView = ({ surveyId, onBack, API_BASE, authHeader }) => {
 const CreateSurveyForm = () => {
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
   const access = localStorage.getItem("access");
-  const authHeader = access ? { Authorization: `Bearer ${access}` } : {};
+  const authHeader = useMemo(
+    () => (access ? { Authorization: `Bearer ${access}` } : {}),
+    [access]
+  );
 
   const [view, setView] = useState("create");
   const [selectedSurveyId, setSelectedSurveyId] = useState(null);
@@ -800,7 +803,7 @@ const CreateSurveyForm = () => {
       }
     }
     fetchAudienceData();
-  }, [API_BASE]);
+  }, [API_BASE, authHeader]);
 
   // Fetch History
   useEffect(() => {
@@ -812,7 +815,7 @@ const CreateSurveyForm = () => {
         .catch(console.error)
         .finally(() => setLoadingHistory(false));
     }
-  }, [view]);
+  }, [view, API_BASE, authHeader]);
 
   // Handlers
   const handleAddQuestion = () =>
@@ -1081,7 +1084,7 @@ const CreateSurveyForm = () => {
                           : COLORS.textSecondary,
                     }}
                   >
-                    Import PDF or Excel
+                    Import PDF or other formats
                   </div>
                 </div>
               </div>
@@ -1142,53 +1145,95 @@ const CreateSurveyForm = () => {
                     }}
                   >
                     <UploadSurveyFile
-                      onQuestionsImported={(importedQuestions) => {
-                        setQuestions(importedQuestions); // ✅ Populate questions state from file
-                        setToast({
-                          message: `Imported ${importedQuestions.length} questions!`,
-                          type: "success",
-                        });
+                      apiBase={API_BASE}
+                      authHeader={authHeader}
+                      onQuestionsImported={(importedQuestions, meta = {}) => {
+                        if (meta?.cleared) {
+                          setQuestions([{ id: Date.now(), text: "" }]);
+                          return;
+                        }
+
+                        if (meta?.error) {
+                          return;
+                        }
+
+                        if (Array.isArray(importedQuestions) && importedQuestions.length > 0) {
+                          setQuestions(importedQuestions); // Populate question inputs from extracted file content.
+                          setToast({
+                            message: `Imported ${importedQuestions.length} questions. Please review before submission.`,
+                            type: "success",
+                          });
+                        }
                       }}
                     />
                   </div>
 
-                  {/* ✅ Optional: Preview Imported Questions */}
-                  {questions.length > 0 && questions[0].text !== "" && (
+                  {/* Review and edit imported questions directly in editable fields */}
+                  <div style={{ marginTop: "20px" }}>
                     <div
                       style={{
-                        marginTop: "20px",
-                        textAlign: "left",
-                        maxHeight: "200px",
-                        overflowY: "auto",
-                        background: "#f8fafc",
-                        padding: "10px",
-                        borderRadius: "8px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "12px",
                       }}
                     >
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: "700",
-                          color: COLORS.textSecondary,
-                          marginBottom: "8px",
-                        }}
-                      >
-                        Preview Imported Questions:
+                      <div style={{ ...styles.label, marginBottom: 0 }}>
+                        <Edit3 size={16} color={COLORS.primary} />
+                        Review Imported Questions
                       </div>
-                      {questions.map((q, i) => (
+                      <button
+                        className="survey-builder-btn-secondary"
+                        style={styles.btnSecondary}
+                        onClick={handleAddQuestion}
+                      >
+                        <Plus size={16} /> Add Question
+                      </button>
+                    </div>
+
+                    {questions.map((q, i) => (
+                      <div key={q.id} style={styles.questionRow}>
                         <div
-                          key={i}
                           style={{
-                            fontSize: "13px",
-                            padding: "4px 0",
-                            borderBottom: "1px solid #e2e8f0",
+                            fontWeight: "700",
+                            color: COLORS.textMuted,
+                            width: "30px",
+                            backgroundColor: COLORS.cardBg,
                           }}
                         >
-                          {i + 1}. {q.text}
+                          {i + 1}.
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <input
+                          style={{
+                            ...styles.input,
+                            border: "none",
+                            backgroundColor: COLORS.cardBg,
+                            color: COLORS.textPrimary,
+                            fontSize: "15px",
+                            fontWeight: "500",
+                          }}
+                          type="text"
+                          placeholder="Imported question text..."
+                          value={q.text}
+                          onChange={(e) => handleQuestionChange(q.id, e.target.value)}
+                        />
+                        {questions.length > 1 && (
+                          <button
+                            onClick={() => handleRemoveQuestion(q.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: COLORS.red,
+                              padding: "8px",
+                            }}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div>

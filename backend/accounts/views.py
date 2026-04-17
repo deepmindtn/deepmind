@@ -546,6 +546,428 @@ class CreateSurveyView(ListCreateAPIView):
             .order_by('-created_at')
         )
 
+
+class SurveyQuestionExtractionView(APIView):
+    """Extract survey questions from uploaded files for manual survey creation."""
+    permission_classes = [permissions.IsAuthenticated, IsHR]
+    parser_classes = [MultiPartParser, FormParser]
+
+    MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
+    @staticmethod
+    def _clean_question_text(value):
+        import re
+
+        text = str(value or "").strip()
+        if not text:
+            return ""
+
+        text = re.sub(r"^\s*(?:q(?:uestion)?\s*)?\d+[\.)\-:]\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^\s*[\-*•]\s*", "", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    @classmethod
+    def _extract_questions_from_text(cls, text):
+        import re
+
+        normalized = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+        if not normalized.strip():
+            return [], ["No readable text content was detected in the uploaded file."]
+
+        numbered_pattern = re.compile(r"^\s*(?:q(?:uestion)?\s*)?(?:\d+|[a-zA-Z])[\.)\-:]\s+(.+)\s*$", re.IGNORECASE)
+        inline_number_marker = re.compile(
+            r"(?i)(?<!\w)(?:q(?:uestion)?\s*)?(?:\d{1,3}|[a-zA-Z])[\.)\-:]\s+"
+        )
+        question_word_pattern = re.compile(r"^\s*q(?:uestion)?\s*\d*\s*[:\-]?\s*(.+)$", re.IGNORECASE)
+
+        questions = []
+        seen = set()
+        current_parts = []
+        found_numbered = False
+
+        def explode_inline_numbered(content):
+            chunks = []
+            for raw_line in content.split("\n"):
+                line = (raw_line or "").strip()
+                if not line:
+                    chunks.append(("", False))
+                    continue
+
+                markers = list(inline_number_marker.finditer(line))
+                if not markers:
+                    chunks.append((line, False))
+                    continue
+
+                # If numbering appears inline in one line (common in some PDFs), split by markers.
+                if len(markers) > 1 or markers[0].start() == 0:
+                    prefix = line[:markers[0].start()].strip()
+                    if prefix:
+                        chunks.append((prefix, False))
+
+                    for idx, marker in enumerate(markers):
+                        start = marker.end()
+                        end = markers[idx + 1].start() if idx + 1 < len(markers) else len(line)
+                        candidate = line[start:end].strip()
+                        if candidate:
+                            chunks.append((candidate, True))
+                    continue
+
+                chunks.append((line, False))
+
+            return chunks
+
+        def push_current():
+            if not current_parts:
+                return
+            candidate = cls._clean_question_text(" ".join(current_parts))
+            current_parts.clear()
+            if len(candidate) < 5:
+                return
+            lowered = candidate.lower()
+            if lowered in seen:
+                return
+            seen.add(lowered)
+            questions.append(candidate)
+
+        for line, is_explicit_numbered in explode_inline_numbered(normalized):
+
+            if not line:
+                push_current()
+                continue
+
+            if is_explicit_numbered:
+                found_numbered = True
+                push_current()
+                current_parts.append(line)
+                continue
+
+            numbered_match = numbered_pattern.match(line)
+            if numbered_match:
+                found_numbered = True
+                push_current()
+                current_parts.append(numbered_match.group(1).strip())
+                continue
+
+            question_match = question_word_pattern.match(line)
+            if question_match and question_match.group(1).strip():
+                push_current()
+                current_parts.append(question_match.group(1).strip())
+                continue
+
+            if current_parts:
+                current_parts.append(line)
+            else:
+                # Fallback: treat likely full-sentence prompts as standalone candidates.
+                if line.endswith("?") or len(line.split()) >= 7:
+                    current_parts.append(line)
+
+        push_current()
+
+        if len(questions) < 2:
+            # Fallback: break compact one-line question lists by '?' boundaries.
+            compact_sentences = [
+                s.strip()
+                for s in re.split(r"(?<=[\?])\s+", re.sub(r"\s+", " ", normalized).strip())
+                if s.strip()
+            ]
+            for sentence in compact_sentences:
+                if "?" not in sentence:
+                    continue
+                candidate = cls._clean_question_text(sentence)
+                lowered = candidate.lower()
+                if len(candidate) >= 5 and lowered not in seen:
+                    seen.add(lowered)
+                    questions.append(candidate)
+
+        if len(questions) < 2:
+            paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", normalized) if p.strip()]
+            for p in paragraphs:
+                candidate = cls._clean_question_text(p)
+                lowered = candidate.lower()
+                if len(candidate) >= 5 and lowered not in seen:
+                    seen.add(lowered)
+                    questions.append(candidate)
+
+        # Normalize merged entries like "Q1? Q2? Q3?" into separate questions.
+        normalized_questions = []
+        normalized_seen = set()
+        for item in questions:
+            candidate = cls._clean_question_text(item)
+            fragments = [candidate]
+            if candidate.count("?") > 1:
+                fragments = [
+                    cls._clean_question_text(fragment)
+                    for fragment in re.split(r"(?<=[\?])\s+", candidate)
+                    if fragment.strip()
+                ]
+
+            for fragment in fragments:
+                if len(fragment) < 5:
+                    continue
+                lowered = fragment.lower()
+                if lowered in normalized_seen:
+                    continue
+                normalized_seen.add(lowered)
+                normalized_questions.append(fragment)
+
+        questions = normalized_questions
+
+        warnings = []
+        if not found_numbered:
+            warnings.append(
+                "Numbered markers were not consistently detected. For best accuracy use 1., 1) or 1- and leave a blank line between questions."
+            )
+
+        if len(questions) == 0:
+            warnings.append(
+                "No questions could be detected automatically. Try a cleaner text-based file with one question per line/paragraph."
+            )
+
+        return questions[:250], warnings
+
+    @classmethod
+    def _extract_text_payload(cls, file_name, file_bytes):
+        import csv as csv_module
+        import io
+        import json
+        import re
+        import xml.etree.ElementTree as ET
+        import zipfile
+
+        warnings = []
+        extension = (file_name.rsplit(".", 1)[-1].lower() if "." in file_name else "")
+
+        def collect_question_strings(payload, bucket):
+            if isinstance(payload, str):
+                candidate = payload.strip()
+                if candidate:
+                    bucket.append(candidate)
+                return
+
+            if isinstance(payload, dict):
+                preferred_keys = (
+                    "question",
+                    "question_text",
+                    "text",
+                    "prompt",
+                    "title",
+                    "content",
+                )
+                captured = False
+                for key in preferred_keys:
+                    value = payload.get(key)
+                    if isinstance(value, str) and value.strip():
+                        bucket.append(value.strip())
+                        captured = True
+
+                if captured:
+                    return
+
+                for value in payload.values():
+                    collect_question_strings(value, bucket)
+                return
+
+            if isinstance(payload, list):
+                for item in payload:
+                    collect_question_strings(item, bucket)
+
+        def decode_text(raw_bytes):
+            for encoding in ("utf-8", "utf-8-sig", "latin-1"):
+                try:
+                    return raw_bytes.decode(encoding)
+                except Exception:
+                    continue
+            return raw_bytes.decode("utf-8", errors="ignore")
+
+        if extension == "json":
+            text = decode_text(file_bytes)
+            data = json.loads(text)
+            rows = []
+            collect_question_strings(data, rows)
+
+            payload = "\n\n".join([str(r).strip() for r in rows if str(r).strip()])
+            return payload, warnings
+
+        if extension in {"jsonl", "ndjson"}:
+            text = decode_text(file_bytes)
+            rows = []
+            for line in text.splitlines():
+                candidate = (line or "").strip()
+                if not candidate:
+                    continue
+                try:
+                    data = json.loads(candidate)
+                    collect_question_strings(data, rows)
+                except Exception:
+                    # Some JSONL files may be plain text lines instead of JSON objects.
+                    rows.append(candidate)
+
+            payload = "\n\n".join([str(r).strip() for r in rows if str(r).strip()])
+            return payload, warnings
+
+        if extension in {"csv", "tsv"}:
+            text = decode_text(file_bytes)
+            stream = io.StringIO(text)
+            sample = text[:2048]
+            if extension == "tsv":
+                delimiter = "\t"
+            else:
+                try:
+                    dialect = csv_module.Sniffer().sniff(sample)
+                    delimiter = dialect.delimiter
+                except Exception:
+                    delimiter = ","
+
+            reader = csv_module.reader(stream, delimiter=delimiter)
+            rows = list(reader)
+            if not rows:
+                return "", ["CSV appears empty."]
+
+            headers = [str(h or "").strip().lower() for h in rows[0]]
+            question_idx = next(
+                (
+                    idx
+                    for idx, h in enumerate(headers)
+                    if any(keyword in h for keyword in ("question", "text", "prompt", "title", "content"))
+                ),
+                0,
+            )
+
+            extracted = []
+            for row in rows[1:]:
+                if not row:
+                    continue
+                value = row[question_idx] if question_idx < len(row) else row[0]
+                value = str(value or "").strip().strip('"')
+                if value:
+                    extracted.append(value)
+
+            return "\n\n".join(extracted), warnings
+
+        if extension == "docx":
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+                if "word/document.xml" not in zf.namelist():
+                    return "", ["DOCX structure is invalid (word/document.xml missing)."]
+                xml_bytes = zf.read("word/document.xml")
+
+            root = ET.fromstring(xml_bytes)
+            ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+            paragraphs = []
+            for para in root.findall(".//w:body/w:p", ns):
+                tokens = []
+                for node in para.findall(".//w:t", ns):
+                    if node.text:
+                        tokens.append(node.text)
+                paragraph_text = "".join(tokens).strip()
+                if paragraph_text:
+                    paragraphs.append(paragraph_text)
+
+            if not paragraphs:
+                warnings.append("No readable text found in DOCX paragraphs.")
+            return "\n".join(paragraphs), warnings
+
+        if extension == "pdf":
+            from pypdf import PdfReader
+
+            reader = PdfReader(io.BytesIO(file_bytes))
+            pages = []
+            for page in reader.pages:
+                page_text = (page.extract_text() or "").strip()
+                if page_text:
+                    pages.append(page_text)
+
+            payload = "\n\n".join(pages)
+            # Reduce hard wraps introduced by PDF extraction while preserving paragraph breaks.
+            payload = re.sub(r"(?<=\w)-\n(?=\w)", "", payload)
+            payload = re.sub(r"(?<![\.!\?:])\n(?!\n)", " ", payload)
+            payload = re.sub(r"\n{3,}", "\n\n", payload)
+            readable_chars = len(re.sub(r"\s+", "", payload))
+            if readable_chars < 60:
+                warnings.append(
+                    "PDF text seems hard to extract (possibly scanned/handwritten). For best results use a selectable digital text PDF."
+                )
+            return payload, warnings
+
+        # Generic fallback for txt/md/unknown extensions.
+        text = decode_text(file_bytes)
+        printable = sum(1 for c in text if c.isprintable() or c.isspace())
+        if text and printable / max(len(text), 1) < 0.65:
+            warnings.append(
+                "File appears mostly binary. Question extraction may be unreliable for this format."
+            )
+        return text, warnings
+
+    def post(self, request):
+        upload = request.FILES.get("file")
+        if not upload:
+            return APIResponse({"detail": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if upload.size and upload.size > self.MAX_UPLOAD_SIZE:
+            return APIResponse(
+                {"detail": "File is too large. Maximum supported size is 10MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_name = str(getattr(upload, "name", "survey-upload")).strip() or "survey-upload"
+
+        try:
+            file_bytes = upload.read()
+        except Exception:
+            return APIResponse(
+                {"detail": "Unable to read uploaded file."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not file_bytes:
+            return APIResponse(
+                {"detail": "Uploaded file is empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            raw_text, source_warnings = self._extract_text_payload(file_name, file_bytes)
+        except Exception as exc:
+            return APIResponse(
+                {"detail": f"Could not parse this file: {str(exc)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        questions, parse_warnings = self._extract_questions_from_text(raw_text)
+        warnings = [*source_warnings, *parse_warnings]
+
+        preferred_format_tips = [
+            "Use a text-based file format when possible (.docx with typed text or a selectable-text PDF).",
+            "Write each question as 1., 1) or 1- for best detection accuracy.",
+            "Insert a blank line between questions.",
+            "Avoid handwritten/scanned PDF documents unless OCR has already been applied.",
+        ]
+
+        if not questions:
+            return APIResponse(
+                {
+                    "detail": "No questions could be extracted automatically.",
+                    "questions": [],
+                    "warnings": warnings,
+                    "preferred_format_tips": preferred_format_tips,
+                    "review_message": "Please review the questions before submission and edit them as needed.",
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        return APIResponse(
+            {
+                "questions": [
+                    {"id": idx + 1, "text": text}
+                    for idx, text in enumerate(questions)
+                ],
+                "warnings": warnings,
+                "preferred_format_tips": preferred_format_tips,
+                "review_message": "Please review the questions before submission and edit them as needed.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
 class SurveyDetailView(RetrieveAPIView):
     serializer_class = SurveyRetrieveSerializer
     permission_classes = [permissions.IsAuthenticated, IsHR]
