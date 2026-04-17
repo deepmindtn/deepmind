@@ -4,6 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
 import StructuredReport from "./StructuredReport";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 import {
   Trophy,
   BrainCircuit,
@@ -74,35 +76,6 @@ const QUESTIONS = [
 // -----------------------
 // 2. HELPERS
 // -----------------------
-
-async function downloadResultsAsPDF(filename) {
-  const html2canvasMod = await import("html2canvas");
-  const jspdfMod = await import("jspdf");
-  const html2canvas = html2canvasMod.default || html2canvasMod;
-  const jsPDFClass = jspdfMod.jsPDF || jspdfMod.default;
-
-  const el = document.getElementById("results-root");
-  if (!el) return null;
-
-  // Temporarily force white bg for clean capture
-  const originalBg = el.style.backgroundColor;
-  el.style.backgroundColor = "#ffffff";
-  el.style.padding = "20px";
-
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true });
-  el.style.backgroundColor = originalBg;
-  el.style.padding = "";
-
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDFClass({ unit: "pt", format: "a4", orientation: "portrait" });
-  
-  const imgWidth = pdf.internal.pageSize.getWidth();
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  
-  pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-  pdf.save(filename);
-  return pdf.output("blob");
-}
 
 // -----------------------
 // 3. STYLES
@@ -276,6 +249,7 @@ export default function CAQTest() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
 
   // Check if assignment is already completed and restore results
   useEffect(() => {
@@ -291,6 +265,7 @@ export default function CAQTest() {
         return r.json();
       })
       .then((data) => {
+        setAssignmentInfo(data || null);
         // If already completed, restore previous answers and show results
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
@@ -370,7 +345,15 @@ export default function CAQTest() {
   }
 
   async function handleDownload() {
-    const blob = await downloadResultsAsPDF(`caq-result-${assignmentId}.pdf`);
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "CAQ",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `caq-result-${assignmentId}.pdf`,
+      metadata,
+    });
     if(blob && assignmentId) {
       const fd = new FormData();
       fd.append("file", blob, `caq-${assignmentId}.pdf`);
@@ -540,7 +523,7 @@ export default function CAQTest() {
                 <h2 style={{ fontSize: "24px", fontWeight: "700", margin: 0 }}>Profil de Réalisations</h2>
                 <span style={{ color: COLORS.textSecondary }}>Score Total : <strong>{metrics.total}</strong> / 20</span>
               </div>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px" }} data-pdf-exclude="true">
                  <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => { setAnswers({}); setStep(1); setAiReport(""); }}>
                    <RotateCcw size={18} /> Recommencer
                  </button>

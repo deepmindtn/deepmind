@@ -16,6 +16,8 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 
 /** Likert 0..6 (frequency scale) */
 const LIKERT = [0, 1, 2, 3, 4, 5, 6];
@@ -310,6 +312,7 @@ export default function MaslachTest() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -334,6 +337,7 @@ export default function MaslachTest() {
         return r.json();
       })
       .then((data) => {
+        setAssignmentInfo(data || null);
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
           if (data.ai_report) {
@@ -399,6 +403,30 @@ export default function MaslachTest() {
       alert("Erreur: " + err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDownload() {
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "Maslach Burnout Inventory",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `maslach-report-${assignmentId}.pdf`,
+      metadata,
+    });
+    if (blob && assignmentId) {
+      const fd = new FormData();
+      fd.append("file", blob, `maslach-${assignmentId}.pdf`);
+      const headers = isCandidate
+        ? { "X-Candidate-Token": candidateToken }
+        : { Authorization: `Bearer ${hrToken}` };
+      await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
+        method: "PUT",
+        headers,
+        body: fd,
+      }).catch(console.error);
     }
   }
 
@@ -617,12 +645,15 @@ export default function MaslachTest() {
 
         {/* STEP END: RESULTS */}
         {step > totalPages && (
-          <div className="animate-fade-in" style={{ paddingBottom: "40px" }}>
+          <div className="animate-fade-in" style={{ paddingBottom: "40px" }} id="results-root">
             <div style={styles.headerRow}>
               <h2 style={{ fontSize: "24px", fontWeight: "700", color: COLORS.textPrimary }}>
                 {t.resultTitle}
               </h2>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px" }} data-pdf-exclude="true">
+                <button style={styles.btn("primary")} className="btn-hover" onClick={handleDownload}>
+                  <Download size={16} /> {t.download}
+                </button>
                 <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => {
                   setAnswers({});
                   setStep(1);

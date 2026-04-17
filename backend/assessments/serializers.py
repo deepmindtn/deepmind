@@ -80,6 +80,20 @@ class AssignmentDetailSerializer(serializers.ModelSerializer):
     template_code = serializers.CharField(source="template.code", read_only=True)
     template_name = serializers.CharField(source="template.name", read_only=True)
     template_questions = serializers.JSONField(source="template.questions", read_only=True)
+    employee_first_name = serializers.SerializerMethodField()
+    employee_last_name = serializers.SerializerMethodField()
+    employee_full_name = serializers.SerializerMethodField()
+
+    def get_employee_first_name(self, obj):
+        return getattr(obj.employee, "first_name", "") or ""
+
+    def get_employee_last_name(self, obj):
+        return getattr(obj.employee, "last_name", "") or ""
+
+    def get_employee_full_name(self, obj):
+        first_name = getattr(obj.employee, "first_name", "") or ""
+        last_name = getattr(obj.employee, "last_name", "") or ""
+        return f"{first_name} {last_name}".strip()
 
     class Meta:
         model  = Assignment
@@ -87,6 +101,7 @@ class AssignmentDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "template_code", "template_name",
             "status", "assigned_at", "completed_at",
+            "employee_first_name", "employee_last_name", "employee_full_name",
             "answers", "metrics", "ai_report", "report_pdf", "template_questions",
         ]
 

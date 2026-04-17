@@ -4,6 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
 import StructuredReport from "./StructuredReport";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 import {
   Activity,
   BrainCircuit,
@@ -144,36 +146,6 @@ function computeScores(answers) {
   else quadrant = "lowStrain";
 
   return { subScores, dimScores: { D: Demands, C: Control, S: Support }, quadrant };
-}
-
-/* PDF Generator */
-async function downloadResultsAsPDF(filename) {
-  const html2canvasMod = await import("html2canvas");
-  const jspdfMod = await import("jspdf");
-  const html2canvas = html2canvasMod.default || html2canvasMod;
-  const jsPDFClass = jspdfMod.jsPDF || jspdfMod.default;
-
-  const el = document.getElementById("results-root");
-  if (!el) return null;
-
-  // Add white bg for capture
-  const originalBg = el.style.backgroundColor;
-  el.style.backgroundColor = "#ffffff";
-  el.style.padding = "20px";
-  
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true });
-  el.style.backgroundColor = originalBg; 
-  el.style.padding = "";
-
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDFClass({ unit: "pt", format: "a4", orientation: "portrait" });
-  
-  const imgWidth = pdf.internal.pageSize.getWidth();
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  
-  pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-  pdf.save(filename);
-  return pdf.output("blob");
 }
 
 // -----------------------
@@ -333,6 +305,7 @@ export default function KarasekTest() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [fetching, setFetching] = useState(true);
   
   // Navigation constants - must be defined before useEffect
@@ -357,6 +330,7 @@ export default function KarasekTest() {
           if (r.status === 401) throw new Error("Unauthorized: Invalid Token");
           throw new Error(data?.detail || "Fetch failed");
         }
+        setAssignmentInfo(data || null);
         // If already completed, restore previous answers and go to results
         if (data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
@@ -441,7 +415,15 @@ export default function KarasekTest() {
 
   // Upload PDF Handler
   async function handleDownload() {
-    const blob = await downloadResultsAsPDF(`karasek-report-${assignmentId}.pdf`);
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "Karasek",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `karasek-report-${assignmentId}.pdf`,
+      metadata,
+    });
     if(blob && assignmentId) {
       const fd = new FormData();
       fd.append("file", blob, `karasek-${assignmentId}.pdf`);
@@ -608,7 +590,7 @@ export default function KarasekTest() {
                 </h2>
                 <span style={{ color: COLORS.textSecondary }}>Résultat Global</span>
               </div>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px" }} data-pdf-exclude="true">
                  <button style={styles.btn("ghost")} className="btn-ghost" onClick={() => { setAnswers({}); setStep(1); setAiReport(""); }}>
                    <RotateCcw size={18} /> Recommencer
                  </button>

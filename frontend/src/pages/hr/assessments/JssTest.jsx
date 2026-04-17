@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Download, RotateCcw, ArrowRight, ArrowLeft, Briefcase, BrainCircuit } from "lucide-react";
 import StructuredReport from "./StructuredReport";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   RadialBarChart, RadialBar, PolarAngleAxis, Cell
@@ -488,6 +490,7 @@ export default function JssTest() {
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const questionsPerPage = 4;
@@ -505,6 +508,7 @@ export default function JssTest() {
         return r.json();
       })
       .then((data) => {
+        setAssignmentInfo(data || null);
         if (data && data.status === 'COMPLETED') {
           if (data.answers) setAnswers(data.answers);
           if (data.ai_report) { try { setAiReport(JSON.parse(data.ai_report)); } catch { setAiReport(data.ai_report); } }
@@ -561,15 +565,28 @@ export default function JssTest() {
     }
   }
 
-  function downloadReport() {
-    const _reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : (aiReport || "");
-    const blob = new Blob([_reportStr], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `jss-report-${assignmentId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function handleDownload() {
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "JSS",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `jss-report-${assignmentId}.pdf`,
+      metadata,
+    });
+    if (blob && assignmentId) {
+      const fd = new FormData();
+      fd.append("file", blob, `jss-${assignmentId}.pdf`);
+      const headers = isCandidate
+        ? { "X-Candidate-Token": candidateToken }
+        : { Authorization: `Bearer ${hrToken}` };
+      await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
+        method: "PUT",
+        headers,
+        body: fd,
+      }).catch(console.error);
+    }
   }
 
   return (
@@ -691,14 +708,14 @@ export default function JssTest() {
           )}
 
           {step > totalPages && (
-            <div>
+            <div id="results-root">
               <div style={styles.resultsHead}>
                 <h2 style={styles.resultsTitle}>Résultats JSS</h2>
-                <div style={styles.resultsActions}>
+                <div style={styles.resultsActions} data-pdf-exclude="true">
                   <button
                     style={styles.btn("primary")}
                     className="jss-btn-hover"
-                    onClick={downloadReport}
+                    onClick={handleDownload}
                   >
                     <Download size={18} /> Télécharger
                   </button>

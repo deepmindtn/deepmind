@@ -21,6 +21,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import StructuredReport from "./StructuredReport";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 
 const QUESTIONS = [
   { id: 1, text: "Je tends à rebondir rapidement après des difficultés." },
@@ -224,6 +226,7 @@ export default function BrsTest() {
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const perPage = 3;
@@ -247,6 +250,7 @@ export default function BrsTest() {
         return r.json();
       })
       .then((data) => {
+        setAssignmentInfo(data || null);
         if (data && data.status === "COMPLETED") {
           if (data.answers) setAnswers(data.answers);
           if (data.ai_report) {
@@ -307,15 +311,28 @@ export default function BrsTest() {
     }
   }
 
-  function downloadReport() {
-    const reportStr = typeof aiReport === "object" && aiReport !== null ? JSON.stringify(aiReport, null, 2) : aiReport || "";
-    const blob = new Blob([reportStr], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `brs-report-${assignmentId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function handleDownload() {
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "Brief Resilience Scale (BRS)",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `brs-report-${assignmentId}.pdf`,
+      metadata,
+    });
+    if (blob && assignmentId) {
+      const fd = new FormData();
+      fd.append("file", blob, `brs-${assignmentId}.pdf`);
+      const headers = isCandidate
+        ? { "X-Candidate-Token": candidateToken }
+        : { Authorization: `Bearer ${hrToken}` };
+      await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
+        method: "PUT",
+        headers,
+        body: fd,
+      }).catch(console.error);
+    }
   }
 
   return (
@@ -492,8 +509,8 @@ export default function BrsTest() {
           <div className="animate-fade-in" id="results-root">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", gap: "10px", flexWrap: "wrap" }}>
               <h2 style={{ margin: 0, fontSize: "28px", color: COLORS.textPrimary }}>Résultats BRS</h2>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button style={styles.btn("ghost")} className="btn-ghost" onClick={downloadReport}>
+              <div style={{ display: "flex", gap: "10px" }} data-pdf-exclude="true">
+                <button style={styles.btn("ghost")} className="btn-ghost" onClick={handleDownload}>
                   <Download size={18} /> Télécharger
                 </button>
                 <button

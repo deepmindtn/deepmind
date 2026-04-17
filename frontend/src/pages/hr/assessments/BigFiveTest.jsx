@@ -27,6 +27,8 @@ import {
 } from "recharts";
 import bigFiveImage from "../../../assets/big-five-personality.png";
 import StructuredReport from "./StructuredReport";
+import { exportAssessmentResultsPdf } from "../../../utils/exportAssessmentPdf";
+import { buildAssessmentPdfMetadata } from "../../../utils/assessmentPdfMeta";
 // -----------------------
 // Theme Configuration
 // -----------------------
@@ -351,6 +353,7 @@ export default function BigFiveAssessment() {
   const [step, setStep] = useState(0); // 0=Intro, 1..=Questions, >Total=Results
   const [aiLoading, setAiLoading] = useState(false);
   const [aiReport, setAiReport] = useState(null);
+  const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [fetching, setFetching] = useState(true);
 
   const questionsPerPage = 4;
@@ -373,6 +376,7 @@ export default function BigFiveAssessment() {
            if(r.status === 401) throw new Error("Unauthorized: Invalid Token");
            throw new Error(data?.detail || "Fetch failed");
         }
+          setAssignmentInfo(data || null);
         
         // Check if assignment is already completed. If so, load existing results
         if (data && data.status === 'COMPLETED') {
@@ -454,6 +458,30 @@ export default function BigFiveAssessment() {
       alert("An error occurred: " + err.message);
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  async function handleDownload() {
+    const metadata = buildAssessmentPdfMetadata({
+      assignment: assignmentInfo,
+      testName: "Big Five (OCEAN)",
+    });
+    const blob = await exportAssessmentResultsPdf({
+      rootId: "results-root",
+      fileName: `big-five-report-${assignmentId}.pdf`,
+      metadata,
+    });
+    if (blob && assignmentId) {
+      const fd = new FormData();
+      fd.append("file", blob, `bigfive-${assignmentId}.pdf`);
+      const headers = isCandidate
+        ? { "X-Candidate-Token": candidateToken }
+        : { Authorization: `Bearer ${hrToken}` };
+      await fetch(`${API_BASE}/api/assessments/${assignmentId}/upload-pdf/`, {
+        method: "PUT",
+        headers,
+        body: fd,
+      }).catch(console.error);
     }
   }
 
@@ -605,9 +633,9 @@ export default function BigFiveAssessment() {
           >
             <button
               style={styles.btn("outline")}
-              onClick={() => window.print()}
+              onClick={handleDownload}
             >
-              <Download size={16} /> Save Report
+              <Download size={16} /> Export PDF
             </button>
             <button
               style={styles.btn("outline")}
@@ -785,6 +813,7 @@ export default function BigFiveAssessment() {
       <div
         className="fade-in"
         style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+        id="results-root"
       >
         {/* Chart Card */}
         <div style={styles.card}>
