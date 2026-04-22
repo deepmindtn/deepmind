@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./RecruitmentMatch.css";
 import { styles } from "../../components/recruitment-match/Constants";
@@ -133,13 +133,28 @@ export default function RecruitmentMatch() {
   const [candidateCvs, setCandidateCvs] = useState([]);
   const [candidateCvsLoading, setCandidateCvsLoading] = useState(false);
   const [cvActionLoading, setCvActionLoading] = useState(false);
-  const [cvUploadFile, setCvUploadFile] = useState(null);
+  const [cvUploadFiles, setCvUploadFiles] = useState([]);
   const [cvUploadLoading, setCvUploadLoading] = useState(false);
+  const [dropUploadLoading, setDropUploadLoading] = useState(false);
+  const [dropUploadItems, setDropUploadItems] = useState([]);
+  const [dropUploadDeletingIds, setDropUploadDeletingIds] = useState([]);
   const [selectedMatchCandidate, setSelectedMatchCandidate] = useState(null);
   const [selectedMatchCv, setSelectedMatchCv] = useState(null);
   const [selectedCandidateCvs, setSelectedCandidateCvs] = useState([]);
   const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
   const [cvPreviewItem, setCvPreviewItem] = useState(null);
+  const [matchProgress, setMatchProgress] = useState({
+    visible: false,
+    total: 0,
+    completed: 0,
+    percent: 0,
+    currentLabel: "",
+    stage: "",
+    successCount: 0,
+    failureCount: 0,
+  });
+  const matchProgressTimerRef = useRef(null);
+  const matchProgressHideTimerRef = useRef(null);
 
   // --- Toast Timer ---
   useEffect(() => {
@@ -149,6 +164,46 @@ export default function RecruitmentMatch() {
     }
   }, [toast]);
 
+  const stopMatchProgressTicker = useCallback(() => {
+    if (matchProgressTimerRef.current) {
+      clearInterval(matchProgressTimerRef.current);
+      matchProgressTimerRef.current = null;
+    }
+  }, []);
+
+  const clearMatchProgressHideTimer = useCallback(() => {
+    if (matchProgressHideTimerRef.current) {
+      clearTimeout(matchProgressHideTimerRef.current);
+      matchProgressHideTimerRef.current = null;
+    }
+  }, []);
+
+  const startMatchProgressTicker = useCallback(
+    (maxPercent) => {
+      stopMatchProgressTicker();
+      matchProgressTimerRef.current = setInterval(() => {
+        setMatchProgress((prev) => {
+          if (!prev.visible || prev.percent >= maxPercent) {
+            return prev;
+          }
+          return {
+            ...prev,
+            percent: Math.min(maxPercent, prev.percent + 1),
+          };
+        });
+      }, 450);
+    },
+    [stopMatchProgressTicker]
+  );
+
+  useEffect(
+    () => () => {
+      stopMatchProgressTicker();
+      clearMatchProgressHideTimer();
+    },
+    [stopMatchProgressTicker, clearMatchProgressHideTimer]
+  );
+
   const fetchCandidates = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/recruitment/candidates/`, {
@@ -156,15 +211,17 @@ export default function RecruitmentMatch() {
       });
       const data = await res.json();
       setCandidates(
-        data.map((c) => ({
-          id: c.id,
-          first_name: c.first_name,
-          last_name: c.last_name,
-          name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email,
-          email: c.email,
-          position: c.position || "Not Specified",
-          status: c.status || "Pending",
-        }))
+        (Array.isArray(data) ? data : [])
+          .filter((c) => String(c?.status || "").toLowerCase() !== "pending_cv_match")
+          .map((c) => ({
+            id: c.id,
+            first_name: c.first_name,
+            last_name: c.last_name,
+            name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.email,
+            email: c.email,
+            position: c.position || "Not Specified",
+            status: c.status || "pending",
+          }))
       );
     } catch (e) {
       console.error(e);
@@ -695,8 +752,8 @@ export default function RecruitmentMatch() {
 
   const handleUploadCandidateCv = async () => {
     if (!cvManagerCandidate) return;
-    if (!cvUploadFile) {
-      setToast({ message: "Please select a CV file first.", type: "error" });
+    if (!cvUploadFiles.length) {
+      setToast({ message: "Please select at least one CV file.", type: "error" });
       return;
     }
 
@@ -704,7 +761,7 @@ export default function RecruitmentMatch() {
     try {
       const uploadForm = new FormData();
       uploadForm.append("recruitee_id", cvManagerCandidate.id);
-      uploadForm.append("file", cvUploadFile);
+      cvUploadFiles.forEach((file) => uploadForm.append("files", file));
       uploadForm.append("is_active", "true");
 
       const uploadRes = await fetch(`${API_BASE}/api/talent-matching/cvs/upload/`, {
@@ -713,23 +770,42 @@ export default function RecruitmentMatch() {
         body: uploadForm,
       });
 
-      if (!uploadRes.ok) throw new Error("Failed to upload CV");
+      const payload = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok) {
+        throw new Error(payload?.detail || "Failed to upload CV.");
+      }
 
-      const uploadedCv = await uploadRes.json();
-      setCvUploadFile(null);
+      const uploadedItems = Array.isArray(payload?.uploaded)
+        ? payload.uploaded
+        : payload?.id
+          ? [payload]
+          : [];
+
+      setCvUploadFiles([]);
       await fetchCandidateCvs(cvManagerCandidate.id, true);
 
       if (
         selectedMatchCandidate &&
-        selectedMatchCandidate.id === cvManagerCandidate.id
+        selectedMatchCandidate.id === cvManagerCandidate.id &&
+        uploadedItems.length > 0
       ) {
-        setSelectedMatchCv(uploadedCv);
+        const activeUploaded =
+          uploadedItems.find((item) => item?.is_active) ||
+          uploadedItems[uploadedItems.length - 1];
+        setSelectedMatchCv(activeUploaded || null);
       }
 
-      setToast({ message: "Candidate CV uploaded.", type: "success" });
+      const uploadCount = uploadedItems.length || cvUploadFiles.length;
+      setToast({
+        message:
+          uploadCount > 1
+            ? `${uploadCount} CVs uploaded successfully.`
+            : "Candidate CV uploaded.",
+        type: "success",
+      });
     } catch (e) {
       console.error(e);
-      setToast({ message: "Failed to upload CV.", type: "error" });
+      setToast({ message: e.message || "Failed to upload CV.", type: "error" });
     } finally {
       setCvUploadLoading(false);
     }
@@ -737,7 +813,7 @@ export default function RecruitmentMatch() {
 
   const openCvManager = async (candidate) => {
     setCvManagerCandidate(candidate);
-    setCvUploadFile(null);
+    setCvUploadFiles([]);
     setCvManagerOpen(true);
     await fetchCandidateCvs(
       candidate.id,
@@ -783,6 +859,21 @@ export default function RecruitmentMatch() {
       setCandidateCvsLoading(false);
     }
   };
+
+  const fetchCandidateCvListRaw = useCallback(
+    async (candidateId) => {
+      const res = await fetch(
+        `${API_BASE}/api/talent-matching/candidates/${candidateId}/cvs/`,
+        { headers: authHeader }
+      );
+      if (!res.ok) {
+        throw new Error("Failed to load candidate CVs.");
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
+    [API_BASE, authHeader]
+  );
 
   const handleSetActiveCv = async (cvId) => {
     setCvActionLoading(true);
@@ -845,6 +936,398 @@ export default function RecruitmentMatch() {
     setSelectedMatchCv(cv);
     setToast({ message: `CV #${cv.id} selected for match.`, type: "success" });
   };
+
+  const pushDropUploadItems = useCallback((items) => {
+    setDropUploadItems((prev) => [...items, ...prev].slice(0, 120));
+  }, []);
+
+  const patchDropUploadItems = useCallback((ids, patch) => {
+    const idSet = new Set(ids);
+    setDropUploadItems((prev) =>
+      prev.map((item) => {
+        if (!idSet.has(item.id)) {
+          return item;
+        }
+        const nextPatch = typeof patch === "function" ? patch(item) : patch;
+        return { ...item, ...nextPatch };
+      })
+    );
+  }, []);
+
+  const handleDropResumeFiles = useCallback(
+    async (incomingFiles) => {
+      const incoming = Array.from(incomingFiles || []);
+      if (!incoming.length) {
+        return;
+      }
+
+      const entries = incoming.map((file, index) => {
+        const safeName = String(file?.name || `resume-${index + 1}`);
+        return {
+          id: `${safeName}-${file?.size || 0}-${file?.lastModified || Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 7)}`,
+          file,
+          fileName: safeName,
+          status: "queued",
+          candidateId: null,
+          candidateName: "",
+          cvId: null,
+          message: "Queued",
+        };
+      });
+
+      pushDropUploadItems(entries.map(({ id, fileName, status, candidateName, message }) => ({
+        id,
+        fileName,
+        status,
+        candidateName,
+        message,
+      })));
+
+      const supportedEntries = entries.filter((entry) => /\.(pdf|txt)$/i.test(entry.fileName));
+      const unsupportedEntries = entries.filter((entry) => !/\.(pdf|txt)$/i.test(entry.fileName));
+
+      if (unsupportedEntries.length) {
+        patchDropUploadItems(
+          unsupportedEntries.map((entry) => entry.id),
+          {
+            status: "skipped",
+            message: "Unsupported file type",
+          }
+        );
+      }
+
+      if (!supportedEntries.length) {
+        setToast({
+          message: "Only PDF or TXT resumes are supported.",
+          type: "error",
+        });
+        return;
+      }
+
+      const uploadsByCandidate = new Map();
+      let skippedCount = unsupportedEntries.length;
+
+      if (selectedMatchCandidate?.id) {
+        uploadsByCandidate.set(String(selectedMatchCandidate.id), {
+          candidateId: selectedMatchCandidate.id,
+          candidate:
+            candidates.find((item) => String(item.id) === String(selectedMatchCandidate.id)) ||
+            selectedMatchCandidate,
+          candidateName:
+            selectedMatchCandidate.name || selectedMatchCandidate.email || "Candidate",
+          entries: supportedEntries,
+        });
+      } else {
+        const normalize = (value) =>
+          String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
+
+        const ignoredSuffixTokens = new Set([
+          "cv",
+          "resume",
+          "res",
+          "profile",
+          "final",
+          "updated",
+          "latest",
+          "new",
+          "copy",
+          "version",
+          "v2",
+          "v3",
+        ]);
+
+        const normalizedCandidates = candidates
+          .map((candidate) => ({
+            ...candidate,
+            normalizedFirst: normalize(candidate.first_name),
+            normalizedLast: normalize(candidate.last_name),
+          }))
+          .filter((candidate) => candidate.normalizedFirst && candidate.normalizedLast);
+
+        const findCandidateFromParts = (parts) => {
+          const firstName = parts[0] || "";
+          if (!firstName) {
+            return null;
+          }
+
+          const sameFirstCandidates = normalizedCandidates.filter(
+            (candidate) => candidate.normalizedFirst === firstName
+          );
+          if (!sameFirstCandidates.length) {
+            return null;
+          }
+
+          const tailTokens = parts.slice(1);
+          for (const candidate of sameFirstCandidates) {
+            if (
+              tailTokens.includes(candidate.normalizedLast) ||
+              tailTokens.join("").includes(candidate.normalizedLast)
+            ) {
+              return candidate;
+            }
+          }
+
+          if (sameFirstCandidates.length === 1) {
+            return sameFirstCandidates[0];
+          }
+
+          return null;
+        };
+
+        supportedEntries.forEach((entry) => {
+          const baseName = String(entry.fileName).replace(/\.[^.]+$/, "");
+          const parts = baseName
+            .split(/[\s_-]+/)
+            .map((part) => normalize(part))
+            .filter((part) => part && !ignoredSuffixTokens.has(part));
+
+          if (parts.length < 2) {
+            skippedCount += 1;
+            patchDropUploadItems([entry.id], {
+              status: "skipped",
+              message: "Name must start with firstname_lastname",
+            });
+            return;
+          }
+
+          const matchedCandidate = findCandidateFromParts(parts);
+          const firstName = parts[0] || "";
+          const lastName = parts.slice(1).join(" ") || "";
+
+          if (!matchedCandidate?.id) {
+            skippedCount += 1;
+            const displayName =
+              (firstName.charAt(0).toUpperCase() + firstName.slice(1)) +
+              (lastName ? ` ${lastName.charAt(0).toUpperCase()}${lastName.slice(1)}` : "");
+            patchDropUploadItems([entry.id], {
+              status: "skipped",
+              candidateName: displayName.trim(),
+              message: "CV does not belong to a registered candidate",
+            });
+            return;
+          }
+
+          const candidateKey = String(matchedCandidate.id);
+
+          const candidateDisplayName =
+            (firstName.charAt(0).toUpperCase() + firstName.slice(1)) +
+            " " +
+            (lastName.charAt(0).toUpperCase() + lastName.slice(1));
+
+          if (!uploadsByCandidate.has(candidateKey)) {
+            uploadsByCandidate.set(candidateKey, {
+              candidateId: matchedCandidate.id,
+              candidate: matchedCandidate,
+              candidateName: candidateDisplayName,
+              entries: [],
+            });
+          }
+          uploadsByCandidate.get(candidateKey).entries.push(entry);
+        });
+      }
+
+      if (!uploadsByCandidate.size) {
+        setToast({
+          message:
+            incoming.length > 1
+              ? "Some CVs are not linked to registered candidates. Register candidates first, then retry upload."
+              : "CV does not belong to a registered candidate. Register the candidate first.",
+          type: "error",
+        });
+        return;
+      }
+
+      setDropUploadLoading(true);
+      try {
+        let uploadedCount = 0;
+        let failedCount = 0;
+
+        const uploadGroups = Array.from(uploadsByCandidate.values());
+
+        for (const group of uploadGroups) {
+          const entryIds = group.entries.map((entry) => entry.id);
+          patchDropUploadItems(entryIds, {
+            status: "uploading",
+            candidateId: group.candidateId,
+            candidateName: group.candidateName,
+            message: "Uploading...",
+            jobId: selectedJobId ? Number(selectedJobId) : null,
+          });
+
+          const uploadForm = new FormData();
+          if (group.candidateId) {
+            uploadForm.append("recruitee_id", group.candidateId);
+          }
+          group.entries.forEach((entry) => uploadForm.append("files", entry.file));
+          uploadForm.append("is_active", "true");
+          if (selectedJobId) {
+            uploadForm.append("job_id", selectedJobId);
+          }
+
+          const uploadRes = await fetch(`${API_BASE}/api/talent-matching/cvs/upload/`, {
+            method: "POST",
+            headers: authHeader,
+            body: uploadForm,
+          });
+
+          const payload = await uploadRes.json().catch(() => ({}));
+          if (!uploadRes.ok) {
+            failedCount += group.entries.length;
+            patchDropUploadItems(entryIds, {
+              status: "failed",
+              candidateId: group.candidateId,
+              candidateName: group.candidateName,
+              message: payload?.detail || "Upload failed",
+            });
+            continue;
+          }
+
+          const uploadedItems = Array.isArray(payload?.uploaded)
+            ? payload.uploaded
+            : payload?.id
+              ? [payload]
+              : [];
+          uploadedCount += uploadedItems.length || group.entries.length;
+
+          patchDropUploadItems(entryIds, (item) => {
+            const idx = group.entries.findIndex((entry) => entry.id === item.id);
+            const uploadedCv = idx >= 0 ? uploadedItems[idx] : null;
+            const uploadedCvId = uploadedCv?.id || null;
+            const newCandidateId = uploadedCv?.recruitee_id || uploadedCv?.recruitee || group.candidateId || null;
+            return {
+              status: "uploaded",
+              candidateId: newCandidateId || group.candidateId,
+              candidateName: group.candidateName,
+              cvId: uploadedCvId,
+              jobId: selectedJobId ? Number(selectedJobId) : null,
+              message: uploadedCvId ? `Uploaded as CV #${uploadedCvId}` : "Uploaded",
+            };
+          });
+
+          if (
+            selectedMatchCandidate &&
+            String(selectedMatchCandidate.id) === String(group.candidateId) &&
+            uploadedItems.length > 0
+          ) {
+            const activeUploaded =
+              uploadedItems.find((item) => item?.is_active) ||
+              uploadedItems[uploadedItems.length - 1];
+            setSelectedMatchCv(activeUploaded || null);
+          }
+        }
+
+        const refreshPromises = [];
+
+        if (selectedMatchCandidate?.id) {
+          refreshPromises.push(
+            (async () => {
+              const latestCvs = await fetchCandidateCvListRaw(selectedMatchCandidate.id);
+              setSelectedCandidateCvs(latestCvs);
+              if (cvManagerCandidate?.id === selectedMatchCandidate.id) {
+                setCandidateCvs(latestCvs);
+              }
+              const activeCv = latestCvs.find((item) => item.is_active) || latestCvs[0] || null;
+              setSelectedMatchCv(activeCv);
+            })()
+          );
+        }
+        if (refreshPromises.length) {
+          await Promise.all(refreshPromises);
+        }
+
+        const totalSkipped = skippedCount + failedCount;
+
+        const toastMessage = totalSkipped > 0
+          ? `Uploaded ${uploadedCount} resume(s), skipped ${totalSkipped}.`
+          : `Uploaded ${uploadedCount} resume(s) successfully.`;
+
+        if (uploadedCount > 0) {
+          setToast({
+            message: toastMessage,
+            type: totalSkipped > 0 ? "error" : "success",
+          });
+        } else {
+          setToast({
+            message:
+              "No resumes were uploaded. Select a candidate first or use firstname_lastname filenames that map to registered candidates.",
+            type: "error",
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        setToast({ message: "Failed to upload dropped resumes.", type: "error" });
+      } finally {
+        setDropUploadLoading(false);
+      }
+    },
+    [
+      API_BASE,
+      authHeader,
+      candidates,
+      cvManagerCandidate?.id,
+      patchDropUploadItems,
+      fetchCandidateCvListRaw,
+      pushDropUploadItems,
+      selectedJobId,
+      selectedMatchCandidate,
+    ]
+  );
+
+  const handleDeleteDroppedUploadedCv = useCallback(
+    async (item) => {
+      if (!item?.cvId || !item?.id) {
+        return;
+      }
+
+      setDropUploadDeletingIds((prev) => [...prev, item.id]);
+      try {
+        const res = await fetch(`${API_BASE}/api/talent-matching/cvs/${item.cvId}/`, {
+          method: "DELETE",
+          headers: authHeader,
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to delete uploaded CV");
+        }
+
+        setDropUploadItems((prev) => prev.filter((row) => row.id !== item.id));
+
+        if (
+          selectedMatchCandidate?.id &&
+          String(selectedMatchCandidate.id) === String(item.candidateId)
+        ) {
+          const latestCvs = await fetchCandidateCvListRaw(selectedMatchCandidate.id);
+          setSelectedCandidateCvs(latestCvs);
+          if (cvManagerCandidate?.id === selectedMatchCandidate.id) {
+            setCandidateCvs(latestCvs);
+          }
+          const activeCv = latestCvs.find((cv) => cv.is_active) || latestCvs[0] || null;
+          if (String(selectedMatchCv?.id || "") === String(item.cvId)) {
+            setSelectedMatchCv(activeCv);
+          }
+        }
+
+        setToast({ message: `Deleted CV #${item.cvId}.`, type: "success" });
+      } catch (error) {
+        console.error(error);
+        setToast({ message: "Failed to delete uploaded CV.", type: "error" });
+      } finally {
+        setDropUploadDeletingIds((prev) => prev.filter((id) => id !== item.id));
+      }
+    },
+    [
+      API_BASE,
+      authHeader,
+      cvManagerCandidate?.id,
+      fetchCandidateCvListRaw,
+      selectedMatchCandidate,
+      selectedMatchCv?.id,
+    ]
+  );
 
   const filtered = pipelineRankings;
 
@@ -1248,54 +1731,273 @@ export default function RecruitmentMatch() {
 
   // --- AI Matcher ---
   async function analyzeMatches() {
-    if (!selectedJobId || !selectedMatchCandidate || !selectedMatchCv) {
+    if (!selectedJobId) {
+      setToast({
+        message: "Select a job offering before calculating fit.",
+        type: "error",
+      });
+      return;
+    }
+
+    const selectedCandidateIds = Array.from(
+      new Set((selectedIds || []).filter(Boolean).map((id) => String(id)))
+    );
+    const isBatchMode = selectedCandidateIds.length > 0;
+
+    const uploadedQueueTargets = (dropUploadItems || [])
+      .filter(
+        (item) =>
+          item?.status === "uploaded" &&
+          item?.candidateId &&
+          item?.cvId &&
+          (!item?.jobId || String(item.jobId) === String(selectedJobId))
+      )
+      .map((item) => ({
+        id: item.candidateId,
+        name: item.candidateName || item.fileName || "Candidate",
+        email: "",
+        position: "",
+        _preselectedCv: {
+          id: item.cvId,
+        },
+      }));
+
+    const dedupedQueueTargets = [];
+    const queueSeen = new Set();
+    for (const target of uploadedQueueTargets) {
+      const key = `${String(target.id)}:${String(target?._preselectedCv?.id || "")}`;
+      if (queueSeen.has(key)) {
+        continue;
+      }
+      queueSeen.add(key);
+      dedupedQueueTargets.push(target);
+    }
+
+    const hasSingleSelection = Boolean(selectedMatchCandidate && selectedMatchCv);
+    const hasQueueTargets = dedupedQueueTargets.length > 0;
+
+    if (!isBatchMode && !hasSingleSelection && !hasQueueTargets) {
       setToast({
         message:
-          "Select one job offering, one candidate, and one CV before calculating fit.",
+          "Drop CVs (left panel) or select one candidate + CV, or choose candidates from the table for batch matching.",
+        type: "error",
+      });
+      return;
+    }
+
+    const lookup = new Map();
+    candidates.forEach((candidate) => {
+      lookup.set(String(candidate.id), {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        position: candidate.position,
+      });
+    });
+    pipelineRankings.forEach((row) => {
+      lookup.set(String(row.candidate_id), {
+        id: row.candidate_id,
+        name: row.candidate_name,
+        email: row.candidate_email,
+        position: row.position,
+      });
+    });
+
+    const targets = isBatchMode
+      ? selectedCandidateIds.map((candidateId) => {
+          const item = lookup.get(String(candidateId)) || {};
+          return {
+            id: candidateId,
+            name: item.name || item.email || "Candidate",
+            email: item.email || "",
+            position: item.position || "",
+          };
+        })
+      : selectedMatchCandidate && selectedMatchCv
+        ? [
+            {
+              id: selectedMatchCandidate.id,
+              name: selectedMatchCandidate.name,
+              email: selectedMatchCandidate.email,
+              position: selectedMatchCandidate.position,
+              _preselectedCv: selectedMatchCv,
+            },
+          ]
+        : dedupedQueueTargets;
+
+    if (!targets.length) {
+      setToast({
+        message: "No valid targets found to match for the selected job.",
         type: "error",
       });
       return;
     }
 
     setMatchLoading(true);
+    clearMatchProgressHideTimer();
+    setMatchProgress({
+      visible: true,
+      total: targets.length,
+      completed: 0,
+      percent: 0,
+      currentLabel: "",
+      stage: "Preparing analysis queue...",
+      successCount: 0,
+      failureCount: 0,
+    });
+
+    let successCount = 0;
+    let failureCount = 0;
+
     try {
-      // Ensure candidate is linked to selected job before scoring.
-      const attachRes = await fetch(
-        `${API_BASE}/api/talent-matching/applications/attach/`,
-        {
+      for (let index = 0; index < targets.length; index += 1) {
+        const candidate = targets[index];
+        const startPercent = Math.round((index / targets.length) * 100);
+        const donePercent = Math.round(((index + 1) / targets.length) * 100);
+        const softCap = Math.max(startPercent + 2, donePercent - 5);
+
+        setMatchProgress((prev) => ({
+          ...prev,
+          visible: true,
+          total: targets.length,
+          completed: index,
+          percent: Math.max(prev.percent, startPercent),
+          currentLabel: candidate.name || candidate.email || "Candidate",
+          stage: "Loading CV...",
+          successCount,
+          failureCount,
+        }));
+        startMatchProgressTicker(softCap);
+
+        let cvToAnalyze = candidate._preselectedCv || null;
+        if (!cvToAnalyze) {
+          let candidateCvList = [];
+          try {
+            candidateCvList = await fetchCandidateCvListRaw(candidate.id);
+          } catch (fetchErr) {
+            failureCount += 1;
+            stopMatchProgressTicker();
+            setMatchProgress((prev) => ({
+              ...prev,
+              completed: index + 1,
+              percent: donePercent,
+              stage:
+                fetchErr?.message ||
+                `Skipped: failed to load CVs for ${candidate.name || candidate.email || "candidate"}.`,
+              successCount,
+              failureCount,
+            }));
+            continue;
+          }
+          cvToAnalyze = candidateCvList.find((item) => item.is_active) || candidateCvList[0] || null;
+        }
+
+        if (!cvToAnalyze?.id) {
+          failureCount += 1;
+          stopMatchProgressTicker();
+          setMatchProgress((prev) => ({
+            ...prev,
+            completed: index + 1,
+            percent: donePercent,
+            stage: "Skipped: no CV uploaded.",
+            successCount,
+            failureCount,
+          }));
+          continue;
+        }
+
+        setMatchProgress((prev) => ({
+          ...prev,
+          stage: "Running AI analysis...",
+        }));
+
+        const attachRes = await fetch(
+          `${API_BASE}/api/talent-matching/applications/attach/`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeader },
+            body: JSON.stringify({
+              candidate_id: candidate.id,
+              job_id: Number(selectedJobId),
+              source: isBatchMode ? "hr_bulk" : "hr_manual",
+            }),
+          }
+        );
+
+        const attachPayload = await attachRes.json().catch(() => ({}));
+        if (!attachRes.ok) {
+          failureCount += 1;
+          stopMatchProgressTicker();
+          setMatchProgress((prev) => ({
+            ...prev,
+            completed: index + 1,
+            percent: donePercent,
+            stage:
+              attachPayload?.detail ||
+              `Skipped: failed to attach ${candidate.name || candidate.email || "candidate"} to selected job.`,
+            successCount,
+            failureCount,
+          }));
+          continue;
+        }
+
+        const matchRes = await fetch(`${API_BASE}/api/talent-matching/match/`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify({
-            candidate_id: selectedMatchCandidate.id,
             job_id: Number(selectedJobId),
-            source: "hr_manual",
+            candidate_id: candidate.id,
+            cv_id: cvToAnalyze.id,
+            job_description: jobDescription.trim() || selectedJob?.description || "",
           }),
+        });
+
+        const matchPayload = await matchRes.json().catch(() => ({}));
+        if (!matchRes.ok) {
+          failureCount += 1;
+          stopMatchProgressTicker();
+          setMatchProgress((prev) => ({
+            ...prev,
+            completed: index + 1,
+            percent: donePercent,
+            stage: "Candidate failed to analyze.",
+            successCount,
+            failureCount,
+          }));
+          continue;
         }
-      );
-      if (!attachRes.ok) throw new Error("Failed to attach candidate to selected job");
 
-      const res = await fetch(`${API_BASE}/api/talent-matching/match/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({
-          job_id: Number(selectedJobId),
-          candidate_id: selectedMatchCandidate.id,
-          cv_id: selectedMatchCv.id,
-          job_description: jobDescription.trim() || selectedJob?.description || "",
-        }),
-      });
+        const next = normalizeMatchResult({
+          payload: matchPayload,
+          fallbackCandidate: candidate,
+          fallbackCv: cvToAnalyze,
+          source: isBatchMode ? "Batch Analysis" : "Live Analysis",
+        });
+        upsertResult(next);
+        successCount += 1;
 
-      if (!res.ok) throw new Error("Failed to analyze");
-      const data = await res.json();
-      const next = normalizeMatchResult({
-        payload: data,
-        fallbackCandidate: selectedMatchCandidate,
-        fallbackCv: selectedMatchCv,
-        source: "Live Analysis",
-      });
-      upsertResult(next);
-      setResultModalFromHistory(false);
-      setResultModalOpen(true);
+        stopMatchProgressTicker();
+        setMatchProgress((prev) => ({
+          ...prev,
+          completed: index + 1,
+          percent: donePercent,
+          stage: "Candidate analysis completed.",
+          successCount,
+          failureCount,
+        }));
+      }
+
+      stopMatchProgressTicker();
+      setMatchProgress((prev) => ({
+        ...prev,
+        visible: true,
+        completed: targets.length,
+        total: targets.length,
+        percent: 100,
+        stage: "Analysis complete.",
+        successCount,
+        failureCount,
+      }));
 
       await fetchRankedPipeline({
         page: pipelinePage,
@@ -1303,12 +2005,44 @@ export default function RecruitmentMatch() {
         status: pipelineStatusFilter,
         jobId: selectedJobId,
       });
-      setToast({ message: "Match analysis complete.", type: "success" });
+
+      if (successCount > 0) {
+        await fetchCandidates();
+      }
+
+      if (successCount > 0) {
+        setResultModalFromHistory(false);
+        setResultModalOpen(true);
+      }
+
+      if (failureCount > 0) {
+        setToast({
+          message: `Matching finished: ${successCount} succeeded, ${failureCount} failed/skipped.`,
+          type: "error",
+        });
+      } else {
+        setToast({
+          message:
+            successCount > 1
+              ? `Batch match complete for ${successCount} candidates.`
+              : "Match analysis complete.",
+          type: "success",
+        });
+      }
     } catch (err) {
       console.error(err);
-      setToast({ message: "Failed to calculate match fit.", type: "error" });
+      setToast({ message: err.message || "Failed to calculate match fit.", type: "error" });
     } finally {
+      stopMatchProgressTicker();
       setMatchLoading(false);
+      clearMatchProgressHideTimer();
+      matchProgressHideTimerRef.current = setTimeout(() => {
+        setMatchProgress((prev) => ({
+          ...prev,
+          visible: false,
+          stage: "",
+        }));
+      }, 1500);
     }
   }
 
@@ -1389,6 +2123,7 @@ export default function RecruitmentMatch() {
 
         <AIMatcherSection
           selectedMatchCandidate={selectedMatchCandidate}
+          selectedIds={selectedIds}
           selectedCandidateCvs={selectedCandidateCvs}
           selectedMatchCv={selectedMatchCv}
           setSelectedMatchCv={setSelectedMatchCv}
@@ -1402,6 +2137,12 @@ export default function RecruitmentMatch() {
           results={results}
           setResultModalFromHistory={setResultModalFromHistory}
           setResultModalOpen={setResultModalOpen}
+          matchProgress={matchProgress}
+          onDropResumeFiles={handleDropResumeFiles}
+          dropUploadLoading={dropUploadLoading}
+          dropUploadItems={dropUploadItems}
+          onDeleteDroppedUploadedCv={handleDeleteDroppedUploadedCv}
+          dropUploadDeletingIds={dropUploadDeletingIds}
         />
       </div>
 
@@ -1472,8 +2213,8 @@ export default function RecruitmentMatch() {
         cvManagerOpen={cvManagerOpen}
         setCvManagerOpen={setCvManagerOpen}
         cvManagerCandidate={cvManagerCandidate}
-        cvUploadFile={cvUploadFile}
-        setCvUploadFile={setCvUploadFile}
+        cvUploadFiles={cvUploadFiles}
+        setCvUploadFiles={setCvUploadFiles}
         cvUploadLoading={cvUploadLoading}
         handleUploadCandidateCv={handleUploadCandidateCv}
         candidateCvsLoading={candidateCvsLoading}

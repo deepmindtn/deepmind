@@ -141,6 +141,7 @@ export const styles = {
       rejected: { bg: "#fef2f2", text: "#ef4444" },
       invited: { bg: "#eff6ff", text: "#3b82f6" },
       pending: { bg: "#fffbeb", text: "#d97706" },
+      pending_cv_match: { bg: "#fef3c7", text: "#d97706" },
       in_progress: { bg: "#eef2ff", text: "#4f46e5" },
       interview: { bg: "#fef3c7", text: "#d97706" },
       completed: { bg: "#ecfdf5", text: "#059669" },

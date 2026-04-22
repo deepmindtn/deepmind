@@ -4,7 +4,8 @@ import { X } from "lucide-react";
 import { COLORS, styles } from "./Constants";
 
 export function StatusBadge({ status }) {
-  return <span style={styles.badge(status)}>{status}</span>;
+  const label = status === "pending_cv_match" ? "Pending CV Match" : status;
+  return <span style={styles.badge(status)}>{label}</span>;
 }
 
 export function Modal({ open, title, onClose, children, actions, contentClassName }) {
