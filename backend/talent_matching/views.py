@@ -887,18 +887,84 @@ class CandidateCVUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsHR]
 
     def post(self, request):
-        serializer = CandidateCVUploadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        recruitee_id = request.data.get("recruitee_id")
+        if not recruitee_id:
+            raise ValidationError(
+                {
+                    "recruitee_id": (
+                        "CV upload requires an existing registered candidate. "
+                        "Select a candidate before uploading."
+                    )
+                }
+            )
+
+        job_id = request.data.get("job_id")
+        job = None
 
         candidate = Recruitee.objects.filter(
-            id=serializer.validated_data["recruitee_id"],
+            id=recruitee_id,
             company=request.user.company,
         ).first()
-        if not candidate:
-            raise ValidationError({"recruitee_id": "Candidate not found in your company."})
+        if candidate is None:
+            raise ValidationError(
+                {
+                    "recruitee_id": (
+                        "The uploaded CV does not belong to a registered candidate in your company."
+                    )
+                }
+            )
 
-        cv = serializer.save()
-        return Response(CandidateCVSerializer(cv).data, status=status.HTTP_201_CREATED)
+        if job_id:
+            try:
+                job = JobPosting.objects.get(id=job_id, company=request.user.company)
+            except JobPosting.DoesNotExist:
+                job = None
+
+        files = request.FILES.getlist("files")
+        if not files:
+            single_file = request.FILES.get("file")
+            if single_file is not None:
+                files = [single_file]
+
+        if not files:
+            raise ValidationError({"file": "Provide at least one file."})
+
+        if job is not None:
+            CandidateJobApplication.objects.get_or_create(
+                recruitee=candidate,
+                job=job,
+                defaults={"created_by": request.user, "stage": "pending"},
+            )
+
+        raw_is_active = request.data.get("is_active", True)
+        if isinstance(raw_is_active, str):
+            default_is_active = raw_is_active.strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            default_is_active = bool(raw_is_active)
+
+        uploaded = []
+        is_bulk = len(files) > 1
+        for index, upload_file in enumerate(files):
+            serializer = CandidateCVUploadSerializer(
+                data={
+                    "recruitee_id": str(candidate.id),
+                    "file": upload_file,
+                    "is_active": default_is_active and (not is_bulk or index == len(files) - 1),
+                }
+            )
+            serializer.is_valid(raise_exception=True)
+            uploaded.append(CandidateCVSerializer(serializer.save()).data)
+
+        if len(uploaded) == 1:
+            return Response(uploaded[0], status=status.HTTP_201_CREATED)
+
+        return Response(
+            {
+                "count": len(uploaded),
+                "uploaded": uploaded,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class CandidateCVSetActiveView(APIView):
@@ -926,6 +992,12 @@ class CandidateCVDeleteView(generics.DestroyAPIView):
     def get_queryset(self):
         return self.queryset.filter(recruitee__company=self.request.user.company)
 
+    def perform_destroy(self, instance):
+        # Delete stored media file first to avoid orphaned files in storage.
+        if instance.file:
+            instance.file.delete(save=False)
+        instance.delete()
+
 
 class CandidateJobApplicationListCreateView(generics.ListCreateAPIView):
     serializer_class = CandidateJobApplicationSerializer
@@ -949,7 +1021,10 @@ class CandidateJobApplicationListCreateView(generics.ListCreateAPIView):
         if job and job.company_id != self.request.user.company_id:
             raise ValidationError({"job": "Job not found in your company."})
 
-        final_stage = stage if stage else (recruitee.status if recruitee else "pending")
+        default_stage = recruitee.status if recruitee else "pending"
+        if default_stage == "pending_cv_match":
+            default_stage = "pending"
+        final_stage = stage if stage else default_stage
         serializer.save(created_by=self.request.user, stage=final_stage)
 
 
@@ -979,7 +1054,7 @@ class CandidateApplicationAttachView(APIView):
             job=job,
             defaults={
                 "created_by": request.user,
-                "stage": candidate.status,
+                "stage": "pending" if candidate.status == "pending_cv_match" else candidate.status,
                 "source": data.get("source", ""),
                 "notes": data.get("notes", ""),
             },
@@ -1183,6 +1258,12 @@ class TalentMatchView(APIView):
                 or f"Composite AI fit score: {score} ({fit_label}).",
                 ranking_breakdown=breakdown,
             )
+            if candidate.status == "pending_cv_match":
+                candidate.status = "pending"
+                candidate.save(update_fields=["status", "updated_at"])
+            if application.stage == "pending_cv_match":
+                application.stage = "pending"
+                application.save(update_fields=["stage", "updated_at"])
 
         response_payload = {
             "score": score,
@@ -1647,7 +1728,7 @@ class RankedPipelineView(APIView):
         recruitees = Recruitee.objects.filter(
             company=request.user.company,
             job_applications__job=job,
-        ).distinct()
+        ).exclude(status="pending_cv_match").distinct()
 
         query = request.query_params.get("q", "").strip()
         if query:
@@ -1675,7 +1756,7 @@ class GlobalRankedPipelineView(APIView):
     pagination_class = FixedPageSizePagination
 
     def get(self, request):
-        recruitees = Recruitee.objects.filter(company=request.user.company)
+        recruitees = Recruitee.objects.filter(company=request.user.company).exclude(status="pending_cv_match")
 
         query = request.query_params.get("q", "").strip()
         if query:

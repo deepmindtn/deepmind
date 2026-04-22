@@ -956,6 +956,7 @@ export function PipelineSection({
 
 export function AIMatcherSection({
   selectedMatchCandidate,
+  selectedIds,
   selectedCandidateCvs,
   selectedMatchCv,
   setSelectedMatchCv,
@@ -969,7 +970,37 @@ export function AIMatcherSection({
   results,
   setResultModalFromHistory,
   setResultModalOpen,
+  matchProgress,
+  onDropResumeFiles,
+  dropUploadLoading,
+  dropUploadItems,
+  onDeleteDroppedUploadedCv,
+  dropUploadDeletingIds,
 }) {
+  const selectedCandidateCount = Array.isArray(selectedIds) ? selectedIds.length : 0;
+  const isBatchMode = selectedCandidateCount > 0;
+  const dropReadyCount = Array.isArray(dropUploadItems)
+    ? dropUploadItems.filter((item) => item?.status === "uploaded" && item?.candidateId && item?.cvId).length
+    : 0;
+  const isDropQueueMode = !isBatchMode && !selectedMatchCandidate && dropReadyCount > 0;
+  const canAnalyze = Boolean(
+    selectedJobId &&
+      (isBatchMode
+        ? selectedCandidateCount > 0
+        : (selectedMatchCandidate && selectedMatchCv) || isDropQueueMode)
+  );
+  const [isResumeDropActive, setIsResumeDropActive] = React.useState(false);
+
+  const handleResumeFiles = React.useCallback(
+    (fileList) => {
+      if (!onDropResumeFiles) {
+        return;
+      }
+      onDropResumeFiles(fileList);
+    },
+    [onDropResumeFiles]
+  );
+
   return (
     <div>
       <div
@@ -1020,12 +1051,216 @@ export function AIMatcherSection({
           }}
         >
           <h3 style={{ fontSize: "16px", fontWeight: "600", margin: 0 }}>
-            1. Selected Candidate Resume
+            1. Candidate CV Source
           </h3>
 
-          {!selectedMatchCandidate ? (
+          <div
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsResumeDropActive(true);
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              setIsResumeDropActive(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsResumeDropActive(false);
+              handleResumeFiles(event.dataTransfer?.files);
+            }}
+            style={{
+              border: `2px dashed ${isResumeDropActive ? COLORS.primary : COLORS.borderColor}`,
+              borderRadius: 12,
+              padding: "14px 12px",
+              backgroundColor: isResumeDropActive ? "#eff6ff" : "#f8fafc",
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.4, display: "grid", gap: 2 }}>
+              <span>
+                {selectedMatchCandidate
+                  ? `Drop one or more resumes for ${selectedMatchCandidate.name} named firstname_lastname.pdf.`
+                  : "Drop one or more resumes named firstname_lastname.pdf."}
+              </span>
+              <span>Or browse files from your device.</span>
+            </div>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.txt"
+              style={styles.input}
+              onChange={(event) => {
+                handleResumeFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </div>
+
+          {(dropUploadLoading || (Array.isArray(dropUploadItems) && dropUploadItems.length > 0)) ? (
+            <div
+              style={{
+                border: `1px solid ${COLORS.borderColor}`,
+                borderRadius: 10,
+                backgroundColor: "white",
+                padding: 10,
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <strong style={{ fontSize: 12, color: COLORS.textPrimary }}>
+                  Resume Upload Queue
+                </strong>
+                {dropUploadLoading ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.textSecondary }}>
+                    <Loader2 className="spin" size={12} /> Uploading...
+                  </span>
+                ) : null}
+              </div>
+
+              {dropReadyCount > 0 ? (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: COLORS.primary,
+                    backgroundColor: "#eff6ff",
+                    border: `1px solid ${COLORS.primary}33`,
+                    borderRadius: 8,
+                    padding: "7px 9px",
+                  }}
+                >
+                  {dropReadyCount} uploaded resume{dropReadyCount === 1 ? "" : "s"} ready for matching.
+                </div>
+              ) : null}
+
+              <div style={{ display: "grid", gap: 6, maxHeight: 280, overflowY: "auto", paddingRight: 2 }}>
+                {(dropUploadItems || []).slice(0, 14).map((item) => {
+                  const isUploading = item.status === "uploading";
+                  const isUploaded = item.status === "uploaded";
+                  const isProblem = item.status === "failed" || item.status === "skipped";
+                  const isDeleting = (dropUploadDeletingIds || []).includes(item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        border: `1px solid ${COLORS.borderColor}`,
+                        borderRadius: 8,
+                        padding: "7px 9px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          title={item.fileName}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: COLORS.textPrimary,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {item.fileName}
+                        </div>
+                        <div style={{ fontSize: 11, color: COLORS.textSecondary }}>
+                          {item.candidateName ? `${item.candidateName} - ` : ""}
+                          {item.message || item.status}
+                        </div>
+                      </div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        {isUploading ? (
+                          <Loader2 className="spin" size={12} color={COLORS.primary} />
+                        ) : (
+                          <span
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              backgroundColor: isUploaded ? "#16a34a" : isProblem ? "#dc2626" : "#64748b",
+                              display: "inline-block",
+                            }}
+                          />
+                        )}
+                        <span style={{ fontSize: 11, color: COLORS.textSecondary, textTransform: "capitalize" }}>
+                          {item.status}
+                        </span>
+                        {isUploaded && item.cvId ? (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteDroppedUploadedCv && onDeleteDroppedUploadedCv(item)}
+                            disabled={isDeleting}
+                            style={{
+                              border: "none",
+                              background: "none",
+                              color: COLORS.red,
+                              cursor: isDeleting ? "not-allowed" : "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              padding: 0,
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
+                            title={`Delete uploaded CV #${item.cvId}`}
+                          >
+                            {isDeleting ? <Loader2 className="spin" size={12} /> : <Trash2 size={12} />}
+                            {isDeleting ? "Deleting" : "Delete"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {isBatchMode ? (
+            <>
+              <div
+                style={{
+                  backgroundColor: "#eff6ff",
+                  border: `1px solid ${COLORS.primary}33`,
+                  borderRadius: 10,
+                  padding: 12,
+                  fontSize: 13,
+                  color: COLORS.textSecondary,
+                  lineHeight: 1.45,
+                }}
+              >
+                <strong style={{ color: COLORS.primary }}>
+                  Batch mode enabled for {selectedCandidateCount} selected candidate{selectedCandidateCount === 1 ? "" : "s"}.
+                </strong>
+                <div style={{ marginTop: 6 }}>
+                  We will use each candidate's active CV (or latest uploaded CV). Candidates without a CV are skipped.
+                </div>
+              </div>
+
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary }}>
+                Use the candidate row <FileText size={13} color={COLORS.dark} /> action to open CV manager and upload resumes before running.
+              </p>
+
+              {selectedMatchCandidate ? (
+                <button
+                  style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark, width: "fit-content" }}
+                  onClick={() => openCvManager(selectedMatchCandidate)}
+                >
+                  <Upload size={16} /> Manage CVs For Highlighted Candidate
+                </button>
+              ) : null}
+            </>
+          ) : !selectedMatchCandidate ? (
             <p style={{ margin: 0, fontSize: 13, color: COLORS.textSecondary, display: "flex", alignItems: "center", gap: 4 }}>
-              Pick a candidate from the list using the <Brain size={14} color={COLORS.primary} /> button under the 'Actions' column.
+              {dropReadyCount > 0
+                ? "Dropped resumes are ready. Select a job and click Calculate Match Fit."
+                : "Pick a candidate from the list using the "}
+              {dropReadyCount > 0 ? null : <Brain size={14} color={COLORS.primary} />} {dropReadyCount > 0 ? null : "button under the 'Actions' column."}
             </p>
           ) : (
             <>
@@ -1164,9 +1399,7 @@ export function AIMatcherSection({
         onClick={analyzeMatches}
         disabled={
           matchLoading ||
-          !selectedJobId ||
-          !selectedMatchCandidate ||
-          !selectedMatchCv
+          !canAnalyze
         }
         style={{
           ...styles.btnPrimary,
@@ -1175,14 +1408,8 @@ export function AIMatcherSection({
           justifyContent: "center",
           backgroundColor: COLORS.dark,
           padding: "14px",
-          opacity:
-            !selectedJobId || !selectedMatchCandidate || !selectedMatchCv
-              ? 0.6
-              : 1,
-          cursor:
-            !selectedJobId || !selectedMatchCandidate || !selectedMatchCv
-              ? "not-allowed"
-              : "pointer",
+          opacity: canAnalyze ? 1 : 0.6,
+          cursor: canAnalyze ? "pointer" : "not-allowed",
         }}
       >
         {matchLoading ? (
@@ -1191,9 +1418,59 @@ export function AIMatcherSection({
           <BarChart3 size={18} />
         )}
         {matchLoading
-          ? "Analyzing..."
-          : "Calculate Match Fit"}
+          ? isBatchMode
+            ? `Processing ${matchProgress?.completed || 0}/${matchProgress?.total || selectedCandidateCount}`
+            : "Analyzing..."
+          : isBatchMode
+            ? `Calculate Match Fit For ${selectedCandidateCount} CV${selectedCandidateCount === 1 ? "" : "s"}`
+            : isDropQueueMode
+              ? `Calculate Match Fit For ${dropReadyCount} Uploaded CV${dropReadyCount === 1 ? "" : "s"}`
+            : "Calculate Match Fit"}
       </button>
+
+      {matchProgress?.visible ? (
+        <div
+          style={{
+            ...styles.card,
+            marginTop: 14,
+            padding: 14,
+            display: "grid",
+            gap: 8,
+            border: `1px solid ${COLORS.primary}44`,
+            backgroundColor: "#f8fbff",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <strong style={{ fontSize: 13, color: COLORS.textPrimary }}>
+              {matchProgress.stage || "Processing..."}
+            </strong>
+            <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+              {matchProgress.completed}/{matchProgress.total} completed
+            </span>
+          </div>
+          {matchProgress.currentLabel ? (
+            <div style={{ fontSize: 12, color: COLORS.textSecondary }}>
+              Current: {matchProgress.currentLabel}
+            </div>
+          ) : null}
+          <div style={{ width: "100%", height: 8, borderRadius: 999, backgroundColor: "#dbeafe", overflow: "hidden" }}>
+            <div
+              style={{
+                width: `${Math.min(Math.max(Number(matchProgress.percent || 0), 0), 100)}%`,
+                height: "100%",
+                backgroundColor: COLORS.primary,
+                transition: "width 0.25s ease",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.textSecondary }}>
+            <span>{Number(matchProgress.percent || 0).toFixed(0)}%</span>
+            <span>
+              Success: {matchProgress.successCount || 0} | Failed/Skipped: {matchProgress.failureCount || 0}
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       {results.length > 0 && (
         <div style={{ marginTop: "16px", display: "flex", justifyContent: "center" }}>

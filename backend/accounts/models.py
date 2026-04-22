@@ -195,6 +195,7 @@ class Recruitee(models.Model):
 
     STATUS_CHOICES = [
         ("pending", "Pending"),
+        ("pending_cv_match", "Pending CV Match"),
         ("invited", "Invited"),
         ("in_progress", "In Progress"),
         ("completed", "Completed"),

@@ -33,11 +33,14 @@ class JobPostingSerializer(serializers.ModelSerializer):
 
 
 class CandidateCVSerializer(serializers.ModelSerializer):
+    recruitee_id = serializers.UUIDField(source="recruitee.id", read_only=True)
+
     class Meta:
         model = CandidateCV
         fields = [
             "id",
             "recruitee",
+            "recruitee_id",
             "file",
             "extracted_text",
             "checksum",
@@ -117,6 +120,18 @@ class CandidateCVUploadSerializer(serializers.Serializer):
         extracted_text = ""
         if upload_file.name.lower().endswith(".txt"):
             extracted_text = content.decode("utf-8", errors="ignore")
+
+        existing = CandidateCV.objects.filter(
+            recruitee=recruitee,
+            checksum=checksum,
+        ).order_by("-uploaded_at").first()
+        if existing:
+            if validated_data.get("is_active", True):
+                CandidateCV.objects.filter(recruitee=recruitee, is_active=True).exclude(pk=existing.pk).update(is_active=False)
+                if not existing.is_active:
+                    existing.is_active = True
+                    existing.save(update_fields=["is_active"])
+            return existing
 
         if validated_data.get("is_active", True):
             CandidateCV.objects.filter(recruitee=recruitee, is_active=True).update(is_active=False)

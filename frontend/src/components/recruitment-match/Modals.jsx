@@ -1003,8 +1003,8 @@ export function CVManagerModal({
   cvManagerOpen,
   setCvManagerOpen,
   cvManagerCandidate,
-  cvUploadFile,
-  setCvUploadFile,
+  cvUploadFiles,
+  setCvUploadFiles,
   cvUploadLoading,
   handleUploadCandidateCv,
   candidateCvsLoading,
@@ -1016,6 +1016,40 @@ export function CVManagerModal({
   handleSetActiveCv,
   handleDeleteCv,
 }) {
+  const [isDragActive, setIsDragActive] = React.useState(false);
+
+  const appendUploadFiles = React.useCallback(
+    (fileList) => {
+      const nextFiles = Array.from(fileList || []).filter((file) =>
+        /\.(pdf|txt)$/i.test(file?.name || "")
+      );
+
+      if (!nextFiles.length) {
+        return;
+      }
+
+      setCvUploadFiles((prev) => {
+        const deduped = new Map();
+        [...(Array.isArray(prev) ? prev : []), ...nextFiles].forEach((file) => {
+          const key = `${file.name}-${file.size}-${file.lastModified}`;
+          if (!deduped.has(key)) {
+            deduped.set(key, file);
+          }
+        });
+        return Array.from(deduped.values());
+      });
+    },
+    [setCvUploadFiles]
+  );
+
+  const removeUploadFile = (indexToRemove) => {
+    setCvUploadFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  const clearUploadFiles = () => {
+    setCvUploadFiles([]);
+  };
+
   return (
     <Modal
       open={cvManagerOpen}
@@ -1055,19 +1089,138 @@ export function CVManagerModal({
             gap: 10,
           }}
         >
-          <label style={styles.label}>Upload New CV (PDF or TXT)</label>
-          <input
-            style={styles.input}
-            type="file"
-            accept=".pdf,.txt"
-            onChange={(e) => setCvUploadFile(e.target.files?.[0] || null)}
-          />
+          <label style={styles.label}>Upload CVs (PDF or TXT)</label>
+          <div
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragActive(true);
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              setIsDragActive(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragActive(false);
+              appendUploadFiles(event.dataTransfer?.files);
+            }}
+            style={{
+              border: `2px dashed ${isDragActive ? COLORS.primary : COLORS.borderColor}`,
+              borderRadius: 10,
+              padding: "14px 12px",
+              backgroundColor: isDragActive ? "#eff6ff" : "#f8fafc",
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: 13, color: COLORS.textSecondary }}>
+              Drag and drop PDF/TXT files here, or browse below.
+            </div>
+            <input
+              style={styles.input}
+              type="file"
+              accept=".pdf,.txt"
+              multiple
+              onChange={(event) => {
+                appendUploadFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </div>
+
+          {Array.isArray(cvUploadFiles) && cvUploadFiles.length > 0 ? (
+            <div
+              style={{
+                border: `1px solid ${COLORS.borderColor}`,
+                borderRadius: 8,
+                padding: 10,
+                backgroundColor: "white",
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <strong style={{ fontSize: 12, color: COLORS.textPrimary }}>
+                  {cvUploadFiles.length} file{cvUploadFiles.length === 1 ? "" : "s"} queued
+                </strong>
+                <button
+                  type="button"
+                  onClick={clearUploadFiles}
+                  style={{
+                    border: `1px solid ${COLORS.borderColor}`,
+                    borderRadius: 8,
+                    background: "white",
+                    fontSize: 11,
+                    padding: "4px 8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gap: 6, maxHeight: 140, overflowY: "auto" }}>
+                {cvUploadFiles.map((file, index) => (
+                  <div
+                    key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      border: `1px solid ${COLORS.borderColor}`,
+                      borderRadius: 8,
+                      padding: "6px 8px",
+                      fontSize: 12,
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: COLORS.textSecondary,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={file.name}
+                    >
+                      {file.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeUploadFile(index)}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        color: COLORS.red,
+                        cursor: "pointer",
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <button
             style={{ ...styles.btnPrimary, backgroundColor: COLORS.dark }}
             onClick={handleUploadCandidateCv}
-            disabled={cvUploadLoading || !cvUploadFile}
+            disabled={cvUploadLoading || !cvUploadFiles?.length}
           >
-            {cvUploadLoading ? "Uploading..." : "Upload CV"}
+            {cvUploadLoading
+              ? "Uploading..."
+              : `Upload ${cvUploadFiles?.length || 0} CV${cvUploadFiles?.length === 1 ? "" : "s"}`}
           </button>
         </div>
 
